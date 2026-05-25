@@ -1,0 +1,42 @@
+# PHP
+*.cache
+*.log
+*.swp
+.phpunit.result.cache
+.php-cs-fixer.cache
+.phpstan/
+
+# Composer
+/vendor/
+composer.phar
+
+# Anokii runtime
+/var/
+/cache/
+/storage/
+
+# Environment
+/.env
+/.env.local
+/.env.*.local
+
+# IDE
+/.idea/
+/.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Node / frontend build
+/node_modules/
+/public/build/
+/.nuxt/
+/.output/
+
+# Spec Kitty (machine-specific skill symlinks)
+/.kittify/skills/
+/.kittify/workspaces/
+/.kittify/derived/
+
+# OS
+.DS_Store
+Thumbs.db

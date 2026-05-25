@@ -1,0 +1,30 @@
+{
+    "name": "anokii/anokii",
+    "description": "Anokii — the first opinionated distribution built on Waaseyaa. Sovereign workspace for First Nations. OCAP-by-architecture. Working name pending language-keeper verification.",
+    "type": "project",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "Russell Jones",
+            "email": "jonesrussell42@gmail.com"
+        },
+        {
+            "name": "Anokii Project Contributors"
+        }
+    ],
+    "require": {
+        "waaseyaa/full": "^0.1.0-alpha.188"
+    },
+    "require-dev": {},
+    "autoload": {
+        "psr-4": {}
+    },
+    "autoload-dev": {
+        "psr-4": {}
+    },
+    "minimum-stability": "alpha",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true
+    }
+}
