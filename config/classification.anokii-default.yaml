@@ -1,0 +1,44 @@
+# Anokii default classification taxonomy seed
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Mission: anokii-distribution-scaffold-01KSEFT7
+#
+# This file defines Anokii's three-tier default classification taxonomy.
+# Field-access semantics align with the Waaseyaa framework's
+# FieldAccessPolicyInterface: Neutral = accessible, Forbidden = blocked.
+#
+# Deploy via: bin/waaseyaa config:import config/classification.anokii-default.yaml
+# (chained from deploy:writable in deploy.php as anokii:seed:classification)
+
+classification_taxonomy:
+  id: anokii-default
+  label: "Anokii Default Classification"
+  description: >
+    Three-tier Nation-scoped classification taxonomy for Anokii distributions.
+    Governs cross-Nation field-level access via FieldAccessPolicyInterface.
+
+  levels:
+    - id: public
+      label: "Public"
+      description: >
+        Publicly accessible data — visible to all authenticated users
+        across all Nations. No cross-Nation read restriction.
+      default_field_access: Neutral
+      sort_order: 1
+
+    - id: community
+      label: "Community"
+      description: >
+        Nation-member accessible data — visible to authenticated members
+        of the owning Nation. Cross-Nation reads are permitted for
+        federated partner Nations but blocked for unaffiliated parties.
+      default_field_access: Neutral
+      sort_order: 2
+
+    - id: nation-restricted
+      label: "Nation Restricted"
+      description: >
+        Nation-sovereign data — visible only to authenticated members of
+        the owning Nation. Cross-Nation reads are Forbidden via
+        FieldAccessPolicyInterface. OCAP: the Nation controls disclosure.
+      default_field_access: Forbidden
+      sort_order: 3

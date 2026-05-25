@@ -1,0 +1,31 @@
+# Anokii Nation tenant configuration — Sagamok example stub
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Mission: anokii-distribution-scaffold-01KSEFT7
+#
+# Copy to config/tenants/<nation-short>.yaml and customise.
+# Use dep anokii:tenant:bootstrap --nation=<nation-short> to generate from this stub.
+
+nation_name: "Sagamok Anishnawbek First Nation"
+nation_short: "sagamok"
+
+# ISO-639-3 language code for the Nation's primary language
+language: "oji"
+
+# Ojibwe dialect spoken by this Nation (southern or northern)
+dialect: "southern-ojibwe"
+
+# OIATC membership — affects audit log routing and stewardship notifications
+oiatc_member: true
+
+# Classification taxonomy to apply for this Nation's data
+# Must match a taxonomy ID in config/classification.anokii-default.yaml
+# or a custom taxonomy committed to config/classification.<id>.yaml
+classification_taxonomy: "anokii-default"
+
+# Storage bucket name (must match the storage_bucket Deployer configuration)
+# Pattern: anokii-{nation_short}-{env}
+storage_bucket: "anokii-sagamok-prod"
+
+# Admin UI theme — defaults to Anokii deep-teal baseline
+# Future missions may ship per-Nation theme overrides
+theme: "anokii-default"

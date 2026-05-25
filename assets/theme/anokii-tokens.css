@@ -1,0 +1,19 @@
+/* Anokii brand tokens — deep teal */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* Mission: anokii-distribution-scaffold-01KSEFT7 */
+/*
+ * These tokens declare Anokii's branded deep-teal palette.
+ * Deep teal is chosen to differentiate from Drupal (blue), Laravel (red),
+ * Django/Nuxt (green), and Strapi (purple) per framework CLAUDE.md §Code Style.
+ *
+ * Consumers: @import this file from an Anokii admin overlay package
+ * (to be shipped by a future Anokii mission). The --color-primary alias
+ * ensures admin-shell code referencing --color-primary picks up Anokii's
+ * value when this file is loaded.
+ */
+:root {
+  --anokii-color-primary-900: #0d4f4f;
+  --anokii-color-primary-700: #0f766e;
+  --anokii-color-primary-500: #14b8a6;
+  --color-primary: var(--anokii-color-primary-700);
+}
