@@ -6,8 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.1.0-alpha.1] - 2026-06-14
+
+First tagged release of the Anokii distribution. Instances can now pin a version instead of tracking `dev-main`.
+
 ### Added
 
+- Shared shell bases (`src/`) that every instance previously re-derived, now subclassable instead of copy-pasted: `Anokii\Support\Auth` (session auth helper), `Anokii\Shell\Shell` with `templates/anokii/_shell.html.twig` and `_dashboard_grid.html.twig` (token-driven shell chrome and dashboard grid, brand supplied per instance via CSS vars and slots), `Anokii\Dashboard\DashboardGate` (public-open / dashboard-login gated split with app-owned login redirect for pages and 401 for JSON), `Anokii\Access\AbstractWorkspaceRoles` (role and access model implementing the framework `ProvidesRolesInterface` so `user:assign-role` discovers an app's roles, replacing the per-app role-command hacks), `Anokii\Access\AbstractEntityAccessPolicy` (per-entity access policy with open-by-default field access), and `Anokii\Seed\AbstractSeeder` (idempotent seeder base). Correctness fix over the source instances: `apply()` returns the updated `User` because Waaseyaa `User` setters are immutable. Documented in `docs/specs/shared-shell.md`.
+- Framework floor raised to `waaseyaa/full ^0.1.0-alpha.209` (from the alpha.188 scaffold pin). That release ships the `ProvidesRolesInterface` capability and the first-class `user:assign-role` command that `AbstractWorkspaceRoles` builds on.
 - Distribution config switch (WP04): `config/anokii.yaml.example` selects between the two tenancy tiers (`sovereign` single owned-and-hosted Anokii per Nation, and `shared-graph` one install serving many communities as vantage views over a shared public graph), carries a safe-by-default `data_residency` posture block (ownership, default_classification, cross_tenant_reads), and gates the WP04 surfaces via `modules.enabled` / `modules.preview`.
 - First Anokii product code: typed resolver `Anokii\Config\DistributionConfig` (`src/Config/DistributionConfig.php`) plus the `Anokii\Config\TenancyMode` enum (`Sovereign`, `SharedGraph`), exposing `tenancyMode()`, `dataResidency()`, `moduleEnabled()`, `modulePreview()` with most-protective defaults (missing mode = sovereign, unknown module = disabled, sovereign never reads cross-tenant). PSR-4 autoload `Anokii\` -> `src/` and `Anokii\Tests\` -> `tests/` wired in `composer.json`; `symfony/yaml` declared.
 - Unit test `tests/Config/DistributionConfigTest.php` asserting the safe-by-default resolution rules and both tiers (runs once a `vendor/` is present).
