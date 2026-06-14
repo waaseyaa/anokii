@@ -64,7 +64,7 @@ Brand palette: Deep Teal (`#0d4f4f → #0f766e → #14b8a6`) — differentiated 
 > **Not yet published to Packagist.** The following command will work once the first release tag is cut.
 
 ```bash
-composer create-project anokii/anokii my-anokii-site
+composer create-project waaseyaa/anokii my-anokii-site
 ```
 
 In the meantime, clone this repo directly and run `composer install`.

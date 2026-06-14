@@ -1,5 +1,5 @@
 {
-    "name": "anokii/anokii",
+    "name": "waaseyaa/anokii",
     "description": "Anokii — the first opinionated distribution built on Waaseyaa. Sovereign workspace for First Nations. OCAP-by-architecture. Working name pending language-keeper verification.",
     "type": "project",
     "license": "GPL-2.0-or-later",
@@ -13,7 +13,7 @@
         }
     ],
     "require": {
-        "waaseyaa/full": "^0.1.0-alpha.188"
+        "waaseyaa/full": "^0.1.0-alpha.208"
     },
     "require-dev": {},
     "autoload": {
