@@ -13,7 +13,7 @@
         }
     ],
     "require": {
-        "waaseyaa/full": "^0.1.0-alpha.208",
+        "waaseyaa/full": "^0.1.0-alpha.209",
         "symfony/yaml": "^7.0"
     },
     "require-dev": {},
