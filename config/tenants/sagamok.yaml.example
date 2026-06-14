@@ -1,4 +1,4 @@
-# Anokii Nation tenant configuration — Sagamok example stub
+# Anokii Nation tenant configuration -- Sagamok example stub
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Mission: anokii-distribution-scaffold-01KSEFT7
 #
@@ -14,7 +14,7 @@ language: "oji"
 # Ojibwe dialect spoken by this Nation (southern or northern)
 dialect: "southern-ojibwe"
 
-# OIATC membership — affects audit log routing and stewardship notifications
+# OIATC membership -- affects audit log routing and stewardship notifications
 oiatc_member: true
 
 # Classification taxonomy to apply for this Nation's data
@@ -26,6 +26,28 @@ classification_taxonomy: "anokii-default"
 # Pattern: anokii-{nation_short}-{env}
 storage_bucket: "anokii-sagamok-prod"
 
-# Admin UI theme — defaults to Anokii deep-teal baseline
+# Admin UI theme -- defaults to Anokii deep-teal baseline
 # Future missions may ship per-Nation theme overrides
 theme: "anokii-default"
+
+# ---------------------------------------------------------------------------
+# Per-tenant tier settings (WP04 draft)
+#
+# These carry the distribution switch (config/anokii.yaml.example) down to the
+# tenant level. Sagamok is a SOVEREIGN tenant: owned and hosted by the Nation,
+# serving only Sagamok. The values below are consistent with, and the most
+# protective reading of, the sovereign mode in DistributionConfig.
+#
+# tenancy_mode must be "sovereign" for a single owned-and-hosted Nation tenant.
+# A shared-graph install would not carry a per-Nation file like this; it would
+# enumerate communities as vantage views in config/anokii.yaml instead.
+tenancy_mode: "sovereign"
+
+# data_residency mirrors the sovereign posture: nation-owned data, no
+# cross-tenant reads, and the most restrictive default classification so an
+# unlabelled Sagamok record is never accidentally public (OCAP, DIR-A005).
+data_residency:
+  ownership: "nation"
+  default_classification: "nation-restricted"
+  cross_tenant_reads: false
+

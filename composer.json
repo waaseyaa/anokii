@@ -1,6 +1,6 @@
 {
     "name": "waaseyaa/anokii",
-    "description": "Anokii — the first opinionated distribution built on Waaseyaa. Sovereign workspace for First Nations. OCAP-by-architecture. Working name pending language-keeper verification.",
+    "description": "Anokii, the first opinionated distribution built on Waaseyaa. Sovereign workspace for First Nations. OCAP-by-architecture. Working name pending language-keeper verification.",
     "type": "project",
     "license": "GPL-2.0-or-later",
     "authors": [
@@ -13,14 +13,19 @@
         }
     ],
     "require": {
-        "waaseyaa/full": "^0.1.0-alpha.208"
+        "waaseyaa/full": "^0.1.0-alpha.208",
+        "symfony/yaml": "^7.0"
     },
     "require-dev": {},
     "autoload": {
-        "psr-4": {}
+        "psr-4": {
+            "Anokii\\": "src/"
+        }
     },
     "autoload-dev": {
-        "psr-4": {}
+        "psr-4": {
+            "Anokii\\Tests\\": "tests/"
+        }
     },
     "minimum-stability": "alpha",
     "prefer-stable": true,

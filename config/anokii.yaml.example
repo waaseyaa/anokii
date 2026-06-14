@@ -1,0 +1,101 @@
+# Anokii distribution configuration -- the both-tiers switch (WP04 draft)
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Status: DRAFT (WP04 design sketch for v0.1 surfaces). Not production-wired.
+#
+# Copy to config/anokii.yaml and customise for the deployment.
+# Loaded by Anokii\Config\DistributionConfig (src/Config/DistributionConfig.php).
+#
+# This is the distribution-level switch that selects between the two Anokii
+# tenancy tiers and gates which WP04 product surfaces are exposed. It sits
+# ABOVE the framework's per-entity tenancy primitive (EntityType tenancy:
+# ['scope' => 'community'] + CommunityScope storage driver, framework mission
+# #1257). The framework isolates entities; this switch decides the posture the
+# whole install runs in and which surfaces are wired.
+#
+# Safe-by-default: every value here is the most sovereign-protective reading.
+# A missing or unknown value resolves to the most restrictive option, never
+# the most permissive one (see DistributionConfig for the resolution rules).
+
+# ---------------------------------------------------------------------------
+# tenancy_mode -- the tier switch. One of:
+#
+#   "sovereign"     A single Anokii install, owned and hosted by one Nation,
+#                   serving only that Nation. Data is nation-owned end to end.
+#                   Cross-tenant reads do not exist because there is one tenant.
+#                   This is the tier for FNPI and Intersnipe (single sovereign
+#                   owners) and for each pilot Nation (Sagamok, Sheguiandah).
+#                   DEFAULT when tenancy_mode is absent: the most
+#                   sovereign-protective posture per DIR-A005.
+#
+#   "shared-graph"  One install serving many communities as vantage views over
+#                   a shared PUBLIC graph. Only public-sourced data is held in
+#                   the shared layer; each community sees its own vantage plus
+#                   the public graph. Cross-tenant reads are permitted ONLY for
+#                   public-tier data; community and nation-restricted tiers stay
+#                   Forbidden across tenants via FieldAccessPolicyInterface.
+#                   This is the tier for an OIATC-style multi-community install.
+#
+# Both tiers inherit the framework's CommunityScope isolation. The difference
+# is posture and default classification, not a weakening of access control.
+tenancy_mode: sovereign
+
+# ---------------------------------------------------------------------------
+# data_residency -- the posture block. Made explicit and safe-by-default so an
+# operator can read the file and know exactly what the install will and will
+# not do with data. DistributionConfig derives sane values per mode, but an
+# explicit block here always wins (and is recommended for clarity).
+data_residency:
+  # ownership: "nation"  -> data belongs to the owning Nation (sovereign).
+  #            "shared"  -> only public-sourced data is held in the shared graph.
+  # Default when absent: "nation" (most protective).
+  ownership: nation
+
+  # default_classification: the tier a record gets when none is set. Must match
+  # a level id in config/classification.anokii-default.yaml
+  # (public | community | nation-restricted).
+  # Sovereign installs default to the most restrictive tier so an unlabelled
+  # record is never accidentally public. Shared-graph installs default to
+  # "public" because only public-sourced data lives in the shared layer.
+  # Default when absent: "nation-restricted" (most protective).
+  default_classification: nation-restricted
+
+  # cross_tenant_reads: may one tenant read another tenant's records?
+  #   sovereign     -> false (there is one tenant; never true).
+  #   shared-graph  -> true, but the framework FieldAccessPolicyInterface still
+  #                    enforces that ONLY public-tier fields are readable across
+  #                    tenants. Community and nation-restricted stay Forbidden.
+  # Default when absent: false (most protective).
+  cross_tenant_reads: false
+
+# ---------------------------------------------------------------------------
+# modules -- the WP04 surface gate. Two lists:
+#
+#   enabled  surfaces wired and offered as production-ready.
+#   preview  surfaces visible but flagged not-for-production. A preview surface
+#            renders a "preview / not production" banner and is excluded from
+#            the AODA axe-core production baseline gate until promoted.
+#
+# Any surface NOT named in either list is treated as disabled (safe-by-default:
+# unknown module = off). A surface listed in BOTH is treated as preview, the
+# more conservative reading.
+#
+# WP04 surface vocabulary (design names, v0.1 drafts):
+#   governed-drive            OCAP-governed file storage over the media layer
+#   forms                     governed community-data intake (multi-submission-merge)
+#   tasks                     task and assignment tracking
+#   data-rooms                scoped document collections with classification gates
+#   docs                      collaborative documents over revisionable entities
+#   sheets                    structured tabular data surface
+#   cointelligence-workspaces per-record AI workspaces (DIR-A005 per-record grants)
+#   admin-centre              Nation-scoped administration surface
+modules:
+  enabled:
+    - governed-drive
+    - forms
+    - tasks
+    - admin-centre
+  preview:
+    - data-rooms
+    - docs
+    - sheets
+    - cointelligence-workspaces
