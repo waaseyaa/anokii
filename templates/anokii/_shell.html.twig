@@ -1,0 +1,117 @@
+{#
+  Anokii base shell.
+
+  The common chrome every Anokii instance re-derives: a two-column app grid with
+  a sidebar (brand slot, nav, user chip) and a main content area. It is entirely
+  driven by CSS custom properties, so an instance rebrands by overriding the
+  --anokii-* tokens (see assets/theme/anokii-tokens.css) and supplying its own
+  nav, never by forking this template.
+
+  What the instance provides:
+    - context `nav`: list of { id, label, href, group?, badge?, icon? } entries.
+      `icon` is raw inner SVG markup. `group` starts a new labelled nav section.
+    - context `nav_active`, `user_label`, `user_role`, `user_initials`
+      (all produced by Anokii\Shell\Shell::context()).
+    - block `brand`: the logo mark and wordmark.
+    - block `content`: the page body.
+    - optional blocks: `title`, `head_extra`, `shell_styles`, `sidebar_footer`,
+      `topbar`, `page_scripts`.
+    - optional context `login_path` is NOT used here; the sign-out link uses
+      `logout_path` (defaults to '#', instances pass their app-owned path).
+
+  No brand colours, fonts, nav items, or entity names live in this file. Those
+  are instance-specific by design.
+#}
+<!doctype html>
+<html lang="{{ html_lang|default('en') }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Anokii{% endblock %}</title>
+  <meta name="robots" content="noindex, nofollow">
+  <style>
+    /*
+      Tokens with safe fallbacks. An instance overrides --anokii-* (or the
+      generic --color-* aliases) to rebrand. Fallbacks are intentionally neutral
+      greys so an un-themed instance still renders legibly.
+    */
+    :root{
+      --anokii-shell-ink: var(--color-ink, #15171a);
+      --anokii-shell-bg: var(--color-bg, #f4f3f0);
+      --anokii-shell-card: var(--color-card, #ffffff);
+      --anokii-shell-line: var(--color-line, #e3e1db);
+      --anokii-shell-muted: var(--color-muted, #6b7076);
+      --anokii-shell-side-bg: var(--color-side-bg, #0b0e13);
+      --anokii-shell-side-line: var(--color-side-line, #1d232c);
+      --anokii-shell-side-muted: var(--color-side-muted, #9aa3ad);
+      --anokii-shell-accent: var(--color-primary, #0f766e);
+      --anokii-shell-accent-ink: var(--color-primary-ink, #ffffff);
+      --anokii-shell-sidebar-w: 248px;
+    }
+    *,*::before,*::after{ box-sizing:border-box; margin:0; padding:0; }
+    body{ font-family: var(--anokii-shell-font, system-ui, sans-serif); font-size:15.5px; line-height:1.55; background:var(--anokii-shell-bg); color:var(--anokii-shell-ink); -webkit-font-smoothing:antialiased; }
+    a{ color:inherit; text-decoration:none; }
+
+    .anokii-app{ display:grid; grid-template-columns:var(--anokii-shell-sidebar-w) 1fr; min-height:100vh; }
+    .anokii-side{ background:var(--anokii-shell-side-bg); color:#fff; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; border-right:1px solid var(--anokii-shell-side-line); }
+    .anokii-brand{ display:flex; align-items:center; gap:11px; padding:18px 16px 14px; border-bottom:1px solid var(--anokii-shell-side-line); }
+    .anokii-nav{ padding:8px 10px; flex:1; overflow:auto; }
+    .anokii-navgroup{ font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--anokii-shell-side-muted); padding:14px 12px 6px; }
+    .anokii-navlink{ display:flex; align-items:center; gap:11px; padding:9px 12px; border-radius:9px; color:var(--anokii-shell-side-muted); font-size:14.5px; font-weight:500; margin:2px 0; transition:background .12s, color .12s; }
+    .anokii-navlink svg{ width:18px; height:18px; flex:0 0 auto; }
+    .anokii-navlink:hover{ background:rgba(255,255,255,.06); color:#fff; }
+    .anokii-navlink.on{ background:var(--anokii-shell-accent); color:var(--anokii-shell-accent-ink); }
+    .anokii-badge{ margin-left:auto; font-size:10px; font-weight:700; border-radius:20px; padding:2px 7px; letter-spacing:.06em; text-transform:uppercase; background:rgba(255,255,255,.12); color:#fff; }
+    .anokii-userchip{ display:flex; align-items:center; gap:10px; padding:14px 16px; border-top:1px solid var(--anokii-shell-side-line); }
+    .anokii-avatar{ width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,.1); color:#fff; display:grid; place-items:center; font-weight:600; font-size:14px; flex:0 0 auto; }
+    .anokii-uinfo{ flex:1; min-width:0; }
+    .anokii-uinfo b{ display:block; font-size:13.5px; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .anokii-uinfo small{ color:var(--anokii-shell-side-muted); font-size:12px; }
+    .anokii-signout{ color:var(--anokii-shell-side-muted); font-size:12.5px; }
+    .anokii-signout:hover{ color:#fff; }
+
+    .anokii-main{ display:flex; flex-direction:column; min-width:0; }
+    .anokii-content{ padding:26px 30px 60px; flex:1; min-width:0; }
+
+    @media(max-width:880px){ .anokii-app{ grid-template-columns:1fr; } .anokii-side{ position:static; height:auto; } }
+    {% block shell_styles %}{% endblock %}
+  </style>
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+  <div class="anokii-app">
+    <aside class="anokii-side">
+      <a class="anokii-brand" href="{{ home_path|default('/') }}">
+        {% block brand %}<b>Anokii</b>{% endblock %}
+      </a>
+      <nav class="anokii-nav">
+        {% set current_group = null %}
+        {% for item in nav|default([]) %}
+          {% if item.group is defined and item.group != current_group %}
+            <div class="anokii-navgroup">{{ item.group }}</div>
+            {% set current_group = item.group %}
+          {% endif %}
+          <a class="anokii-navlink{{ nav_active == item.id ? ' on' : '' }}" href="{{ item.href }}">
+            {% if item.icon is defined %}<svg viewBox="0 0 24 24" fill="none">{{ item.icon|raw }}</svg>{% endif %}
+            <span>{{ item.label }}</span>
+            {% if item.badge is defined and item.badge %}<span class="anokii-badge">{{ item.badge }}</span>{% endif %}
+          </a>
+        {% endfor %}
+      </nav>
+      <div class="anokii-userchip">
+        <div class="anokii-avatar">{{ user_initials|default('?') }}</div>
+        <div class="anokii-uinfo"><b>{{ user_label|default('') }}</b><small>{{ user_role|default('') }}</small></div>
+        <a class="anokii-signout" href="{{ logout_path|default('#') }}">Sign out</a>
+      </div>
+      {% block sidebar_footer %}{% endblock %}
+    </aside>
+    <main class="anokii-main">
+      {% block topbar %}{% endblock %}
+      <div class="anokii-content">
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+  </div>
+  {% block page_scripts %}{% endblock %}
+</body>
+</html>
