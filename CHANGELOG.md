@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.1.0-alpha.3] - 2026-06-22
+
+Entity validation fix found during the rhtcircle adoption. The graph entities'
+optional fields are now explicitly `required: false`.
+
+### Fixed
+
+- Graph entity optional fields (`Place.lat/lng/travel_note`, `Community.located_at/region`, `Organization.source_url`, `Service.provided_by/located_at/has_topic/source_url`, `Project.relates_to/located_at/has_topic/source_url`, `Topic.keywords`, `DocChunk.heading/entity_type/entity_id`) now declare `required: false`. Without it, a non-nullable typed property registered through `EntityType::fromClass()` is inferred as required (`$attribute->required ?? !$isNullable`), so a legitimately empty value (a doc_chunk intro with no heading, a place with no coordinates yet, a province-wide service with no place) failed `NotBlank` at save. Required fields (`name`, `slug`; `DocChunk.chunk_key/source_url/title/text`) are unchanged.
+
 ## [0.1.0-alpha.2] - 2026-06-22
 
 Consolidates the Co-Intelligence engine and the public graph-chat surface into the package, so all three consuming installs (oiatc, fnpi, rhtcircle) draw one engine instead of each carrying its own copy. Previously the engine lived only in the app repos (the freshest version in fnpi-waaseyaa, the public geography-graph version in oiatc-waaseyaa). Design: `docs/specs/anokii-product-architecture.md`. Framework floor unchanged (`waaseyaa/full ^0.1.0-alpha.209`, which ships the `Waaseyaa\AI\Agent\Provider\*` primitives this engine binds to). Apps adopt in Phase B against a parity checklist; this release does not modify any app.

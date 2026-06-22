@@ -25,16 +25,16 @@ final class Project extends GraphEntityBase
     #[Field(label: 'Slug', required: true, settings: ['weight' => 1])]
     public string $slug = '';
 
-    #[Field(label: 'Relates to', description: 'JSON array of community slugs this project concerns.', settings: ['weight' => 2])]
+    #[Field(label: 'Relates to', description: 'JSON array of community slugs this project concerns.', required: false, settings: ['weight' => 2])]
     public string $relates_to = '';
 
-    #[Field(label: 'Located at', description: 'Place slug.', settings: ['weight' => 3])]
+    #[Field(label: 'Located at', description: 'Place slug.', required: false, settings: ['weight' => 3])]
     public string $located_at = '';
 
-    #[Field(label: 'Topic', description: 'Topic slug.', settings: ['weight' => 4])]
+    #[Field(label: 'Topic', description: 'Topic slug.', required: false, settings: ['weight' => 4])]
     public string $has_topic = '';
 
-    #[Field(label: 'Source URL', settings: ['weight' => 5])]
+    #[Field(label: 'Source URL', required: false, settings: ['weight' => 5])]
     public string $source_url = '';
 
     public function getLocatedAt(): string

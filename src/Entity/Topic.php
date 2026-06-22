@@ -28,6 +28,6 @@ final class Topic extends GraphEntityBase
     #[Field(label: 'Slug', required: true, settings: ['weight' => 1])]
     public string $slug = '';
 
-    #[Field(label: 'Keywords', description: 'Space-separated keywords used to infer this topic from a question.', settings: ['weight' => 2])]
+    #[Field(label: 'Keywords', description: 'Space-separated keywords used to infer this topic from a question.', required: false, settings: ['weight' => 2])]
     public string $keywords = '';
 }

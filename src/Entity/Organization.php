@@ -24,6 +24,6 @@ final class Organization extends GraphEntityBase
     #[Field(label: 'Slug', required: true, settings: ['weight' => 1])]
     public string $slug = '';
 
-    #[Field(label: 'Source URL', description: 'Public page this organization is described on.', settings: ['weight' => 2])]
+    #[Field(label: 'Source URL', description: 'Public page this organization is described on.', required: false, settings: ['weight' => 2])]
     public string $source_url = '';
 }

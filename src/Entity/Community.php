@@ -28,10 +28,10 @@ final class Community extends GraphEntityBase
     #[Field(label: 'Slug', description: 'Stable vantage identifier used in the URL and the /api/chat community parameter.', required: true, settings: ['weight' => 1])]
     public string $slug = '';
 
-    #[Field(label: 'Located at', description: 'Slug of this community\'s own Place.', settings: ['weight' => 2])]
+    #[Field(label: 'Located at', description: 'Slug of this community\'s own Place.', required: false, settings: ['weight' => 2])]
     public string $located_at = '';
 
-    #[Field(label: 'Region', description: 'JSON array of Place slugs forming the curated catchment, ordered by distance.', settings: ['weight' => 3])]
+    #[Field(label: 'Region', description: 'JSON array of Place slugs forming the curated catchment, ordered by distance.', required: false, settings: ['weight' => 3])]
     public string $region = '';
 
     public function getLocatedAt(): string

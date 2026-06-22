@@ -28,13 +28,13 @@ final class Place extends GraphEntityBase
     #[Field(label: 'Slug', description: 'Stable identifier used in region lists and references.', required: true, settings: ['weight' => 1])]
     public string $slug = '';
 
-    #[Field(label: 'Latitude', settings: ['weight' => 2])]
+    #[Field(label: 'Latitude', required: false, settings: ['weight' => 2])]
     public string $lat = '';
 
-    #[Field(label: 'Longitude', settings: ['weight' => 3])]
+    #[Field(label: 'Longitude', required: false, settings: ['weight' => 3])]
     public string $lng = '';
 
-    #[Field(label: 'Travel note', description: 'Sourced travel estimate, shown verbatim; never computed or invented.', settings: ['weight' => 4])]
+    #[Field(label: 'Travel note', description: 'Sourced travel estimate, shown verbatim; never computed or invented.', required: false, settings: ['weight' => 4])]
     public string $travel_note = '';
 
     public function getLat(): float
