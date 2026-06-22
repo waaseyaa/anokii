@@ -40,10 +40,10 @@ final class PublicChatController
 {
     private const TOP_K = 6;
     private const MAX_QUESTION_CHARS = 500;
-    private const MAX_TOKENS = 700;
 
-    /** Higher ceiling when web research is on: room for a cited web section. */
-    private const MAX_TOKENS_WEB = 1100;
+    /** Default output-token ceilings (the cost guard); overridable via config. */
+    public const int DEFAULT_MAX_TOKENS = 700;
+    public const int DEFAULT_MAX_TOKENS_WEB = 1100;
 
     /**
      * Anthropic's server-side web search tool. Capped so a single question can't
@@ -76,6 +76,10 @@ final class PublicChatController
         // findings are presented separately. Off by default so closed-corpus is
         // the safe fallback when the instance hasn't opted in.
         private readonly bool $webResearch = false,
+        // Cost guard: output-token ceilings, config-driven with the package
+        // defaults preserved when unset.
+        private readonly int $maxTokens = self::DEFAULT_MAX_TOKENS,
+        private readonly int $maxTokensWeb = self::DEFAULT_MAX_TOKENS_WEB,
     ) {}
 
     public function handle(Request $request): Response
@@ -132,7 +136,7 @@ final class PublicChatController
             messages: [['role' => 'user', 'content' => $this->prompts->userMessage($question, $passages)]],
             system: $this->prompts->system($community, $this->webResearch),
             tools: $this->webResearch ? [self::WEB_SEARCH_TOOL] : [],
-            maxTokens: $this->webResearch ? self::MAX_TOKENS_WEB : self::MAX_TOKENS,
+            maxTokens: $this->webResearch ? $this->maxTokensWeb : $this->maxTokens,
         );
         $sources = $this->sources($passages);
         $sourceUrls = array_map(static fn(array $s): string => $s['source_url'], $sources);

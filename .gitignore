@@ -69,3 +69,6 @@ Thumbs.db
 .kittify/missions/__pycache__/
 .kittify/runtime/
 .kittify/workspaces/
+
+# Library package: lock is not committed (resolved by consumers).
+composer.lock

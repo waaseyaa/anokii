@@ -147,7 +147,7 @@ final class CoIntelligenceServiceProvider extends ServiceProvider
             provider: $configured
                 ? new AnthropicProvider($key, self::MODEL)
                 : $this->resolve(ProviderInterface::class),
-            limiter: new SqliteRateLimiter($db),
+            limiter: new SqliteRateLimiter($db, $this->rateMaxRequests($chatConfig), $this->rateWindowSeconds($chatConfig)),
             logger: $this->resolve(LoggerInterface::class),
             queryLog: new SqliteChatQueryLog($db),
             topics: new TopicVocabulary(),
@@ -156,6 +156,8 @@ final class CoIntelligenceServiceProvider extends ServiceProvider
             communities: $this->vantages($chatConfig),
             defaultCommunity: $this->defaultVantage($chatConfig),
             webResearch: $webResearch,
+            maxTokens: $this->positiveInt($chatConfig, 'max_output_tokens', PublicChatController::DEFAULT_MAX_TOKENS),
+            maxTokensWeb: $this->positiveInt($chatConfig, 'max_output_tokens_web', PublicChatController::DEFAULT_MAX_TOKENS_WEB),
         );
         $router->addRoute(
             'anokii.chat',
@@ -259,6 +261,44 @@ final class CoIntelligenceServiceProvider extends ServiceProvider
         $value = $chat['default_vantage'] ?? null;
 
         return is_string($value) ? strtolower(trim($value)) : '';
+    }
+
+    /**
+     * Rate-limit max requests per window (chat.rate_limit.max_requests), default 12.
+     *
+     * @param array<string, mixed> $chat
+     */
+    private function rateMaxRequests(array $chat): int
+    {
+        $rl = is_array($chat['rate_limit'] ?? null) ? $chat['rate_limit'] : [];
+        $v = (int) ($rl['max_requests'] ?? 0);
+
+        return $v > 0 ? $v : 12;
+    }
+
+    /**
+     * Rate-limit window length in seconds (chat.rate_limit.window_seconds), default 60.
+     *
+     * @param array<string, mixed> $chat
+     */
+    private function rateWindowSeconds(array $chat): int
+    {
+        $rl = is_array($chat['rate_limit'] ?? null) ? $chat['rate_limit'] : [];
+        $v = (int) ($rl['window_seconds'] ?? 0);
+
+        return $v > 0 ? $v : 60;
+    }
+
+    /**
+     * A positive int from the chat config, or the given default when unset/invalid.
+     *
+     * @param array<string, mixed> $chat
+     */
+    private function positiveInt(array $chat, string $key, int $default): int
+    {
+        $v = (int) ($chat[$key] ?? 0);
+
+        return $v > 0 ? $v : $default;
     }
 
     private function persistentDatabase(): DatabaseInterface

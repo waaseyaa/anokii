@@ -1,0 +1,19 @@
+{#
+  Product-preview placeholder for a module that is part of the Anokii product but
+  not active on this install. Context: module ({id,label,desc,...}) plus the shell
+  context.
+#}
+{% extends "anokii/admin/_base.html.twig" %}
+
+{% block admin_content %}
+  <section class="anokii-hero">
+    <h1>{{ module.label }}</h1>
+    <div class="mean">Product preview</div>
+    <p>{{ module.desc }}</p>
+  </section>
+
+  <div class="anokii-card">
+    <p><strong>Coming to your workspace.</strong></p>
+    <p class="anokii-lead" style="margin:0">{{ module.label }} is part of the Anokii product. It is not active on this install, which holds only public, shared-graph data. Live modules are on the <a href="{{ home_path|default('/admin/anokii') }}">dashboard</a>.</p>
+  </div>
+{% endblock %}

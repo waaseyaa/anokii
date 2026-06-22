@@ -1,0 +1,73 @@
+{#
+  Shared base for Anokii admin pages. Extends the package shell and fills the
+  brand, theme link, top rule, and common chrome styles so every admin page (and
+  every install) looks the same. An install rebrands by overriding the
+  --anokii-* / --color-* tokens via its `theme_href` stylesheet and by passing
+  brand_title / brand_tag; it never forks these templates.
+
+  Context (from Anokii\Admin\AdminShell::context): nav, nav_active, user_*,
+  home_path, logout_path, brand_title, brand_tag, theme_href, plus page data.
+  Child templates fill {% block admin_content %}.
+#}
+{% extends "anokii/_shell.html.twig" %}
+
+{% block title %}{{ page_title|default(brand_title|default('Anokii') ~ ' · Admin') }}{% endblock %}
+
+{% block head_extra %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  {% if theme_href is defined and theme_href %}<link rel="stylesheet" href="{{ theme_href }}">{% endif %}
+{% endblock %}
+
+{% block brand %}
+  <span class="anokii-mark" aria-hidden="true"></span>
+  <span class="anokii-word"><b>{{ brand_title|default('Anokii') }}</b><small>{{ brand_tag|default('Workspace') }}</small></span>
+{% endblock %}
+
+{% block topbar %}<div class="anokii-rule" role="presentation"></div>{% endblock %}
+
+{% block shell_styles %}
+  .anokii-brand{ gap:10px; }
+  .anokii-mark{ width:22px; height:22px; border-radius:50%; flex:0 0 auto; background:var(--anokii-brand-mark, conic-gradient(from .15turn, #cc2484, #6c30d8, #2f80c4, #17a8ba, #f6d05e, #f9781f, #cc2484)); }
+  .anokii-word b{ display:block; font-family:var(--anokii-serif, "Fraunces", Georgia, serif); font-size:14.5px; line-height:1.12; color:#fff; }
+  .anokii-word small{ color:var(--anokii-shell-side-muted); font-size:11px; letter-spacing:.03em; }
+
+  .anokii-rule{ height:var(--anokii-rule-h, 4px); background:var(--anokii-rule-bg, var(--anokii-shell-line)); }
+
+  .anokii-hero{ background:var(--anokii-hero-bg, var(--anokii-shell-card)); border:1px solid var(--anokii-shell-line); border-radius:16px; padding:28px 30px; margin-bottom:24px; }
+  .anokii-hero h1{ font-family:var(--anokii-serif, "Fraunces", Georgia, serif); font-weight:600; font-size:clamp(26px, 4vw, 34px); line-height:1.1; margin:0 0 6px; color:var(--anokii-hero-ink, var(--anokii-shell-ink)); }
+  .anokii-hero .mean{ color:var(--anokii-hero-accent, var(--anokii-shell-accent)); font-style:italic; font-size:13px; margin:0 0 12px; }
+  .anokii-hero p{ margin:0; color:var(--anokii-hero-muted, var(--anokii-shell-muted)); max-width:64ch; }
+  .anokii-chips{ display:flex; gap:8px; flex-wrap:wrap; margin-top:16px; }
+  .anokii-chip{ background:var(--anokii-chip-bg, rgba(0,0,0,.05)); border:1px solid var(--anokii-chip-line, var(--anokii-shell-line)); border-radius:20px; padding:5px 12px; font-size:12px; color:var(--anokii-chip-ink, var(--anokii-shell-muted)); }
+
+  .anokii-h2{ font-size:12px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--anokii-shell-accent); margin:30px 0 14px; }
+  .anokii-lead{ color:var(--anokii-shell-muted); font-size:14px; margin:0 0 16px; max-width:70ch; }
+
+  .anokii-stats{ display:grid; grid-template-columns:repeat(auto-fill, minmax(132px, 1fr)); gap:12px; }
+  .anokii-stat{ background:var(--anokii-shell-card); border:1px solid var(--anokii-shell-line); border-radius:12px; padding:14px 16px; }
+  .anokii-stat b{ display:block; font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--anokii-shell-muted); margin-bottom:8px; }
+  .anokii-stat span{ font-family:var(--anokii-mono, ui-monospace, monospace); font-size:24px; font-weight:600; color:var(--anokii-shell-ink); }
+
+  .anokii-card{ background:var(--anokii-shell-card); border:1px solid var(--anokii-shell-line); border-radius:14px; padding:18px 20px; margin:16px 0; }
+  .anokii-card--note{ border-left:4px solid var(--anokii-shell-accent); }
+  .anokii-card p{ margin:0 0 6px; } .anokii-card p:last-child{ margin:0; }
+
+  .anokii-scroll{ overflow-x:auto; }
+  .anokii-table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+  .anokii-table th{ text-align:left; font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--anokii-shell-muted); padding:0 10px 8px; border-bottom:1px solid var(--anokii-shell-line); white-space:nowrap; }
+  .anokii-table td{ padding:9px 10px; border-bottom:1px solid var(--anokii-shell-line); color:var(--anokii-shell-muted); vertical-align:top; }
+  .anokii-table td.mono{ font-family:var(--anokii-mono, ui-monospace, monospace); font-size:12.5px; color:var(--anokii-shell-ink); white-space:nowrap; }
+  .anokii-table td.empty{ text-align:center; font-style:italic; padding:18px; }
+  .anokii-code{ font-family:var(--anokii-mono, ui-monospace, monospace); background:rgba(0,0,0,.05); padding:1px 6px; border-radius:4px; }
+
+  /* Preview tiles read as disabled (the whole product, shown, not implied as held data). */
+  .anokii-preview{ opacity:.62; }
+  .anokii-preview .anokii-grid-card{ cursor:default; }
+  .anokii-preview .anokii-grid-card:hover{ transform:none; border-color:var(--anokii-shell-line); }
+
+  {% block admin_styles %}{% endblock %}
+{% endblock %}
+
+{% block content %}{% block admin_content %}{% endblock %}{% endblock %}

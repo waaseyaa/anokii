@@ -1,0 +1,33 @@
+{#
+  Anokii admin dashboard home: the "Aanii, <name>" hero and the module card grid
+  (live tools, then the disabled product-preview tiles). Both grids use the shared
+  anokii/_dashboard_grid.html.twig. Context from Anokii\Admin\AdminShell::context()
+  plus optional hero_lead / hero_chips.
+#}
+{% extends "anokii/admin/_base.html.twig" %}
+
+{% block admin_content %}
+  <section class="anokii-hero">
+    <h1>Aanii, {{ user_label }}</h1>
+    <div class="mean">Anokii &middot; Anishinaabemowin for "she/he works"</div>
+    <p>{{ hero_lead|default('Your Anokii workspace, running on the Waaseyaa platform.') }}</p>
+    {% if hero_chips is defined and hero_chips %}
+      <div class="anokii-chips">
+        {% for chip in hero_chips %}<span class="anokii-chip">{{ chip }}</span>{% endfor %}
+      </div>
+    {% endif %}
+  </section>
+
+  {% if live_cards %}
+    <h2 class="anokii-h2">Your tools</h2>
+    {% include "anokii/_dashboard_grid.html.twig" with { cards: live_cards } %}
+  {% endif %}
+
+  {% if preview_cards %}
+    <h2 class="anokii-h2">Product preview</h2>
+    <p class="anokii-lead">The full Anokii workspace. These modules are part of the product and are shown here as a preview; they are not active on this install.</p>
+    <div class="anokii-preview">
+      {% include "anokii/_dashboard_grid.html.twig" with { cards: preview_cards } %}
+    </div>
+  {% endif %}
+{% endblock %}

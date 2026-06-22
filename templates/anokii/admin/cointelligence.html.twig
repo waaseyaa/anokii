@@ -1,0 +1,48 @@
+{#
+  Co-Intelligence admin module: the public graph at a glance (entity counts), the
+  re-index note, and the no-PII recent-questions log. Context: counts (table=>int,
+  -1 = not seeded), log_rows (list from Anokii\Admin\AdminData::recentQuestions),
+  plus the shell context.
+#}
+{% extends "anokii/admin/_base.html.twig" %}
+
+{% block admin_content %}
+  <section class="anokii-hero">
+    <h1>Co-Intelligence</h1>
+    <div class="mean">The public graph, corpus health, and the question log</div>
+    <p>Entity editing is in the main admin at <span class="anokii-code">/admin</span>. This view is the Anokii-specific glue: the graph at a glance and the no-PII content-gap loop.</p>
+  </section>
+
+  <h2 class="anokii-h2">The graph</h2>
+  <div class="anokii-stats">
+    {% for table, n in counts %}
+      <div class="anokii-stat"><b>{{ table }}</b><span>{{ n < 0 ? 'not seeded' : n }}</span></div>
+    {% endfor %}
+  </div>
+
+  <div class="anokii-card anokii-card--note">
+    <p><strong>Re-index after content changes.</strong></p>
+    <p class="anokii-lead" style="margin:0">Seed or refresh the graph and corpus from the install's content commands (idempotent), then the chat answers from the updated pages. The exact command names are install-specific; see the app's console commands.</p>
+  </div>
+
+  <h2 class="anokii-h2">Recent questions (no personal data)</h2>
+  <p class="anokii-lead">Question text, vantage, outcome, and inferred topic only. No IP, no identity, no session. Use refusals and no-match rows to find corpus gaps.</p>
+  <div class="anokii-scroll">
+    <table class="anokii-table">
+      <thead><tr><th>When (UTC)</th><th>Vantage</th><th>Question</th><th>Outcome</th><th>Topic</th></tr></thead>
+      <tbody>
+        {% for r in log_rows %}
+          <tr>
+            <td class="mono">{{ r.created_at }}</td>
+            <td>{{ r.community != '' ? r.community : 'treaty-wide' }}</td>
+            <td>{{ r.question }}</td>
+            <td class="mono">{{ r.outcome }}</td>
+            <td>{{ r.topic != '' ? r.topic : 'none' }}</td>
+          </tr>
+        {% else %}
+          <tr><td class="empty" colspan="5">No questions logged yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
