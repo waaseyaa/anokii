@@ -35,10 +35,6 @@ use Waaseyaa\Database\DatabaseInterface;
  */
 final class GraphRetriever implements RetrieverInterface
 {
-    private const TITLE_WEIGHT = 3;
-    private const HEADING_WEIGHT = 2;
-    private const TEXT_WEIGHT = 1;
-
     private const CLOSE_OWN = 0;
     private const CLOSE_REGION = 1;
     private const CLOSE_BROADER = 2;
@@ -55,14 +51,8 @@ final class GraphRetriever implements RetrieverInterface
     private const SCORE_MARGIN = 0.5;
     private const SCORE_FLOOR = 1.5;
 
-    /** @var list<string> */
-    private const STOPWORDS = [
-        'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'can', 'do', 'does', 'for', 'from',
-        'how', 'i', 'in', 'is', 'it', 'me', 'my', 'of', 'on', 'or', 'per', 'so', 'the', 'to',
-        'we', 'what', 'when', 'where', 'which', 'who', 'why', 'with', 'you', 'your', 'about',
-        'get', 'got', 'this', 'that', 'there', 'their', 'them', 'they', 'will', 'would', 'should',
-        'if', 'but', 'not', 'no', 'yes', 'any', 'all', 'some', 'our', 'us', 'am',
-    ];
+    /** The keyword-scoring strategy: defaults to {@see GraphScorer}. */
+    private readonly ScorerInterface $scorer;
 
     /**
      * @param float $scoreMargin keep passages within this fraction of the top
@@ -76,6 +66,11 @@ final class GraphRetriever implements RetrieverInterface
      *                           keyword-gated retrieval. Scope resolution already
      *                           no-ops when the graph tables are absent. Default
      *                           false keeps graph-install behaviour unchanged.
+     * @param ?ScorerInterface $scorer the keyword model; null keeps the default
+     *                           {@see GraphScorer} (whole-token weighted term
+     *                           frequency), so graph installs are unchanged. A
+     *                           sovereign install passes {@see PrefixScorer} for
+     *                           byte-identical word-prefix retrieval.
      */
     public function __construct(
         private readonly DatabaseInterface $db,
@@ -83,11 +78,14 @@ final class GraphRetriever implements RetrieverInterface
         private readonly float $scoreMargin = self::SCORE_MARGIN,
         private readonly float $scoreFloor = self::SCORE_FLOOR,
         private readonly bool $flat = false,
-    ) {}
+        ?ScorerInterface $scorer = null,
+    ) {
+        $this->scorer = $scorer ?? new GraphScorer();
+    }
 
     public function retrieve(string $query, string $community, int $k = 6): array
     {
-        $terms = $this->tokenize($query);
+        $terms = $this->scorer->terms($query);
         if ($terms === []) {
             return [];
         }
@@ -108,7 +106,7 @@ final class GraphRetriever implements RetrieverInterface
 
         $scored = [];
         foreach ($this->loadChunks() as $chunk) {
-            $kw = $this->score($terms, $chunk['title'], $chunk['heading'], $chunk['text']);
+            $kw = $this->scorer->score($terms, $chunk['title'], $chunk['heading'], $chunk['text']);
             if ($kw <= 0.0) {
                 continue;
             }
@@ -401,60 +399,5 @@ final class GraphRetriever implements RetrieverInterface
         $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
 
         return $r * 2 * atan2(sqrt($a), sqrt(1 - $a));
-    }
-
-    /**
-     * @param list<string> $terms
-     */
-    private function score(array $terms, string $title, string $heading, string $text): float
-    {
-        $titleTf = $this->termCounts($this->tokenize($title));
-        $headingTf = $this->termCounts($this->tokenize($heading));
-        $textTf = $this->termCounts($this->tokenize($text));
-
-        $score = 0.0;
-        foreach (array_unique($terms) as $term) {
-            $hits = ($titleTf[$term] ?? 0) * self::TITLE_WEIGHT
-                + ($headingTf[$term] ?? 0) * self::HEADING_WEIGHT
-                + ($textTf[$term] ?? 0) * self::TEXT_WEIGHT;
-            if ($hits > 0) {
-                $score += 1.0 + log((float) $hits);
-            }
-        }
-
-        return $score;
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function tokenize(string $text): array
-    {
-        $text = strtolower($text);
-        $text = preg_replace('/[^a-z0-9]+/', ' ', $text) ?? '';
-        $tokens = [];
-        foreach (explode(' ', $text) as $token) {
-            if (strlen($token) < 2 || in_array($token, self::STOPWORDS, true)) {
-                continue;
-            }
-            $tokens[] = $token;
-        }
-
-        return $tokens;
-    }
-
-    /**
-     * @param list<string> $tokens
-     *
-     * @return array<string, int>
-     */
-    private function termCounts(array $tokens): array
-    {
-        $counts = [];
-        foreach ($tokens as $token) {
-            $counts[$token] = ($counts[$token] ?? 0) + 1;
-        }
-
-        return $counts;
     }
 }
