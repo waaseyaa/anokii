@@ -85,6 +85,10 @@
         {% block brand %}<b>Anokii</b>{% endblock %}
       </a>
       <nav class="anokii-nav">
+        {# Sidebar nav. A richer instance can override this block to render its own
+           nav markup (its own classes, data attributes, search hooks). The default
+           output is unchanged, so basic installs render identically. #}
+        {% block nav %}
         {% set current_group = null %}
         {% for item in nav|default([]) %}
           {% if item.group is defined and item.group != current_group %}
@@ -97,6 +101,7 @@
             {% if item.badge is defined and item.badge %}<span class="anokii-badge">{{ item.badge }}</span>{% endif %}
           </a>
         {% endfor %}
+        {% endblock %}
       </nav>
       {# Sidebar user-chip. A richer instance (e.g. a sovereign workspace with a
          top-bar user-chip) overrides this block to empty and renders its own. #}
