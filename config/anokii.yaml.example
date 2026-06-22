@@ -79,23 +79,54 @@ data_residency:
 # unknown module = off). A surface listed in BOTH is treated as preview, the
 # more conservative reading.
 #
-# WP04 surface vocabulary (design names, v0.1 drafts):
+# Surface vocabulary:
+#   public-graph-chat         public vantage chat (SSE /api/chat) over the graph (shared-graph tier)
+#   anokii-admin              lean /admin/anokii: entity counts + the no-PII chat-log review (shared-graph tier)
+#   cointelligence-workspace  the gated, stateful workspace chat (sovereign tier)
 #   governed-drive            OCAP-governed file storage over the media layer
 #   forms                     governed community-data intake (multi-submission-merge)
 #   tasks                     task and assignment tracking
 #   data-rooms                scoped document collections with classification gates
 #   docs                      collaborative documents over revisionable entities
 #   sheets                    structured tabular data surface
-#   cointelligence-workspaces per-record AI workspaces (DIR-A005 per-record grants)
 #   admin-centre              Nation-scoped administration surface
+#
+# In the shared-graph tier, public-graph-chat and anokii-admin are mounted by the
+# CoIntelligenceServiceProvider whenever the tier is shared-graph (the example
+# below is a sovereign install, so they are not listed). List public-graph-chat
+# explicitly only to force the public chat on in a non-shared install.
 modules:
   enabled:
     - governed-drive
     - forms
     - tasks
     - admin-centre
+    - cointelligence-workspace
   preview:
     - data-rooms
     - docs
     - sheets
-    - cointelligence-workspaces
+
+# ---------------------------------------------------------------------------
+# chat -- the Co-Intelligence engine configuration (optional). Absent means the
+# treaty-wide / no-vantage default and the package's neutral voice. Used by the
+# public graph-chat surface in the shared-graph tier.
+#
+#   default_vantage  the vantage slug used when the client sends none. Empty
+#                    means treaty-wide / no vantage (general content answerable).
+#   vantages         the community slugs a client may select as a vantage; an
+#                    unrecognised value falls back to default_vantage.
+#   voice.intro      one or two plain sentences naming who the assistant is and
+#                    what the install publishes (goes into the system prompt).
+#   voice.refusal    the exact text returned verbatim when nothing supports an
+#                    answer (the controller detects a refusal by matching it).
+#   voice.community_refusals  optional per-vantage refusal overrides.
+#
+# Example (shared-graph install):
+# chat:
+#   default_vantage: ""
+#   vantages: []
+#   voice:
+#     intro: "You are the community assistant for this resource hub."
+#     refusal: "I don't know that from the published content here. Please contact the relevant office. For emergencies, call 911."
+#     community_refusals: {}

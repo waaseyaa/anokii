@@ -6,6 +6,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.1.0-alpha.2] - 2026-06-22
+
+Consolidates the Co-Intelligence engine and the public graph-chat surface into the package, so all three consuming installs (oiatc, fnpi, rhtcircle) draw one engine instead of each carrying its own copy. Previously the engine lived only in the app repos (the freshest version in fnpi-waaseyaa, the public geography-graph version in oiatc-waaseyaa). Design: `docs/specs/anokii-product-architecture.md`. Framework floor unchanged (`waaseyaa/full ^0.1.0-alpha.209`, which ships the `Waaseyaa\AI\Agent\Provider\*` primitives this engine binds to). Apps adopt in Phase B against a parity checklist; this release does not modify any app.
+
+### Added
+
+- The canonical Co-Intelligence engine (`Anokii\CoIntelligence\`): `Passage`, `RetrieverInterface` + `GraphRetriever` (the geography-and-relationship-aware keyword scorer; a single-vantage sovereign install reduces to flat keyword retrieval with no code change), `TopicVocabulary`, `ChatPromptBuilder` (grounded, cited, clear-refusal contract, server-side em/en-dash sanitization) driven by a new `ChatVoice` value object so the install's identity and refusal text are configuration, not hardcoded, `ChatQueryLogInterface` + `SqliteChatQueryLog` + `ChatQueryLogSchema` (the no-PII content-gap log: question, vantage, outcome, topic, and cited source URLs only, owned by the package so it does not depend on any app analytics schema), and `RateLimiterInterface` + `SqliteRateLimiter`.
+- The package-canonical relational graph entity model (`Anokii\Entity\`): `GraphEntityBase`, `Community`, `Place`, `Organization`, `Service`, `Project`, `Topic`, and `DocChunk`, declared with `#[ContentEntityType]` / `#[ContentEntityKeys]` / `#[Field]` attributes. doc_chunk is an entity (not a raw table) so retrieval uses the graph and geography and so classification and revisions apply uniformly.
+- The public graph-chat surface: `Anokii\Controller\PublicChatController` (stateless SSE `POST /api/chat`, vantage-aware, grounded and cited, deterministic refusal, rate-limited, no-PII log), with the vantage list, default vantage, and model id supplied per install.
+- The lean admin surface: `Anokii\Controller\AnokiiAdminController` at `/admin/anokii` (graph entity counts and the no-PII chat-log review for the content-gap loop), gated in production by the host basic_auth on `/admin/*`.
+- The config-driven provider `Anokii\Provider\CoIntelligenceServiceProvider`: registers the graph entity types from their attributes (a package's entities are not auto-discovered from an app's `src/`), rebinds the LLM provider to `AnthropicProvider` from the server-side key (framework `NullLlmProvider` stays the default when no key is set; the provider is never forked), and, in the `shared-graph` tier (or when the `public-graph-chat` module is enabled), mounts `POST /api/chat` and `GET /admin/anokii` (the latter at route priority 100 so it beats the framework admin SPA catch-all). Agent writes stay OFF: the public surface is read-only grounded RAG.
+- Module vocabulary extended in `config/anokii.yaml.example`: `public-graph-chat` and `anokii-admin` (shared-graph surfaces) and `cointelligence-workspace` (the canonical singular id for the sovereign gated chat, reconciling the WP04 draft name `cointelligence-workspaces`). A new optional `chat:` block configures the default vantage, the selectable vantages, and the `ChatVoice` (intro, refusal, per-vantage refusals).
+- `docs/specs/anokii-product-architecture.md`: the one-engine / two-surface-family architecture, the package-vs-app split, the config-driven surface selection, the per-app config matrix, and the graph entity model.
+
+### Notes
+
+- Deferred to a later increment (tracked by the Phase B parity checklists): the public `/anokii` shell + vantage-lens templates and the site-wide launcher markup (apps mount the launcher into their own shells today), the sovereign workspace stateful chat controller (conversations and confirm-before-apply proposals, which remain app-provided in fnpi until extracted), and the install-specific ingest and seed command bodies (each app declares its own content sources).
+
 ## [0.1.0-alpha.1] - 2026-06-14
 
 First tagged release of the Anokii distribution. Instances can now pin a version instead of tracking `dev-main`.
