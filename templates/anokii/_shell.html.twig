@@ -98,18 +98,26 @@
           </a>
         {% endfor %}
       </nav>
+      {# Sidebar user-chip. A richer instance (e.g. a sovereign workspace with a
+         top-bar user-chip) overrides this block to empty and renders its own. #}
+      {% block userchip %}
       <div class="anokii-userchip">
         <div class="anokii-avatar">{{ user_initials|default('?') }}</div>
         <div class="anokii-uinfo"><b>{{ user_label|default('') }}</b><small>{{ user_role|default('') }}</small></div>
         <a class="anokii-signout" href="{{ logout_path|default('#') }}">Sign out</a>
       </div>
+      {% endblock %}
       {% block sidebar_footer %}{% endblock %}
     </aside>
     <main class="anokii-main">
+      {# Optional sticky top bar (search, notifications, top-bar user-chip). Empty
+         by default, so a basic install renders unchanged. #}
       {% block topbar %}{% endblock %}
       <div class="anokii-content">
         {% block content %}{% endblock %}
       </div>
+      {# Optional footer bar. Empty by default. #}
+      {% block main_footer %}{% endblock %}
     </main>
   </div>
   {% block page_scripts %}{% endblock %}

@@ -106,6 +106,33 @@ final class ChatPromptBuilder
     }
 
     /**
+     * Agent-prompt seam for a sovereign workspace's agentic (confirm-before-apply)
+     * mode. The canonical contract lives here so a workspace install does not fork
+     * its own copy; install-specific tool guidance is injected via $toolGuidance.
+     * Read-only public-graph installs (rhtcircle, oiatc) never call this, so this
+     * is purely additive and does not change their behaviour.
+     *
+     * @api
+     */
+    public function agentSystem(string $toolGuidance = ''): string
+    {
+        $intro = $this->voice->assistantIntro;
+        $tools = trim($toolGuidance) !== '' ? "\n\n" . trim($toolGuidance) : '';
+
+        return <<<PROMPT
+            {$intro} You are operating in the authenticated workspace as an assistant that can PROPOSE changes for a human to review.
+
+            Rules:
+            - Ground every statement in the supplied passages and the workspace data you are given. Do not invent facts, contacts, or links.
+            - You may propose create, update, or delete actions, but you never apply them yourself. Emit a clear, structured proposal and let the human confirm or reject it. Nothing takes effect without that confirmation.
+            - Cite the page or record you used where relevant, as "(source: <title>, <source_url>)".
+            - Do not ask for, collect, or store personal information beyond what the workspace already holds.
+            - Keep answers short and plain. Never use em dashes or en dashes; use commas, periods, or parentheses.
+            - For emergencies, tell the user to call 911.{$tools}
+            PROMPT;
+    }
+
+    /**
      * Deterministically strip em dashes (U+2014) and en dashes (U+2013) from
      * model text before it ships, so a stray dash never reaches the browser even
      * if the model ignores the system-prompt rule. An em dash (clause separator)

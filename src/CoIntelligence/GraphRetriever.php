@@ -64,9 +64,25 @@ final class GraphRetriever implements RetrieverInterface
         'if', 'but', 'not', 'no', 'yes', 'any', 'all', 'some', 'our', 'us', 'am',
     ];
 
+    /**
+     * @param float $scoreMargin keep passages within this fraction of the top
+     *                           keyword score (default {@see SCORE_MARGIN})
+     * @param float $scoreFloor  minimum keyword score to keep (default
+     *                           {@see SCORE_FLOOR}); a single-vantage sovereign
+     *                           install can pass its own gate (e.g. 0.45 margin,
+     *                           0.0 floor) without moving graph installs
+     * @param bool  $flat        single-vantage flat mode: skip the topic-confidence
+     *                           precision drop, so a no-graph install gets pure
+     *                           keyword-gated retrieval. Scope resolution already
+     *                           no-ops when the graph tables are absent. Default
+     *                           false keeps graph-install behaviour unchanged.
+     */
     public function __construct(
         private readonly DatabaseInterface $db,
         private readonly TopicVocabulary $topics = new TopicVocabulary(),
+        private readonly float $scoreMargin = self::SCORE_MARGIN,
+        private readonly float $scoreFloor = self::SCORE_FLOOR,
+        private readonly bool $flat = false,
     ) {}
 
     public function retrieve(string $query, string $community, int $k = 6): array
@@ -143,7 +159,7 @@ final class GraphRetriever implements RetrieverInterface
         foreach ($scored as $row) {
             $maxKw = max($maxKw, $row['kw']);
         }
-        $threshold = max($maxKw * self::SCORE_MARGIN, self::SCORE_FLOOR);
+        $threshold = max($maxKw * $this->scoreMargin, $this->scoreFloor);
 
         $kept = [];
         foreach ($scored as $row) {
@@ -158,7 +174,7 @@ final class GraphRetriever implements RetrieverInterface
         // grounding context and the Sources line. When there is no confident
         // topic match, the keyword-gated set is kept as-is so broader content
         // stays answerable.
-        if ($inferredTopic !== null) {
+        if (!$this->flat && $inferredTopic !== null) {
             $onTopic = array_values(array_filter($kept, static fn(array $row): bool => $row['topicMatch'] === 1));
             if ($onTopic !== []) {
                 $kept = $onTopic;

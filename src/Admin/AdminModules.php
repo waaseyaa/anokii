@@ -48,13 +48,24 @@ final class AdminModules
      * pointing them at their real route) and every other module as a preview card
      * (badge "Preview", linking to its coming-soon page).
      *
-     * @param list<string> $liveIds
+     * Per-install presentation is supported without forking the catalog:
+     *   - $overrides: map of module id => partial fields to merge (label, desc,
+     *     icon, group, href, tile, order). Lets an install relabel/regroup/reorder
+     *     the canonical modules for its brand.
+     *   - $extra: additional full module rows appended (e.g. an install-specific
+     *     Settings entry the canonical catalog does not carry).
+     * When both are empty the result is byte-identical to the canonical catalog,
+     * so existing consumers (e.g. {@see sharedGraph()}) are unchanged.
      *
-     * @return list<array{id:string,label:string,group:string,live:bool,href:string,desc:string,icon:string,badge:string,tile:bool}>
+     * @param list<string>                        $liveIds
+     * @param array<string, array<string, mixed>> $overrides
+     * @param list<array<string, mixed>>          $extra
+     *
+     * @return list<array<string, mixed>>
      *
      * @api
      */
-    public static function resolve(array $liveIds): array
+    public static function resolve(array $liveIds, array $overrides = [], array $extra = []): array
     {
         $live = array_fill_keys($liveIds, true);
         $out = [];
@@ -63,7 +74,41 @@ final class AdminModules
             $m['live'] = $isLive;
             $m['href'] = $isLive ? $m['href'] : '/admin/anokii/m/' . $m['id'];
             $m['badge'] = $isLive ? '' : 'Preview';
+            if (isset($overrides[$m['id']]) && is_array($overrides[$m['id']])) {
+                $m = array_merge($m, $overrides[$m['id']]);
+            }
             $out[] = $m;
+        }
+
+        foreach ($extra as $m) {
+            if (is_array($m) && isset($m['id'])) {
+                $out[] = $m + ['group' => '', 'live' => true, 'href' => '', 'desc' => '', 'icon' => '', 'badge' => '', 'tile' => false];
+            }
+        }
+
+        // Optional explicit ordering: if any row carries an 'order' int, stable-sort
+        // by it (rows without 'order' keep their original position, after ordered
+        // ones). With no overrides/extra, nothing carries 'order' and the canonical
+        // order is preserved unchanged.
+        $hasOrder = false;
+        foreach ($out as $m) {
+            if (isset($m['order'])) {
+                $hasOrder = true;
+                break;
+            }
+        }
+        if ($hasOrder) {
+            $seq = 0;
+            foreach ($out as &$row) {
+                $row['_seq'] = $seq++;
+                $row['_order'] = $row['order'] ?? \PHP_INT_MAX;
+            }
+            unset($row);
+            usort($out, static fn (array $a, array $b): int => ($a['_order'] <=> $b['_order']) ?: ($a['_seq'] <=> $b['_seq']));
+            foreach ($out as &$row) {
+                unset($row['_seq'], $row['_order']);
+            }
+            unset($row);
         }
 
         return $out;
