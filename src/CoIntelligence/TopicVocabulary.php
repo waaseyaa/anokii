@@ -93,6 +93,35 @@ final class TopicVocabulary
             'name' => 'Energy and solar',
             'keywords' => ['solar', 'energy', 'battery', 'bess', 'panel', 'electricity', 'renewable', 'grid', 'megawatt', 'ieso', 'iesos', 'massey solar', 'storage', 'wind'],
         ],
+        // Commerce and everyday-life layer, added for the territory resource seed
+        // (Highway 17 / North Shore corridor). Appended after the social-service
+        // topics so a keyword tie resolves to the earlier-declared topic and the
+        // existing inference is unchanged; a new topic only wins when its own
+        // keywords give it strictly more distinct hits.
+        'groceries-and-food' => [
+            'name' => 'Groceries and food',
+            'keywords' => ['grocery', 'groceries', 'grocery store', 'supermarket', 'butcher', 'bakery', 'baked goods', 'produce', 'abattoir', 'deli', 'general store', 'convenience store', 'corner store', 'variety store', 'fresh food', 'meat'],
+        ],
+        'banking' => [
+            'name' => 'Banking',
+            'keywords' => ['bank', 'banks', 'atm', 'credit union', 'teller', 'chequing', 'savings account', 'cash machine', 'debit', 'rbc', 'scotiabank', 'cibc', 'bmo', 'td canada trust', 'northern credit union'],
+        ],
+        'dining' => [
+            'name' => 'Dining',
+            'keywords' => ['restaurant', 'restaurants', 'cafe', 'coffee', 'coffee shop', 'diner', 'pizza', 'takeout', 'take out', 'dine', 'dining', 'pub', 'eatery', 'lunch', 'breakfast'],
+        ],
+        'retail-and-hardware' => [
+            'name' => 'Retail and hardware',
+            'keywords' => ['hardware', 'hardware store', 'building supply', 'building materials', 'lumber', 'home hardware', 'rona', 'canadian tire', 'dollar store', 'thrift', 'thrift store', 'tools', 'retail', 'building centre', 'hardware dealer'],
+        ],
+        'everyday-services' => [
+            'name' => 'Everyday services',
+            'keywords' => ['post office', 'postal', 'canada post', 'library', 'pharmacy', 'drugstore', 'laundromat', 'laundry', 'gas station', 'gas', 'fuel', 'wifi', 'showers', 'marina'],
+        ],
+        'government-services' => [
+            'name' => 'Government services',
+            'keywords' => ['service canada', 'service ontario', 'serviceontario', 'health card', 'renew', 'renewal', 'passport', 'drivers licence', 'driver licence', 'licence', 'license', 'sin', 'social insurance number', 'birth certificate', 'ohip', 'town hall', 'city hall', 'municipal office', 'service centre', 'government'],
+        ],
     ];
 
     /**
