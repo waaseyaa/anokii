@@ -86,6 +86,58 @@ abstract class DashboardGate
     }
 
     /**
+     * Gate a PAGE handler behind a real account AND a permission. Returns null
+     * when the request may proceed; a redirect to {@see loginPath()} (carrying a
+     * ?next= back to the requested path) when anonymous; a 403 page when signed in
+     * without the permission. This is the permission-gated variant of
+     * {@see requirePage()} for the single-admin dashboard tier.
+     *
+     * @api
+     */
+    protected function requirePermission(Request $request, string $permission): ?Response
+    {
+        $redirect = Auth::requireAccountOrRedirect(
+            $this->entityTypeManager,
+            $this->loginPath() . '?next=' . rawurlencode($request->getPathInfo()),
+        );
+        if ($redirect !== null) {
+            return $redirect;
+        }
+
+        $user = $this->currentUser();
+        if ($user === null || !$user->hasPermission($permission)) {
+            return $this->forbiddenResponse();
+        }
+
+        return null;
+    }
+
+    /**
+     * The 403 shown to a signed-in account that lacks the required permission.
+     * Neutral by default; an instance may override to brand it.
+     *
+     * @api
+     */
+    protected function forbiddenResponse(): Response
+    {
+        $html = <<<HTML
+            <!doctype html>
+            <html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex, nofollow">
+            <title>Not authorized</title></head>
+            <body style="font-family:system-ui,sans-serif;max-width:32rem;margin:12vh auto;padding:0 1.5rem;color:#221d33">
+            <h1 style="color:#38217f">Not authorized</h1>
+            <p>You are signed in, but this account does not have access to this area.</p>
+            <p><a href="/">Back to the site</a></p>
+            </body></html>
+            HTML;
+
+        return new Response($html, 403, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+            'X-Robots-Tag' => 'noindex, nofollow',
+        ]);
+    }
+
+    /**
      * The signed-in user for this request, or null. After a null check from
      * {@see requirePage()} / {@see requireAction()} this is guaranteed non-null.
      *
