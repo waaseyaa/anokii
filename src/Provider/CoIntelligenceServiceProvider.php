@@ -168,10 +168,14 @@ final class CoIntelligenceServiceProvider extends ServiceProvider
                 ->build(),
         );
 
-        // Lean admin: entity counts + the no-PII content-gap log. Gated in
-        // production by the host basic_auth on /admin/*. priority() beats the
-        // framework admin SPA catch-all at /admin/{path}.
-        if ($isShared || $config->moduleEnabled('anokii-admin')) {
+        // Lean admin: entity counts + the no-PII content-gap log. Mounted ONLY when
+        // the `anokii-admin` module is explicitly enabled, so an install that
+        // provides its own gated /admin/anokii (rhtcircle, oiatc) simply leaves the
+        // module off and the package does not register a competing ungated route.
+        // (Previously this also auto-mounted for any shared-graph install, which
+        // left a public route those installs had to shadow.) The package route, if
+        // enabled, is gated in production by the host's own /admin auth.
+        if ($config->moduleEnabled('anokii-admin')) {
             $admin = new AnokiiAdminController($db, new SqliteChatQueryLog($db));
             $router->addRoute(
                 'anokii.admin',
