@@ -17,6 +17,11 @@ Decision inputs (Russell, 2026-06-27), all incorporated below:
 - Framework floor for the new anokii: **alpha.250**, proven on NorthOps first (**alpha.249** fallback).
 - alpha.11 ships the **workspace (5 tools + RAG + generic analytics)**; the **stateful gated
   Co-Intelligence chat is deferred to alpha.12**.
+- **NorthOps proof gates the alpha.11 tag** — order is extract → tests → prove on NorthOps → tag
+  alpha.11 → fnpi → oiatc → rhtcircle → docs.
+- **fnpi has no live users**; do NOT add complexity to preserve its gated Co-Intelligence during
+  migration. Gated Co-Intelligence may be **temporarily unavailable on fnpi between alpha.11 and
+  alpha.12**, restored when it is extracted at alpha.12. fnpi's Ventures, content, and branding stay.
 - **DB-backup guardrail (hard)** — see §Guardrails.
 
 ---
@@ -213,7 +218,12 @@ branding/content, replace app constants with config, keep mechanics.
   distribution's; keep `Venture*`, content seed, branding. Net: fnpi gets *smaller*.
 - Entity tables already match the donor → **no schema migration expected**; confirm table/field names
   are byte-identical after genericization. Analytics resets (4.4).
-- Parity check vs the live workspace. Verify. **Backup again.** Deploy via `FNPI_REF` bump.
+- **Co-Intelligence:** fnpi has no live users, so do **not** add migration complexity to keep gated
+  Co-Intelligence running. It may be **temporarily unavailable between alpha.11 and alpha.12** and is
+  restored when the stateful gated chat is extracted at alpha.12. (The RAG engine and `doc_chunk`
+  corpus remain; only the gated workspace chat surface lapses.)
+- Parity check vs the live workspace (workspace tools + Ventures + content + branding; gated chat
+  expected absent). Verify. **Backup again.** Deploy via `FNPI_REF` bump.
 
 ### 8.2 oiatc (retire broken chat; adopt workspace admin)
 - Branch. **Backup DB.** Bump to alpha.11 + chosen framework floor.
@@ -267,13 +277,15 @@ branding/content, replace app constants with config, keep mechanics.
    demote the `tenancy_mode` tier to `modules.enabled` and make `public-graph-chat` a default module.
 2. **Tests in anokii**: per-tool integration tests + the `DashboardGate` auth split; a config test for
    module enable/disable; analytics collector test. Genericization parity vs fnpi's behavior.
-3. **alpha.11 tag** on framework floor **alpha.250**, *after* the NorthOps proof in step 4 is green
-   (tag reflects the proven floor; drop to alpha.249 if alpha.250 fails on NorthOps).
-4. **Prove on NorthOps** (§7): wire providers, enable the 7 workspace modules, `db:init`, seed +
+3. **Prove on NorthOps** (§7): wire providers, enable the 7 workspace modules, `db:init`, seed +
    admin, run, verify public + `/admin/anokii` workspace + admin login + analytics hit. Baseline DB
-   snapshot once seeded. This gates the tag.
+   snapshot once seeded. **This gates the tag — PAUSE and report here before tagging or touching any
+   live site.**
+4. **alpha.11 tag** on framework floor **alpha.250**, now that the NorthOps proof is green (tag
+   reflects the proven floor; drop to alpha.249 if alpha.250 failed on NorthOps).
 5. **Migrate fnpi** (§8.1): branch → **DB backup** → swap app workspace for the distribution's (keep
-   Ventures/content/branding) → parity check → verify → **DB backup** → `FNPI_REF` bump deploy.
+   Ventures/content/branding; gated Co-Intelligence may lapse until alpha.12) → parity check →
+   verify → **DB backup** → `FNPI_REF` bump deploy.
 6. **Migrate oiatc** (§8.2): branch → **DB backup** → bump anokii/framework → **retire broken chat** →
    adopt workspace admin + analytics (reset) → parity check → verify → **DB backup** → `OIATC_REF`
    bump deploy. (Showcase rebuild deferred to its own task.)
