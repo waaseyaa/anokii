@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="{{ html_lang|default('en') }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in &middot; Anokii</title>
+  <meta name="robots" content="noindex, nofollow">
+  <style>
+    :root{
+      --ink: var(--color-ink, #15171a);
+      --bg: var(--color-side-bg, #0b0e13);
+      --card: var(--color-card, #ffffff);
+      --line: var(--color-line, #e3e1db);
+      --muted: var(--color-muted, #6b7076);
+      --accent: var(--color-primary, #0f766e);
+      --accent-ink: var(--color-primary-ink, #ffffff);
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui,sans-serif;font-size:15.5px;line-height:1.55;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+    a{color:inherit;text-decoration:none}
+    .authpage{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:48px 20px}
+    .authcard{width:100%;max-width:380px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:30px 28px}
+    .authcard .brand{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+    .authcard .brand .nm{letter-spacing:.02em;font-size:20px;font-weight:700;color:var(--ink)}
+    .authcard h1{font-size:24px;margin:0 0 4px;color:var(--ink)}
+    .authcard .sub{color:var(--muted);font-size:13.5px;margin:0 0 20px}
+    .fld{margin-bottom:13px}
+    .fld label{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+    .fld input{width:100%;border:1px solid var(--line);border-radius:9px;padding:11px 12px;font:inherit;font-size:14px;background:#fcfcfa;color:var(--ink)}
+    .fld input:focus{outline:2px solid rgba(15,118,110,.18);border-color:var(--accent)}
+    .abtn{width:100%;background:var(--accent);color:var(--accent-ink);border:none;border-radius:9px;padding:12px;font:inherit;font-weight:600;letter-spacing:.04em;font-size:13px;cursor:pointer}
+    .abtn:hover{filter:brightness(.94)}
+    .err{display:none;background:#fdecea;color:#a4291c;border-radius:9px;padding:9px 11px;font-size:13px;margin-bottom:14px}
+    .err.show{display:block}
+  </style>
+</head>
+<body>
+<div class="authpage"><div class="authcard">
+  <div class="brand"><span class="nm">Anokii</span></div>
+  <h1>Sign in</h1>
+  <p class="sub">Your private workspace.</p>
+  <div class="err" id="err"></div>
+  <form id="loginForm" autocomplete="on">
+    <div class="fld"><label for="email">Email</label><input type="email" id="email" name="email" required autocomplete="username"></div>
+    <div class="fld"><label for="password">Password</label><input type="password" id="password" name="password" required autocomplete="current-password"></div>
+    <button class="abtn" type="submit">Sign in</button>
+  </form>
+</div></div>
+
+<script>
+(function(){
+  var f = document.getElementById('loginForm'), err = document.getElementById('err');
+  f.addEventListener('submit', function(e){
+    e.preventDefault();
+    err.classList.remove('show');
+    fetch('/admin/anokii/login', {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+      body: JSON.stringify({email: document.getElementById('email').value, password: document.getElementById('password').value})
+    }).then(function(r){ return r.json().catch(function(){return {ok:false,error:'Something went wrong.'};}); })
+      .then(function(d){
+        if(d && d.ok){ window.location = d.redirect || '/admin/anokii'; }
+        else { err.textContent = (d && d.error) || 'Wrong email or password.'; err.classList.add('show'); }
+      }).catch(function(){ err.textContent='Network error. Try again.'; err.classList.add('show'); });
+  });
+})();
+</script>
+</body>
+</html>

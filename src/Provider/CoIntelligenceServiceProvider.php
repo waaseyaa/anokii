@@ -12,8 +12,6 @@ use Anokii\CoIntelligence\SqliteChatQueryLog;
 use Anokii\CoIntelligence\SqliteRateLimiter;
 use Anokii\CoIntelligence\TopicVocabulary;
 use Anokii\Config\DistributionConfig;
-use Anokii\Config\TenancyMode;
-use Anokii\Controller\AnokiiAdminController;
 use Anokii\Controller\PublicChatController;
 use Anokii\Entity\Community;
 use Anokii\Entity\DocChunk;
@@ -127,11 +125,12 @@ final class CoIntelligenceServiceProvider extends ServiceProvider
         }
 
         $config = $this->distributionConfig();
-        $isShared = $config->tenancyMode() === TenancyMode::SharedGraph;
 
-        // The public surface is the shared-graph tier (or an explicit opt-in).
-        // The sovereign gated workspace contributes its own routes elsewhere.
-        if (!$isShared && !$config->moduleEnabled('public-graph-chat')) {
+        // The public graph-chat surface is opt-in per instance via the
+        // `public-graph-chat` module. The sovereign/shared-graph tenancy-tier split
+        // is retired; surfaces are module-driven. The login-gated workspace is
+        // wired separately by WorkspaceServiceProvider.
+        if (!$config->moduleEnabled('public-graph-chat')) {
             return;
         }
 
@@ -168,25 +167,9 @@ final class CoIntelligenceServiceProvider extends ServiceProvider
                 ->build(),
         );
 
-        // Lean admin: entity counts + the no-PII content-gap log. Mounted ONLY when
-        // the `anokii-admin` module is explicitly enabled, so an install that
-        // provides its own gated /admin/anokii (rhtcircle, oiatc) simply leaves the
-        // module off and the package does not register a competing ungated route.
-        // (Previously this also auto-mounted for any shared-graph install, which
-        // left a public route those installs had to shadow.) The package route, if
-        // enabled, is gated in production by the host's own /admin auth.
-        if ($config->moduleEnabled('anokii-admin')) {
-            $admin = new AnokiiAdminController($db, new SqliteChatQueryLog($db));
-            $router->addRoute(
-                'anokii.admin',
-                RouteBuilder::create('/admin/anokii')
-                    ->controller(fn(Request $request) => $admin->index($request))
-                    ->allowAll()
-                    ->methods('GET')
-                    ->priority(self::ROUTE_PRIORITY)
-                    ->build(),
-            );
-        }
+        // The lean standalone /admin/anokii graph-counts admin (AnokiiAdminController)
+        // is retired: the login-gated workspace dashboard, wired by
+        // WorkspaceServiceProvider, supersedes it.
     }
 
     private function distributionConfig(): DistributionConfig

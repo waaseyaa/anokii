@@ -1,0 +1,24 @@
+{% extends "anokii/_shell.html.twig" %}
+
+{% block title %}{{ module.label|default('Coming soon') }}{% endblock %}
+
+{% block shell_styles %}
+  .soonwrap{background:var(--anokii-shell-card);border:1px solid var(--anokii-shell-line);border-radius:14px;padding:48px 40px;text-align:center;max-width:640px;margin:10px auto}
+  .soonwrap .ic{width:64px;height:64px;border-radius:16px;background:var(--anokii-shell-side-bg);color:var(--anokii-shell-accent);display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
+  .soonwrap .ic svg{width:32px;height:32px}
+  .soonwrap .pill{display:inline-block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--anokii-shell-muted);background:var(--anokii-shell-bg);border:1px solid var(--anokii-shell-line);border-radius:20px;padding:3px 12px;margin-bottom:14px}
+  .soonwrap h1{font-size:30px;color:var(--anokii-shell-ink);margin:0 0 10px}
+  .soonwrap p{color:var(--anokii-shell-muted);margin:0 auto 22px;max-width:48ch}
+  .soonwrap .btn{display:inline-block;background:var(--anokii-shell-accent);color:var(--anokii-shell-accent-ink);border-radius:9px;padding:11px 20px;font-weight:600;letter-spacing:.04em;font-size:13px}
+  .soonwrap .btn:hover{filter:brightness(.94)}
+{% endblock %}
+
+{% block content %}
+<div class="soonwrap">
+  <div class="ic"><svg viewBox="0 0 24 24" fill="none">{{ module.icon|raw }}</svg></div>
+  <span class="pill">Coming soon</span>
+  <h1>{{ module.label }}</h1>
+  <p>{{ module.desc }} This module is part of the Anokii roadmap and is not built yet. It will light up as the workspace grows.</p>
+  <a class="btn" href="{{ home_path|default('/admin/anokii') }}">Back to dashboard</a>
+</div>
+{% endblock %}

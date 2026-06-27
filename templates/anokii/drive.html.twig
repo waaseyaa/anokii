@@ -1,0 +1,309 @@
+{% extends "anokii/_shell.html.twig" %}
+
+{% block shell_styles %}
+  /* Local aliases onto the shared Anokii shell tokens, so this tool is
+     self-contained and rebrands with the rest of the shell. */
+  :root{
+    --ink: var(--anokii-shell-ink, #15171a);
+    --bg: var(--anokii-shell-bg, #f4f3f0);
+    --line: var(--anokii-shell-line, #e3e1db);
+    --muted: var(--anokii-shell-muted, #6b7076);
+    --cyan: var(--anokii-shell-accent, #0f766e);
+    --cyan2: var(--anokii-shell-accent, #0f766e);
+    --cyan-soft: var(--color-accent-soft, #e3f4f8);
+    --card-shadow:0 1px 3px rgba(10,14,18,.05),0 8px 24px rgba(10,14,18,.06);
+  }
+  .ahead{margin-bottom:18px}
+  .ahead .ey{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+  .ahead h1{font-size:26px;color:var(--ink);margin-bottom:6px}
+  .ahead .sub{color:var(--muted);max-width:60ch}
+  /* toolbar */
+  .dbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+  .dchips{display:flex;gap:7px;flex-wrap:wrap}
+  .dchip{font-size:12.5px;letter-spacing:.02em;border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:20px;padding:6px 13px;cursor:pointer;transition:all .12s}
+  .dchip:hover{border-color:var(--cyan);color:var(--ink)}
+  .dchip.on{background:var(--cyan2);border-color:var(--cyan2);color:#fff;box-shadow:0 2px 10px rgba(31,182,214,.28)}
+  .dspacer{flex:1}
+  .dupload{display:flex;align-items:center;gap:8px}
+  .dupload input[type=text]{border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 11px;font:inherit;font-size:13.5px;color:var(--ink);width:170px;outline:none}
+  .dupload input[type=text]:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(31,182,214,.14)}
+  .btn{font-size:13.5px;letter-spacing:.02em;border-radius:9px;padding:9px 15px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:8px;text-decoration:none}
+  .btn:hover{background:var(--bg)}
+  .btn svg{width:16px;height:16px}
+  .btn.primary{background:var(--cyan2);border-color:var(--cyan2);color:#fff}
+  .btn.primary:hover{background:var(--cyan)}
+  /* file list */
+  .dlist{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--card-shadow);overflow:hidden}
+  .drow{display:flex;align-items:center;gap:13px;padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer;transition:background .1s}
+  .drow:last-child{border-bottom:none}
+  .drow:hover{background:var(--bg)}
+  .drow.on{background:var(--cyan-soft,#e3f4f8)}
+  .dic{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .dic svg{width:19px;height:19px}
+  .dic.pdf{background:#fdeaea;color:#d64545}
+  .dic.doc{background:#e8effd;color:#3a6cd6}
+  .dic.xls{background:#e6f7ee;color:#1c9e63}
+  .dic.img{background:#f3ecfd;color:#7a44d6}
+  .dic.gen{background:#eef0f4;color:#6b7185}
+  .dmeta{flex:1;min-width:0}
+  .dmeta b{display:block;font-weight:600;color:var(--ink);font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dmeta small{color:var(--muted);font-size:12.5px}
+  .dfolder{flex:0 0 auto;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--cyan2);background:var(--cyan-soft,#e3f4f8);border-radius:20px;padding:3px 10px}
+  .ddate{flex:0 0 auto;width:120px;font-size:12.5px;color:var(--muted);text-align:right}
+  @media(max-width:720px){.dfolder,.ddate{display:none}}
+  /* empty state */
+  .dempty{background:#fff;border:1px dashed var(--line);border-radius:14px;padding:48px 24px;text-align:center;color:var(--muted)}
+  .dempty svg{width:38px;height:38px;color:var(--cyan2);opacity:.7;margin-bottom:8px}
+  .dempty b{display:block;color:var(--ink);font-size:16px;margin-bottom:4px}
+  /* upload progress */
+  .dprog{display:flex;align-items:center;gap:13px;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .dprog .pbar{height:8px;border-radius:6px;background:var(--bg);overflow:hidden;margin-top:6px}
+  .dprog .pbar i{display:block;height:100%;width:6%;background:linear-gradient(90deg,var(--cyan2),var(--cyan));transition:width .2s}
+  /* side panel */
+  .dscrim{position:fixed;inset:0;background:rgba(10,14,18,.28);opacity:0;pointer-events:none;transition:opacity .18s;z-index:80}
+  .dscrim.open{opacity:1;pointer-events:auto}
+  .dpanel{position:fixed;top:0;right:0;height:100vh;width:360px;max-width:92vw;background:#fff;border-left:1px solid var(--line);box-shadow:-12px 0 40px rgba(10,14,18,.16);transform:translateX(100%);transition:transform .2s;z-index:90;display:flex;flex-direction:column}
+  .dpanel.open{transform:translateX(0)}
+  .dp-head{display:flex;align-items:center;gap:12px;padding:18px;border-bottom:1px solid var(--line)}
+  .dp-head .name{flex:1;min-width:0}
+  .dp-head .name b{display:block;font-size:15px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dp-head .name small{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  .dp-x{border:none;background:transparent;color:var(--muted);font-size:22px;line-height:1;cursor:pointer;padding:0 4px}
+  .dp-x:hover{color:var(--ink)}
+  .dp-body{padding:18px;overflow:auto;flex:1}
+  .dp-preview{width:100%;border-radius:10px;border:1px solid var(--line);margin-bottom:16px;display:block;background:var(--bg)}
+  .kv{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px dashed var(--line);font-size:14px}
+  .kv:last-of-type{border-bottom:none}
+  .kv span{color:var(--muted)} .kv b{color:var(--ink);font-weight:600;text-align:right;word-break:break-word}
+  .dp-actions{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}
+  .dp-del{margin-top:14px;border:none;background:transparent;color:#d64545;font-size:12.5px;letter-spacing:.03em;cursor:pointer;padding:4px 0}
+  .dp-del:hover{text-decoration:underline}
+  .dtoast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:10px;font-size:13.5px;opacity:0;pointer-events:none;transition:all .2s;z-index:120}
+  .dtoast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+{% endblock %}
+
+{% block content %}
+{# Icon markup per kind (line icons, brand-neutral). #}
+{% set dicons = {
+  'pdf': '<path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/><path d="M9 14h6M9 17h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
+  'doc': '<path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/><path d="M9 12h6M9 15h6M9 18h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
+  'xls': '<rect x="4" y="5" width="16" height="14" rx="1.5" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M4 10h16M4 14h16M10 5v14M15 5v14" stroke="currentColor" stroke-width="1.3"/>',
+  'img': '<rect x="4" y="5" width="16" height="14" rx="2" stroke="currentColor" stroke-width="1.6" fill="none"/><circle cx="9" cy="10" r="1.6" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="m5 17 4-4 3 3 3-3 4 4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>',
+  'gen': '<path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/>'
+} %}
+
+<div class="ahead">
+  <p class="ey">Drive</p>
+  <h1>Drive</h1>
+  <p class="sub">Shared file storage for your workspace. Files are stored on your own infrastructure, with every upload attributed to the person who added it. Select a file to see its details, or upload a new one.</p>
+</div>
+
+<div class="dbar">
+  <div class="dchips" id="dchips">
+    <button class="dchip on" data-folder="*" type="button">All files</button>
+    {% for folder in folders %}
+      <button class="dchip" data-folder="{{ folder }}" type="button">{{ folder }}</button>
+    {% endfor %}
+  </div>
+  <div class="dspacer"></div>
+  <div class="dupload">
+    <input type="text" id="dfolderInput" list="dfolderList" placeholder="Folder" value="">
+    <datalist id="dfolderList">
+      {% for folder in folders %}<option value="{{ folder }}">{% endfor %}
+    </datalist>
+    <button class="btn primary" id="dUploadBtn" type="button">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V5m0 0L8 9m4-4 4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      Upload
+    </button>
+    <input type="file" id="dFileInput" hidden>
+  </div>
+</div>
+
+<div class="dlist" id="dlist">
+  <div class="dprog" id="dprog" style="display:none">
+    <div class="dic gen"><svg viewBox="0 0 24 24">{{ dicons.gen|raw }}</svg></div>
+    <div class="dmeta"><b id="dprogName">Uploading&hellip;</b><div class="pbar"><i id="dprogBar"></i></div></div>
+    <div class="ddate"><span id="dprogPct">0%</span></div>
+  </div>
+
+  {% for f in files %}
+    <div class="drow" data-uuid="{{ f.uuid }}" data-name="{{ f.name }}" data-kind="{{ f.kind }}"
+         data-mime="{{ f.mime_type }}" data-size="{{ f.size_human }}" data-owner="{{ f.owner_label }}"
+         data-folder="{{ f.folder }}" data-date="{{ f.uploaded_at|date('M d, Y') }}" data-version="{{ f.version }}"
+         data-image="{{ f.is_image ? '1' : '0' }}">
+      <div class="dic {{ f.kind }}"><svg viewBox="0 0 24 24">{{ dicons[f.kind]|default(dicons.gen)|raw }}</svg></div>
+      <div class="dmeta">
+        <b>{{ f.name }}</b>
+        <small>{{ f.owner_label }} &middot; {{ f.size_human }}</small>
+      </div>
+      <span class="dfolder">{{ f.folder }}</span>
+      <span class="ddate">{{ f.uploaded_at|date('M d, Y') }}</span>
+    </div>
+  {% endfor %}
+
+  <div class="dempty" id="dempty" style="{{ files is empty ? '' : 'display:none' }}">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z" stroke="currentColor" stroke-width="1.6"/></svg>
+    <b>No files yet</b>
+    <span>Upload the first file to get started.</span>
+  </div>
+</div>
+
+<div class="dscrim" id="dscrim"></div>
+<aside class="dpanel" id="dpanel" aria-hidden="true">
+  <div class="dp-head">
+    <div class="dic gen" id="dpIcon"><svg viewBox="0 0 24 24">{{ dicons.gen|raw }}</svg></div>
+    <div class="name"><b id="dpName">&nbsp;</b><small id="dpKind">&nbsp;</small></div>
+    <button class="dp-x" id="dpClose" type="button" aria-label="Close">&times;</button>
+  </div>
+  <div class="dp-body">
+    <img class="dp-preview" id="dpPreview" alt="" style="display:none">
+    <div class="kv"><span>Uploaded by</span><b id="dpOwner"></b></div>
+    <div class="kv"><span>Folder</span><b id="dpFolder"></b></div>
+    <div class="kv"><span>Uploaded</span><b id="dpDate"></b></div>
+    <div class="kv"><span>Size</span><b id="dpSize"></b></div>
+    <div class="kv"><span>Versions</span><b id="dpVersion"></b></div>
+    <div class="kv"><span>Location</span><b>Workspace storage volume</b></div>
+    <div class="dp-actions">
+      <a class="btn primary" id="dpOpen" target="_blank" rel="noopener">Open</a>
+      <a class="btn" id="dpDownload">Download</a>
+    </div>
+    <button class="dp-del" id="dpDelete" type="button">Delete file</button>
+  </div>
+</aside>
+
+<div class="dtoast" id="dtoast"></div>
+{% endblock %}
+
+{% block page_scripts %}
+<script>
+(function(){
+  var ICONS = {{ dicons|json_encode|raw }};
+  var GENERIC = ICONS.gen;
+  var list=document.getElementById('dlist'), empty=document.getElementById('dempty');
+  var panel=document.getElementById('dpanel'), scrim=document.getElementById('dscrim');
+  var prog=document.getElementById('dprog');
+  var folderInput=document.getElementById('dfolderInput');
+  var activeFolder='*', selectedUuid=null;
+
+  function toast(msg){
+    var t=document.getElementById('dtoast');
+    t.textContent=msg; t.classList.add('show');
+    clearTimeout(t._h); t._h=setTimeout(function(){ t.classList.remove('show'); },2200);
+  }
+  function iconFor(kind){ return ICONS[kind] || GENERIC; }
+  function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  // CSRF: multipart uploads are not JSON-exempt, so echo the XSRF-TOKEN cookie
+  // back as a header (the framework's double-submit check).
+  function xsrfToken(){ return (document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/)||[])[1] || ''; }
+
+  // --- side panel ---
+  function openPanel(row){
+    var d=row.dataset;
+    selectedUuid=d.uuid;
+    document.querySelectorAll('.drow.on').forEach(function(r){ r.classList.remove('on'); });
+    row.classList.add('on');
+    var ic=document.getElementById('dpIcon');
+    ic.className='dic '+d.kind; ic.querySelector('svg').innerHTML=iconFor(d.kind);
+    document.getElementById('dpName').textContent=d.name;
+    document.getElementById('dpKind').textContent=(d.kind==='gen'?'File':d.kind.toUpperCase())+' · '+d.size;
+    document.getElementById('dpOwner').textContent=d.owner;
+    document.getElementById('dpFolder').textContent=d.folder;
+    document.getElementById('dpDate').textContent=d.date+' UTC';
+    document.getElementById('dpSize').textContent=d.size;
+    document.getElementById('dpVersion').textContent=d.version+(d.version==='1'?' version':' versions');
+    var viewUrl='/admin/anokii/drive/file/'+encodeURIComponent(d.uuid);
+    document.getElementById('dpOpen').href=viewUrl;
+    document.getElementById('dpDownload').href=viewUrl+'?dl=1';
+    var pv=document.getElementById('dpPreview');
+    if(d.image==='1'){ pv.src=viewUrl; pv.alt=d.name; pv.style.display='block'; } else { pv.removeAttribute('src'); pv.style.display='none'; }
+    panel.classList.add('open'); scrim.classList.add('open'); panel.setAttribute('aria-hidden','false');
+  }
+  function closePanel(){ panel.classList.remove('open'); scrim.classList.remove('open'); panel.setAttribute('aria-hidden','true'); selectedUuid=null; document.querySelectorAll('.drow.on').forEach(function(r){ r.classList.remove('on'); }); }
+  document.getElementById('dpClose').addEventListener('click', closePanel);
+  scrim.addEventListener('click', closePanel);
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') closePanel(); });
+
+  list.addEventListener('click', function(e){ var row=e.target.closest('.drow'); if(row) openPanel(row); });
+
+  // --- folder filter ---
+  function applyFilter(){
+    var shown=0;
+    document.querySelectorAll('.drow').forEach(function(r){
+      var match=(activeFolder==='*'||r.dataset.folder===activeFolder);
+      r.style.display=match?'':'none'; if(match) shown++;
+    });
+    empty.style.display = (document.querySelectorAll('.drow').length===0) ? '' : 'none';
+  }
+  document.getElementById('dchips').addEventListener('click', function(e){
+    var chip=e.target.closest('.dchip'); if(!chip) return;
+    document.querySelectorAll('.dchip').forEach(function(c){ c.classList.remove('on'); });
+    chip.classList.add('on'); activeFolder=chip.dataset.folder;
+    if(activeFolder!=='*'){ folderInput.value=activeFolder; }
+    applyFilter();
+  });
+
+  function ensureChip(folder){
+    if(!folder) return;
+    if(document.querySelector('.dchip[data-folder="'+CSS.escape(folder)+'"]')) return;
+    var chips=document.getElementById('dchips');
+    var b=document.createElement('button'); b.className='dchip'; b.type='button'; b.dataset.folder=folder; b.textContent=folder;
+    chips.appendChild(b);
+    var dl=document.getElementById('dfolderList');
+    var o=document.createElement('option'); o.value=folder; dl.appendChild(o);
+  }
+
+  function addRow(f){
+    var row=document.createElement('div'); row.className='drow';
+    row.dataset.uuid=f.uuid; row.dataset.name=f.name; row.dataset.kind=f.kind; row.dataset.mime=f.mime_type;
+    row.dataset.size=f.size_human; row.dataset.owner=f.owner_label; row.dataset.folder=f.folder;
+    row.dataset.version=f.version; row.dataset.image=f.is_image?'1':'0';
+    var d=new Date(); var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    row.dataset.date=months[d.getUTCMonth()]+' '+String(d.getUTCDate()).padStart(2,'0')+', '+d.getUTCFullYear();
+    row.innerHTML='<div class="dic '+f.kind+'"><svg viewBox="0 0 24 24">'+iconFor(f.kind)+'</svg></div>'+
+      '<div class="dmeta"><b>'+esc(f.name)+'</b><small>'+esc(f.owner_label)+' · '+esc(f.size_human)+'</small></div>'+
+      '<span class="dfolder">'+esc(f.folder)+'</span>'+
+      '<span class="ddate">'+row.dataset.date+'</span>';
+    list.insertBefore(row, prog.nextSibling);
+    ensureChip(f.folder);
+    applyFilter();
+  }
+
+  // --- upload ---
+  var fileInput=document.getElementById('dFileInput');
+  document.getElementById('dUploadBtn').addEventListener('click', function(){ fileInput.click(); });
+  fileInput.addEventListener('change', function(){
+    var file=fileInput.files[0]; if(!file) return;
+    var folder=folderInput.value.trim();
+    var fd=new FormData(); fd.append('file', file); fd.append('folder', folder);
+    document.getElementById('dprogName').textContent='Uploading '+file.name+'…';
+    document.getElementById('dprogBar').style.width='6%';
+    document.getElementById('dprogPct').textContent='0%';
+    prog.style.display='flex'; empty.style.display='none';
+    var xhr=new XMLHttpRequest();
+    xhr.open('POST','/admin/anokii/drive/upload');
+    var tok=xsrfToken(); if(tok){ xhr.setRequestHeader('X-XSRF-TOKEN', tok); }
+    xhr.upload.onprogress=function(e){ if(e.lengthComputable){ var p=Math.round(e.loaded/e.total*94)+4; document.getElementById('dprogBar').style.width=p+'%'; document.getElementById('dprogPct').textContent=p+'%'; } };
+    xhr.onload=function(){
+      prog.style.display='none'; fileInput.value='';
+      var res={}; try{ res=JSON.parse(xhr.responseText); }catch(_){}
+      if(xhr.status>=200&&xhr.status<300&&res.ok){ addRow(res.file); toast('Uploaded · '+res.file.name); }
+      else { toast(res.error||'Upload failed.'); }
+    };
+    xhr.onerror=function(){ prog.style.display='none'; toast('Upload failed.'); };
+    xhr.send(fd);
+  });
+
+  // --- delete ---
+  document.getElementById('dpDelete').addEventListener('click', function(){
+    if(!selectedUuid) return;
+    if(!confirm('Delete this file? This cannot be undone.')) return;
+    fetch('/admin/anokii/drive/delete',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({uuid:selectedUuid})})
+      .then(function(r){ return r.json().catch(function(){return {ok:false};}); })
+      .then(function(d){
+        if(d&&d.ok){ var row=document.querySelector('.drow[data-uuid="'+CSS.escape(selectedUuid)+'"]'); if(row) row.remove(); closePanel(); applyFilter(); toast('File deleted.'); }
+        else { toast((d&&d.error)||'Could not delete.'); }
+      });
+  });
+})();
+</script>
+{% endblock %}

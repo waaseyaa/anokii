@@ -1,0 +1,587 @@
+{% extends "anokii/_shell.html.twig" %}
+
+{% block shell_styles %}
+  :root{
+    --green:#138a55; --green-soft:#e4f7ee;
+    --amber:#a96a00; --amber-soft:#fff3df;
+    --orange:#c4631f; --orange-soft:#fbe9da;
+    --grey:#5b6172; --grey-soft:#eef0f4;
+    --cyan-soft:#e3f4f8;
+    --card-shadow:0 1px 3px rgba(10,14,18,.05),0 8px 24px rgba(10,14,18,.06);
+  }
+  /* Cowork-style: the conversation is the central, widest pane; the pillars are
+     a narrower work-surface rail on the right (left column is the shell nav). */
+  .cowork{display:flex;gap:0;align-items:flex-start}
+  .cowork-chat{flex:1;min-width:0;position:sticky;top:74px;height:calc(100vh - 98px);display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:var(--card-shadow);overflow:hidden}
+  .cowork-main{flex:0 0 var(--rail-w,420px);width:var(--rail-w,420px);min-width:0}
+  /* draggable gutter between chat (middle) and the pillar rail (right) */
+  .cw-resizer{flex:0 0 26px;position:sticky;top:74px;height:calc(100vh - 98px);cursor:col-resize;touch-action:none}
+  .cw-resizer::before{content:"";position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);width:1px;background:var(--line)}
+  .cw-resizer::after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:4px;height:40px;border-radius:3px;background:#cdd3dd;transition:background .15s,height .15s}
+  .cw-resizer:hover::after,.cw-resizer.drag::after{background:var(--cyan2);height:64px}
+  @media(max-width:1180px){
+    .cowork{flex-direction:column}
+    .cowork-chat{position:static;flex:none;height:600px;max-height:74vh}
+    .cowork-main{flex:none;width:auto}
+    .cw-resizer{display:none}
+  }
+  /* maturity card */
+  .maturity{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-bottom:26px;box-shadow:var(--card-shadow)}
+  .maturity h2{font-size:11.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:0 0 13px;font-weight:600;font-family:"Oswald",sans-serif}
+  .bar{display:flex;height:14px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--bg)}
+  .bar span{display:block;height:100%;transition:width .3s}
+  .legend{display:flex;flex-wrap:wrap;gap:18px;margin-top:13px;font-size:13px;color:var(--muted);font-family:"Oswald",sans-serif}
+  .legend b{color:var(--ink);font-weight:700}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:middle}
+  .d-defined{background:var(--green)} .d-draft{background:var(--amber)} .d-work{background:var(--orange)} .d-gap{background:var(--grey)}
+  /* sections */
+  section.sec{margin:26px 0}
+  .sec-h{display:flex;align-items:baseline;gap:11px;margin:0 0 5px}
+  .sec-h .n{font-family:"Oswald",sans-serif;font-size:14px;font-weight:700;color:var(--cyan2);letter-spacing:.04em}
+  .sec-h h3{font-family:"Anton",sans-serif;text-transform:uppercase;letter-spacing:.01em;font-size:22px;margin:0;color:var(--ink)}
+  .sec-sub{color:var(--muted);margin:0 0 15px;font-size:14px;line-height:1.55;max-width:80ch}
+  /* Single-column pillar list in the right rail (a scannable work surface). */
+  .grid{display:grid;grid-template-columns:1fr;gap:14px;align-items:start}
+  @media(max-width:1180px){.grid{grid-template-columns:1fr 1fr}}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}}
+  /* card (Anokii style) */
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--card-shadow);scroll-margin-top:84px;transition:box-shadow .2s,border-color .2s}
+  .card.full{grid-column:1 / -1}
+  .card.flash{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(31,182,214,.18),var(--card-shadow)}
+  .card-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .card h4{margin:0;font-family:"Oswald",sans-serif;font-weight:600;font-size:16.5px;color:var(--ink);letter-spacing:.01em}
+  /* status pill (working selector) */
+  .status{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border:1px solid transparent;border-radius:20px;padding:5px 12px;cursor:pointer;appearance:none;font-family:"Oswald",sans-serif;flex:0 0 auto}
+  .status:focus{outline:none;box-shadow:0 0 0 3px rgba(31,182,214,.16)}
+  .s-defined{background:var(--green-soft);color:var(--green)}
+  .s-draft{background:var(--amber-soft);color:var(--amber)}
+  .s-work{background:var(--orange-soft);color:var(--orange)}
+  .s-gap{background:var(--grey-soft);color:var(--grey)}
+  /* now content + quiet quotes */
+  .now{font-size:15px;color:var(--ink);line-height:1.6}
+  .now .lbl{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:4px;font-weight:600;font-family:"Oswald",sans-serif}
+  .now blockquote{margin:4px 0 0;padding:1px 0 1px 13px;border-left:2px solid #cfe7ee;color:#3a4147;font-style:italic;font-size:15px}
+  /* refined Decide callout */
+  .decide{background:#f2f8fa;border-left:3px solid var(--cyan2);border-radius:0 8px 8px 0;padding:10px 13px;font-size:14px;color:#3a4147;line-height:1.55}
+  .decide .dl{display:block;font-family:"Oswald",sans-serif;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--cyan2);margin-bottom:3px}
+  /* live draft preview inside a pillar card (Co-Intelligence proposes here) */
+  .card.previewing{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(31,182,214,.18),var(--card-shadow)}
+  .pillar-draft{border:1px dashed var(--cyan);background:#f2fafd;border-radius:11px;overflow:hidden}
+  .pillar-draft .pd-h{font-family:"Oswald",sans-serif;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--cyan2);padding:8px 12px;border-bottom:1px solid #d7ecf3;display:flex;align-items:center;gap:7px}
+  .pillar-draft.danger{border-color:#d98b5f;background:#fdf3ec} .pillar-draft.danger .pd-h{color:#c4631f;border-bottom-color:#f0d6c4}
+  .pillar-draft .pd-body{padding:10px 12px;display:flex;flex-direction:column;gap:10px}
+  .pd-lbl{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:3px;font-weight:600;font-family:"Oswald",sans-serif}
+  .pd-now{font-size:15px;color:var(--ink);line-height:1.6}
+  .pd-row{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink)}
+  .pd-row .status{cursor:default}
+  .pd-was{font-size:13px;color:#9a4242;text-decoration:line-through;opacity:.75;line-height:1.5;overflow-wrap:anywhere}
+  .pd-new{overflow-wrap:anywhere}
+  .pd-act{display:flex;gap:8px;padding:0 12px 11px}
+  .cw-point{color:var(--cyan2);font-size:13.5px;margin:6px 0 0}
+  /* tag chips */
+  .pills{display:flex;flex-wrap:wrap;gap:6px}
+  .pill{font-size:12px;background:#eef1f3;border:1px solid var(--line);border-radius:20px;padding:3px 11px;color:#3a4147}
+  .pill.cyan{background:var(--cyan-soft);border-color:#cdeaf1;color:var(--cyan2)}
+  /* card footer: stamp + history toggle */
+  .cfoot{display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid var(--line);padding-top:10px;margin-top:1px}
+  .edited{font-size:12px;color:var(--muted);font-family:"Oswald",sans-serif;letter-spacing:.02em;min-height:15px}
+  .saveflash{color:var(--cyan2)}
+  .hbtn{font-family:"Oswald",sans-serif;font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--cyan2);background:none;border:none;cursor:pointer;padding:2px 4px;flex:0 0 auto}
+  .hbtn:hover{text-decoration:underline}
+  .hbtn:focus{outline:none;box-shadow:0 0 0 3px rgba(31,182,214,.16);border-radius:4px}
+  /* history panel */
+  .hist{display:none;border-top:1px dashed var(--line);padding-top:10px;margin-top:2px}
+  .hist.open{display:block}
+  .hist ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+  .hist li{display:flex;gap:10px;font-size:13px;line-height:1.45}
+  .hist .stat{flex:0 0 auto;width:8px;height:8px;border-radius:2px;margin-top:5px}
+  .hist .meta{color:var(--muted);font-family:"Oswald",sans-serif;font-size:11.5px;letter-spacing:.02em}
+  .hist .sum{color:var(--ink)}
+  .hist .cur{color:var(--cyan2);font-weight:700}
+  .hist .empty{color:var(--muted);font-size:13px}
+  /* peer-language (translation) panel */
+  .oj{border-top:1px dashed var(--line);padding-top:11px;margin-top:1px}
+  .oj-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .oj-lbl{font-family:"Oswald",sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.13em;color:var(--cyan2)}
+  .oj-edit{font-family:"Oswald",sans-serif;font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--cyan2);background:none;border:none;cursor:pointer;padding:2px 4px}
+  .oj-edit:hover{text-decoration:underline}
+  .oj-view{margin-top:6px}
+  .oj-title{font-family:"Oswald",sans-serif;font-weight:600;font-size:15px;color:var(--ink);letter-spacing:.01em}
+  .oj-body{font-size:13.5px;line-height:1.5;color:var(--ink);margin-top:3px}
+  .oj-stamp{font-size:11.5px;color:var(--muted);font-family:"Oswald",sans-serif;letter-spacing:.02em;margin-top:5px;min-height:14px}
+  .oj-empty{font-size:13px;color:var(--muted);font-style:italic;margin-top:6px}
+  .oj-form{margin-top:8px;display:flex;flex-direction:column;gap:8px}
+  .oj-in-title,.oj-in-body{width:100%;box-sizing:border-box;font-family:inherit;font-size:14px;color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:var(--bg)}
+  .oj-in-body{resize:vertical;line-height:1.5}
+  .oj-in-title:focus,.oj-in-body:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(31,182,214,.16)}
+  .oj-actions{display:flex;align-items:center;gap:8px}
+  .oj-save{font-family:"Oswald",sans-serif;font-size:13px;font-weight:600;letter-spacing:.03em;color:#fff;background:var(--cyan2);border:none;border-radius:8px;padding:6px 14px;cursor:pointer}
+  .oj-save:hover{filter:brightness(1.05)}
+  .oj-save:disabled{opacity:.55;cursor:default}
+  .oj-cancel,.oj-hist{font-family:"Oswald",sans-serif;font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--cyan2);background:none;border:none;cursor:pointer;padding:4px 6px}
+  .oj-cancel:hover,.oj-hist:hover{text-decoration:underline}
+  .oj-hist{margin-left:auto}
+  .oj-history{display:none;border-top:1px dashed var(--line);padding-top:9px;margin-top:8px}
+  .oj-history.open{display:block}
+  .oj-history ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+  .oj-history li{font-size:13px;line-height:1.45}
+  .oj-history .meta{color:var(--muted);font-family:"Oswald",sans-serif;font-size:11.5px;letter-spacing:.02em}
+  .oj-history .ttl{color:var(--ink)}
+  .oj-history .cur{color:var(--cyan2);font-weight:700}
+  .oj-history .empty{color:var(--muted);font-size:13px}
+  /* Co-Intelligence companion panel */
+  .cw-head{display:flex;align-items:center;gap:11px;padding:14px 16px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#f7fbfc,#fff)}
+  .cw-ava{flex:0 0 auto;width:34px;height:34px;border-radius:10px;background:var(--cyan2);color:#fff;display:flex;align-items:center;justify-content:center;font-family:"Anton",sans-serif;font-size:15px;letter-spacing:.02em}
+  .cw-head b{font-family:"Oswald",sans-serif;font-weight:600;font-size:15px;color:var(--ink);display:block;line-height:1.2}
+  .cw-head small{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .cw-head small::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--green)}
+  .cw-new{margin-left:auto;flex:0 0 auto;font-family:"Oswald",sans-serif;font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--cyan2);background:#fff;border:1px solid var(--line);border-radius:8px;padding:5px 11px;cursor:pointer}
+  .cw-new:hover{background:var(--cyan-soft);border-color:#cdeaf1}
+  .cw-stream{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:13px;background:var(--bg)}
+  .imsg{display:flex;gap:9px;align-items:flex-start}
+  .imsg .av{flex:0 0 auto;width:26px;height:26px;border-radius:8px;font-family:"Oswald",sans-serif;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;color:#fff}
+  .imsg.user{flex-direction:row-reverse}
+  .imsg.user .av{background:var(--ink)} .imsg.ai .av{background:var(--cyan2)}
+  .ibub{background:#fff;border:1px solid var(--line);border-radius:13px;padding:10px 13px;font-size:14.5px;line-height:1.58;color:var(--ink);max-width:86%;overflow-wrap:anywhere;box-shadow:0 1px 2px rgba(10,14,18,.04)}
+  .imsg.user .ibub{background:#0a0e12;border-color:#0a0e12;color:#eaf6f9}
+  .ibub p{margin:0 0 7px} .ibub p:last-child{margin:0} .ibub strong{font-weight:700}
+  .cw-chips{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 0 35px}
+  .cw-chip{font-size:12.5px;background:#fff;border:1px solid var(--line);border-radius:20px;padding:6px 12px;color:var(--cyan2);cursor:pointer;font-family:"Oswald",sans-serif;letter-spacing:.01em}
+  .cw-chip:hover{background:var(--cyan-soft);border-color:#cdeaf1}
+  .cw-foot{border-top:1px solid var(--line);padding:11px;display:flex;gap:8px;align-items:flex-end;background:#fff}
+  .cw-foot textarea{flex:1;border:1px solid var(--line);border-radius:11px;padding:10px 12px;font:inherit;font-size:14.5px;line-height:1.5;resize:none;height:42px;max-height:140px;color:var(--ink);background:var(--bg)}
+  .cw-foot textarea:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(31,182,214,.14);background:#fff}
+  .cw-send{flex:0 0 auto;background:var(--cyan2);color:#fff;border:none;border-radius:11px;height:42px;padding:0 16px;font-family:"Oswald",sans-serif;font-weight:600;font-size:14px;cursor:pointer}
+  .cw-send:hover{background:#0f6f85} .cw-send:disabled{opacity:.5;cursor:default}
+  .iwork{display:inline-flex;align-items:center;gap:7px;color:var(--muted);font-size:13.5px}
+  .iwork .d{width:6px;height:6px;border-radius:50%;background:var(--cyan2);animation:ipulse 1s infinite}
+  @keyframes ipulse{0%,100%{opacity:.3}50%{opacity:1}}
+  /* proposal card inside the conversation */
+  .iprop{margin-top:9px;border:1px solid var(--cyan);border-radius:11px;background:#f2fafd;overflow:hidden}
+  .iprop.danger{border-color:#d98b5f;background:#fdf3ec}
+  .iprop .ph{font-family:"Oswald",sans-serif;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--cyan2);padding:8px 12px;border-bottom:1px solid #d7ecf3}
+  .iprop.danger .ph{color:#c4631f}
+  .iprop .ps{padding:9px 12px 4px;font-weight:600;font-size:14px;color:var(--ink)}
+  .iprop ul.pd{list-style:none;margin:0;padding:4px 12px 8px;display:flex;flex-direction:column;gap:5px}
+  .iprop ul.pd li{font-size:13px;line-height:1.45;display:flex;flex-wrap:wrap;gap:6px;align-items:baseline}
+  .iprop .f{font-family:"Oswald",sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);min-width:74px}
+  .iprop .b{color:#9a4242;text-decoration:line-through;opacity:.85;overflow-wrap:anywhere} .iprop .a{color:#138a55;font-weight:600;overflow-wrap:anywhere}
+  .iprop .pact{display:flex;gap:8px;padding:8px 12px 11px}
+  .ipb{font-family:"Oswald",sans-serif;font-size:13px;font-weight:600;border-radius:9px;padding:6px 16px;cursor:pointer;border:1px solid transparent}
+  .ipb.ok{background:var(--cyan);color:#06303a} .ipb.no{background:#fff;color:#5b6172;border-color:var(--line)} .ipb:disabled{opacity:.5;cursor:default}
+{% endblock %}
+
+{% block content %}
+{% set order = ['defined','draft','work','gap'] %}
+{% set colorvar = {'defined':'var(--green)','draft':'var(--amber)','work':'var(--orange)','gap':'var(--grey)'} %}
+<div class="cowork">
+  <aside class="cowork-chat" aria-label="Co-Intelligence assistant">
+    <div class="cw-head">
+      <div class="cw-ava">CI</div>
+      <div><b>Co-Intelligence</b><small>Working on Identity with you</small></div>
+      <button type="button" class="cw-new" id="cwNew" title="Start a new chat">New chat</button>
+    </div>
+    <div class="cw-stream" id="cwStream">
+      <div class="imsg ai" id="cwIntro"><div class="av">CI</div><div class="ibub">Aanii. I can read and refine the Identity pillars with you. Ask me anything, or tell me what to change. When I draft an edit, it appears right on the pillar for you to approve before anything is written.</div></div>
+      <div class="cw-chips" id="cwChips">
+        <button type="button" class="cw-chip">What is still a gap?</button>
+        <button type="button" class="cw-chip">Read the Purpose pillar</button>
+        <button type="button" class="cw-chip">Summarize the Foundation pillars</button>
+      </div>
+    </div>
+    <div class="cw-foot">
+      <textarea id="cwInput" rows="1" placeholder="Ask Co-Intelligence to read or update a pillar..."></textarea>
+      <button type="button" class="cw-send" id="cwSend">Send</button>
+    </div>
+  </aside>
+
+  <div class="cw-resizer" id="cwResizer" role="separator" aria-orientation="vertical" title="Drag to resize. Double-click to reset."></div>
+
+  <div class="cowork-main">
+    <div class="ahead">
+      <p class="ey">Identity Workspace</p>
+      <h1>Identity Workspace</h1>
+      <p class="sub">The pillars are on the right. Ask Co-Intelligence here to read or change them. When it drafts an edit, it appears on the pillar for you to approve, attributed to you and saved as a revision.</p>
+    </div>
+
+    <div class="maturity">
+      <h2>Identity maturity</h2>
+      <div class="bar" id="bar">
+        {% for k in order %}
+          <span data-k="{{ k }}" style="width: {{ counts.total ? (counts[k] / counts.total * 100)|round(2) : 0 }}%; background: {{ colorvar[k] }}"></span>
+        {% endfor %}
+      </div>
+      <div class="legend">
+        <span><span class="dot d-defined"></span><b id="c-defined">{{ counts.defined }}</b> Defined</span>
+        <span><span class="dot d-draft"></span><b id="c-draft">{{ counts.draft }}</b> Draft / legacy</span>
+        <span><span class="dot d-work"></span><b id="c-work">{{ counts.work }}</b> Needs work</span>
+        <span><span class="dot d-gap"></span><b id="c-gap">{{ counts.gap }}</b> Gap</span>
+      </div>
+    </div>
+
+    {% for sec in sections %}
+      {% if sec.pillars is not empty %}
+      <section class="sec">
+        <div class="sec-h"><span class="n">{{ sec.no }}</span><h3>{{ sec.title }}</h3></div>
+        <p class="sec-sub">{{ sec.sub }}</p>
+        <div class="grid">
+          {% for p in sec.pillars %}
+          <div class="card{{ p.is_full ? ' full' : '' }}" id="pillar-{{ p.pid }}" data-pid="{{ p.pid }}" data-status="{{ p.status }}">
+            <div class="card-top">
+              <h4>{{ p.title }}</h4>
+              <select class="status s-{{ p.status }}" data-pid="{{ p.pid }}" aria-label="Status for {{ p.title }}">
+                {% for s in statuses %}<option value="{{ s.v }}"{{ s.v == p.status ? ' selected' : '' }}>{{ s.t }}</option>{% endfor %}
+              </select>
+            </div>
+            {% if p.body is not empty or p.now_label is not empty %}
+            <div class="now">
+              {% if p.now_label is not empty %}<span class="lbl">{{ p.now_label }}</span>{% endif %}
+              {% if p.body is not empty %}
+                {% if p.is_quote %}<blockquote>"{{ p.body }}"</blockquote>{% else %}{{ p.body }}{% endif %}
+              {% endif %}
+            </div>
+            {% endif %}
+            {% if p.pills is not empty %}
+            <div class="pills">
+              {% for pill in p.pills %}<span class="pill{{ pill.cyan ? ' cyan' : '' }}">{{ pill.t }}</span>{% endfor %}
+            </div>
+            {% endif %}
+            {% if p.decision is not empty %}
+            <div class="decide"><span class="dl">{{ p.decide_label }}</span>{{ p.decision }}</div>
+            {% endif %}
+            {% for t in p.translations %}
+            <div class="oj" data-pid="{{ p.pid }}" data-lang="{{ t.langcode }}">
+              <div class="oj-top">
+                <span class="oj-lbl">{{ t.endonym }}</span>
+                <button type="button" class="oj-edit" aria-expanded="false">{{ t.translated ? 'Edit' : 'Add' }}</button>
+              </div>
+              <div class="oj-view"{{ t.translated ? '' : ' hidden' }}>
+                <div class="oj-title">{{ t.title }}</div>
+                {% if t.body is not empty %}<div class="oj-body">{{ t.body }}</div>{% endif %}
+                <div class="oj-stamp">{%- if t.last_edited_by is not empty -%}{{ t.endonym }} &middot; {{ t.last_edited_by }} &middot; {{ t.last_edited_at }}{%- endif -%}</div>
+              </div>
+              <div class="oj-empty"{{ t.translated ? ' hidden' : '' }}>Not yet in {{ t.endonym }}.</div>
+              <div class="oj-form" hidden>
+                <input class="oj-in-title" type="text" placeholder="{{ t.endonym }} title" value="{{ t.title }}">
+                <textarea class="oj-in-body" rows="3" placeholder="{{ t.endonym }} statement">{{ t.body }}</textarea>
+                <div class="oj-actions">
+                  <button type="button" class="oj-save">Save</button>
+                  <button type="button" class="oj-cancel">Cancel</button>
+                  <button type="button" class="oj-hist" aria-expanded="false">History</button>
+                </div>
+              </div>
+              <div class="oj-history" hidden></div>
+            </div>
+            {% endfor %}
+            <div class="cfoot">
+              <div class="edited" data-pid="{{ p.pid }}">
+                {%- if p.last_edited_by is not empty -%}Last edited by {{ p.last_edited_by }} &middot; {{ p.last_edited_at }}{%- endif -%}
+              </div>
+              <button type="button" class="hbtn" data-pid="{{ p.pid }}" aria-expanded="false">History</button>
+            </div>
+            <div class="hist" data-pid="{{ p.pid }}" hidden></div>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+// Pillar work surface: inline status + notes edits (saved as revisions), history.
+(function(){
+  var order=['defined','draft','work','gap'];
+  var colorvar={defined:'var(--green)',draft:'var(--amber)',work:'var(--orange)',gap:'var(--grey)'};
+  function applyCounts(counts){
+    if(!counts) return;
+    var total=counts.total||0;
+    order.forEach(function(k){
+      var b=document.getElementById('c-'+k); if(b) b.textContent=counts[k];
+      var seg=document.querySelector('#bar span[data-k="'+k+'"]');
+      if(seg) seg.style.width=(total?(counts[k]/total*100):0)+'%';
+    });
+  }
+  function stamp(pid, by, at){
+    var el=document.querySelector('.edited[data-pid="'+pid+'"]');
+    if(el && by){ el.innerHTML='Last edited by '+by+' · '+at; el.classList.add('saveflash'); setTimeout(function(){el.classList.remove('saveflash');},900); }
+  }
+  function save(body){
+    return fetch('/admin/anokii/identity/save',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(body)})
+      .then(function(r){ return r.json().catch(function(){return {ok:false};}); });
+  }
+  document.querySelectorAll('select.status').forEach(function(sel){
+    sel.addEventListener('change',function(){
+      var pid=sel.getAttribute('data-pid'), v=sel.value;
+      var card=sel.closest('.card');
+      card.setAttribute('data-status',v);
+      sel.className='status s-'+v;
+      save({pid:pid,status:v}).then(function(d){ if(d&&d.ok){ applyCounts(d.counts); stamp(pid,d.last_edited_by,d.last_edited_at); refreshIfOpen(pid); } });
+    });
+  });
+  function renderHistory(panel, revisions){
+    if(!revisions || !revisions.length){ panel.innerHTML='<p class="empty">No history yet.</p>'; return; }
+    var html='<ol>';
+    revisions.forEach(function(r){
+      var c=colorvar[r.status]||'var(--grey)';
+      html+='<li><span class="stat" style="background:'+c+'"></span><div>'
+        +'<div class="sum">'+escapeHtml(r.summary||('Status '+r.status))+(r.is_current?' <span class="cur">(current)</span>':'')+'</div>'
+        +'<div class="meta">'+escapeHtml(r.editor)+' · '+escapeHtml(r.when)+'</div>'
+        +'</div></li>';
+    });
+    html+='</ol>';
+    panel.innerHTML=html;
+  }
+  function escapeHtml(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function loadHistory(pid){
+    var panel=document.querySelector('.hist[data-pid="'+pid+'"]');
+    if(!panel) return Promise.resolve();
+    panel.innerHTML='<p class="empty">Loading...</p>';
+    return fetch('/admin/anokii/identity/'+encodeURIComponent(pid)+'/history',{credentials:'same-origin'})
+      .then(function(r){ return r.json().catch(function(){return {ok:false};}); })
+      .then(function(d){ renderHistory(panel, d&&d.ok?d.revisions:[]); });
+  }
+  function refreshIfOpen(pid){
+    var panel=document.querySelector('.hist[data-pid="'+pid+'"]');
+    if(panel && panel.classList.contains('open')){ loadHistory(pid); }
+  }
+  document.querySelectorAll('.hbtn').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var pid=btn.getAttribute('data-pid');
+      var panel=document.querySelector('.hist[data-pid="'+pid+'"]');
+      if(!panel) return;
+      var open=panel.classList.toggle('open');
+      panel.hidden=!open;
+      btn.setAttribute('aria-expanded',open?'true':'false');
+      btn.textContent=open?'Hide history':'History';
+      if(open){ loadHistory(pid); }
+    });
+  });
+
+  // Peer-language panel: edit title + body, saved as a per-language revision;
+  // per-language history is an independent timeline.
+  function ojRenderHistory(panel, revisions){
+    if(!revisions || !revisions.length){ panel.innerHTML='<p class="empty">No history yet.</p>'; return; }
+    var html='<ol>';
+    revisions.forEach(function(r){
+      html+='<li><div class="ttl">'+escapeHtml(r.title||'(untitled)')+(r.is_current?' <span class="cur">(current)</span>':'')+'</div>'
+        +'<div class="meta">'+escapeHtml(r.editor)+' · '+escapeHtml(r.when)+'</div></li>';
+    });
+    html+='</ol>'; panel.innerHTML=html;
+  }
+  document.querySelectorAll('.oj').forEach(function(box){
+    var pid=box.getAttribute('data-pid'), lang=box.getAttribute('data-lang');
+    var view=box.querySelector('.oj-view'), empty=box.querySelector('.oj-empty'),
+        form=box.querySelector('.oj-form'), editBtn=box.querySelector('.oj-edit'),
+        lbl=box.querySelector('.oj-lbl'), titleEl=box.querySelector('.oj-title'),
+        bodyEl=box.querySelector('.oj-body'), stamp=box.querySelector('.oj-stamp'),
+        hist=box.querySelector('.oj-history'), inTitle=box.querySelector('.oj-in-title'),
+        inBody=box.querySelector('.oj-in-body'), saveBtn=box.querySelector('.oj-save'),
+        cancelBtn=box.querySelector('.oj-cancel'), histBtn=box.querySelector('.oj-hist');
+    function openForm(o){ form.hidden=!o; editBtn.setAttribute('aria-expanded',o?'true':'false'); editBtn.textContent=o?'Close':(titleEl.textContent.trim()?'Edit':'Add'); if(o){ inTitle.focus(); } }
+    editBtn.addEventListener('click',function(){ openForm(form.hidden); });
+    cancelBtn.addEventListener('click',function(){ openForm(false); });
+    function loadOjHistory(){
+      hist.innerHTML='<p class="empty">Loading...</p>';
+      return fetch('/admin/anokii/identity/'+encodeURIComponent(pid)+'/'+encodeURIComponent(lang)+'/history',{credentials:'same-origin'})
+        .then(function(r){ return r.json().catch(function(){return {ok:false};}); })
+        .then(function(d){ ojRenderHistory(hist, d&&d.ok?d.revisions:[]); });
+    }
+    saveBtn.addEventListener('click',function(){
+      var title=(inTitle.value||'').trim(), body=inBody.value||'';
+      if(!title){ inTitle.focus(); return; }
+      saveBtn.disabled=true;
+      fetch('/admin/anokii/identity/translate',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({pid:pid,langcode:lang,title:title,body:body})})
+        .then(function(r){ return r.json().catch(function(){return {ok:false};}); })
+        .then(function(d){
+          saveBtn.disabled=false;
+          if(!d||!d.ok){ alert((d&&d.error)||'Could not save the translation.'); return; }
+          titleEl.textContent=title;
+          if(!bodyEl && body){ bodyEl=document.createElement('div'); bodyEl.className='oj-body'; titleEl.insertAdjacentElement('afterend',bodyEl); }
+          if(bodyEl){ if(body){ bodyEl.textContent=body; } else { bodyEl.remove(); bodyEl=null; } }
+          stamp.innerHTML = d.last_edited_by ? (escapeHtml(lbl.textContent)+' · '+escapeHtml(d.last_edited_by)+' · '+escapeHtml(d.last_edited_at)) : '';
+          view.hidden=false; empty.hidden=true; openForm(false);
+          if(hist.classList.contains('open')){ loadOjHistory(); }
+        });
+    });
+    histBtn.addEventListener('click',function(){
+      var open=hist.classList.toggle('open'); hist.hidden=!open;
+      histBtn.setAttribute('aria-expanded',open?'true':'false'); histBtn.textContent=open?'Hide history':'History';
+      if(open){ loadOjHistory(); }
+    });
+  });
+})();
+
+// Co-Intelligence companion: talks to the live agent endpoints
+// (/admin/anokii/cointelligence/send + /apply) with confirm-before-apply. On an
+// applied change it refreshes so the pillars + maturity bar reflect it.
+(function(){
+  var stream=document.getElementById('cwStream');
+  var input=document.getElementById('cwInput');
+  var sendBtn=document.getElementById('cwSend');
+  var chips=document.getElementById('cwChips');
+  var newBtn=document.getElementById('cwNew');
+  if(!stream||!input||!sendBtn) return;
+  var cid=0, busy=false, didApply=false;
+  var CIDKEY='anokiiIdentityCid';
+  function rememberCid(id){ cid=id; try{ localStorage.setItem(CIDKEY,String(id)); }catch(e){} }
+  function forgetCid(){ cid=0; try{ localStorage.removeItem(CIDKEY); }catch(e){} }
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  // Render the agent's markdown through the shared renderer (/js/anokii-md.js:
+  // tables, rules, lists, headings, pillar-status pills). Falls back to escaped
+  // text with line breaks if the shared script is unavailable.
+  function fmt(t){ if(window.AnokiiMd && window.AnokiiMd.render){ return window.AnokiiMd.render(t); } return '<p>'+esc(t).replace(/\n/g,'<br>')+'</p>'; }
+  function fmtVal(v){ if(v===null||v===undefined||v==='') return '(none)'; if(typeof v==='object') return JSON.stringify(v); var s=String(v); return s.length>140?s.slice(0,137)+'...':s; }
+  function fullVal(v){ if(v===null||v===undefined||v==='') return '(empty)'; if(typeof v==='object') return JSON.stringify(v); return String(v); }
+  function addMsg(role){ var m=document.createElement('div'); m.className='imsg '+(role==='user'?'user':'ai'); var a=document.createElement('div'); a.className='av'; a.textContent=role==='user'?'YOU':'CI'; var b=document.createElement('div'); b.className='ibub'; m.appendChild(a); m.appendChild(b); stream.appendChild(m); stream.scrollTop=stream.scrollHeight; return b; }
+  function frames(buf,on){ var parts=buf.split('\n\n'); var rest=parts.pop(); parts.forEach(function(bl){ var ev='message',data=''; bl.split('\n').forEach(function(l){ if(l.indexOf('event:')===0)ev=l.slice(6).trim(); else if(l.indexOf('data:')===0)data+=l.slice(5).trim(); }); if(data){ try{ on(ev,JSON.parse(data)); }catch(e){} } }); return rest; }
+
+  function send(q){ q=(q||input.value||'').trim(); if(!q||busy) return; if(chips){ chips.remove(); chips=null; } input.value=''; input.style.height='42px'; addMsg('user').textContent=q; var bub=addMsg('ai'); bub.innerHTML='<span class="iwork"><span class="d"></span>Thinking...</span>'; consume('/admin/anokii/cointelligence/send',{question:q,conversation_id:cid},bub); }
+
+  function consume(url,body,bub){
+    busy=true; sendBtn.disabled=true; var raw='',proposed=false,started=false;
+    fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Accept':'text/event-stream'},credentials:'same-origin',body:JSON.stringify(body)})
+    .then(function(r){ if(!r.ok||!r.body) throw new Error('bad'); var rd=r.body.getReader(),dec=new TextDecoder(),buf='';
+      function pump(){ return rd.read().then(function(res){ if(res.done){ fin(); return; } buf+=dec.decode(res.value,{stream:true}); buf=frames(buf,function(ev,d){
+        if(ev==='meta'){ if(d.conversation_id) rememberCid(d.conversation_id); }
+        else if(ev==='delta'){ if(!started){ bub.textContent=''; started=true; } raw+=d.text||''; bub.textContent=raw; stream.scrollTop=stream.scrollHeight; }
+        else if(ev==='proposal'){ proposed=true; routeProposal(bub,raw,d); }
+        else if(ev==='applied'){ if(d.ok) didApply=true; else if(d.error){ if(!started){ bub.textContent=''; started=true; } raw+=(raw?'
+
+':'')+d.error; bub.textContent=raw; stream.scrollTop=stream.scrollHeight; } }
+      }); return pump(); }); }
+      function fin(){ if(!proposed){ bub.innerHTML=fmt(raw)||'<p>Done.</p>'; } busy=false; sendBtn.disabled=false; stream.scrollTop=stream.scrollHeight; if(didApply){ var n=addMsg('ai'); n.innerHTML='<span class="iwork"><span class="d"></span>Change applied. Refreshing the pillars...</span>'; setTimeout(function(){ location.reload(); },1400); } }
+      return pump();
+    }).catch(function(){ if(!proposed) bub.innerHTML='<p>Sorry, something went wrong. Please try again.</p>'; busy=false; sendBtn.disabled=false; });
+  }
+
+  function card(bub,lead,d){
+    var h=lead?fmt(lead):''; h+='<div class="iprop'+(d.destructive?' danger':'')+'"><div class="ph">Proposed change'+(d.destructive?' (delete)':'')+'</div><div class="ps">'+esc(d.summary||'')+'</div>';
+    if(d.diff&&d.diff.length){ h+='<ul class="pd">'; d.diff.forEach(function(x){ h+='<li><span class="f">'+esc(x.field)+'</span><span class="b">'+esc(fmtVal(x.before))+'</span><span>&rarr;</span><span class="a">'+esc(fmtVal(x.after))+'</span></li>'; }); h+='</ul>'; }
+    h+='<div class="pact"><button class="ipb ok">Approve</button><button class="ipb no">Reject</button></div></div>';
+    bub.innerHTML=h; busy=false; sendBtn.disabled=false;
+    var c=bub.querySelector('.iprop');
+    c.querySelector('.ok').addEventListener('click',function(){ decide(c,d.token,'approve'); });
+    c.querySelector('.no').addEventListener('click',function(){ decide(c,d.token,'reject'); });
+    stream.scrollTop=stream.scrollHeight;
+  }
+  function decide(c,token,decision){ if(busy) return; [].slice.call(c.querySelectorAll('.ipb')).forEach(function(b){ b.disabled=true; }); var bub=addMsg('ai'); bub.innerHTML='<span class="iwork"><span class="d"></span>'+(decision==='approve'?'Applying...':'Cancelling...')+'</span>'; consume('/admin/anokii/cointelligence/apply',{token:token,decision:decision},bub); }
+
+  // A proposal that targets a pillar visible on the page is previewed as a draft
+  // on that pillar card (with Approve / Reject right there). Anything else
+  // (new items, documents, drive, or an off-screen pillar) falls back to a card
+  // inside the conversation.
+  function routeProposal(bub,lead,d){
+    var pid=(d.target&&d.target.entity_type==='identity_pillar')?d.target.pid:'';
+    var pcard=pid?document.getElementById('pillar-'+pid):null;
+    if(pcard){ previewOnPillar(pcard,d); pointer(bub,lead,pcard); busy=false; sendBtn.disabled=false; stream.scrollTop=stream.scrollHeight; }
+    else { card(bub,lead,d); }
+  }
+  function pointer(bub,lead,pcard){
+    var t=pcard.querySelector('h4'); var title=t?t.textContent:'the pillar';
+    var h=lead?fmt(lead):'';
+    h+='<p class="cw-point">I drafted this on the <strong>'+esc(title)+'</strong> pillar. Review and approve it there.</p>';
+    bub.innerHTML=h;
+  }
+  function statusPill(v){ return '<span class="status s-'+esc(v)+'">'+esc(v)+'</span>'; }
+  function draftBody(d){
+    var diff=d.diff||[];
+    if(!diff.length) return '<div class="pd-row">'+esc(d.summary||'Proposed change')+'</div>';
+    var out='';
+    diff.forEach(function(x){
+      var f=x.field;
+      if(f==='status'){ out+='<div class="pd-row"><span class="pd-lbl" style="margin:0">Status</span>'+statusPill(x.after)+'</div>'; }
+      else if(f==='body'){ out+='<div class="pd-now"><span class="pd-lbl">New statement</span><div class="pd-new">'+esc(fullVal(x.after))+'</div>'+(x.before?'<div class="pd-was">'+esc(fmtVal(x.before))+'</div>':'')+'</div>'; }
+      else if(f==='decision'){ out+=(x.after===''||x.after==null)?'<div class="pd-row">Clears the "Decide" prompt.</div>':'<div class="pd-now"><span class="pd-lbl">Decide</span><div class="pd-new">'+esc(fullVal(x.after))+'</div></div>'; }
+      else if(f==='notes'){ out+='<div class="pd-now"><span class="pd-lbl">Draft note</span><div class="pd-new">'+esc(fullVal(x.after))+'</div></div>'; }
+      else if(f==='(delete)'){ out+='<div class="pd-row">This pillar will be deleted.</div>'; }
+      else { out+='<div class="pd-row"><span class="pd-lbl" style="margin:0">'+esc(f)+'</span><span class="pd-was">'+esc(fmtVal(x.before))+'</span> &rarr; <strong>'+esc(fmtVal(x.after))+'</strong></div>'; }
+    });
+    return out;
+  }
+  function previewOnPillar(pcard,d){
+    var old=pcard.querySelector('.pillar-draft'); if(old) old.remove();
+    var panel=document.createElement('div');
+    panel.className='pillar-draft'+(d.destructive?' danger':'');
+    panel.innerHTML='<div class="pd-h">&#9998; Draft from Co-Intelligence</div><div class="pd-body">'+draftBody(d)+'</div><div class="pd-act"><button class="ipb ok">Approve</button><button class="ipb no">Reject</button></div>';
+    var top=pcard.querySelector('.card-top');
+    if(top&&top.nextSibling) pcard.insertBefore(panel,top.nextSibling); else pcard.appendChild(panel);
+    pcard.classList.add('previewing');
+    panel.querySelector('.ok').addEventListener('click',function(){ decidePillar(d,'approve',pcard); });
+    panel.querySelector('.no').addEventListener('click',function(){ decidePillar(d,'reject',pcard); });
+    try{ pcard.scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){}
+  }
+  function clearPillarPreview(pcard){ var p=pcard.querySelector('.pillar-draft'); if(p) p.remove(); pcard.classList.remove('previewing'); }
+  function decidePillar(d,decision,pcard){
+    if(busy) return;
+    var panel=pcard.querySelector('.pillar-draft');
+    if(panel){ [].slice.call(panel.querySelectorAll('.ipb')).forEach(function(b){ b.disabled=true; }); }
+    if(decision==='reject'){ clearPillarPreview(pcard); }
+    var bub=addMsg('ai'); bub.innerHTML='<span class="iwork"><span class="d"></span>'+(decision==='approve'?'Applying...':'Cancelling...')+'</span>';
+    consume('/admin/anokii/cointelligence/apply',{token:d.token,decision:decision},bub);
+  }
+
+  sendBtn.addEventListener('click', function(){ send(); });
+  input.addEventListener('keydown', function(e){ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); send(); } });
+  input.addEventListener('input', function(){ input.style.height='42px'; input.style.height=Math.min(input.scrollHeight,140)+'px'; });
+  if(chips){ chips.querySelectorAll('.cw-chip').forEach(function(b){ b.addEventListener('click', function(){ send(b.textContent); }); }); }
+
+  // Chat history: the Identity thread id is kept in localStorage so it survives
+  // the page reload that follows applying a change. On load, rehydrate prior
+  // turns; "New chat" starts a fresh thread.
+  function renderTurn(m){ var bub=addMsg(m.role==='user'?'user':'ai'); if(m.role==='user'){ bub.textContent=m.content; } else { bub.innerHTML=fmt(m.content)||'<p>...</p>'; } return bub; }
+  function loadThread(id){
+    fetch('/admin/anokii/cointelligence/'+encodeURIComponent(id)+'/messages',{credentials:'same-origin'})
+      .then(function(r){ return r.ok?r.json():null; })
+      .then(function(d){
+        if(!d||!d.ok){ forgetCid(); return; }
+        cid=id;
+        if(!d.messages||!d.messages.length) return;
+        var intro=document.getElementById('cwIntro'); if(intro) intro.remove();
+        if(chips){ chips.remove(); chips=null; }
+        d.messages.forEach(renderTurn);
+        stream.scrollTop=stream.scrollHeight;
+      }).catch(function(){});
+  }
+  function newChat(){
+    if(busy) return;
+    forgetCid(); didApply=false;
+    stream.innerHTML='';
+    var bub=addMsg('ai'); var wrap=bub.closest('.imsg'); if(wrap) wrap.id='cwIntro';
+    bub.innerHTML='Aanii. Fresh thread. Ask me anything about the Identity pillars, or tell me what to change. When I draft an edit, it appears on the pillar for you to approve.';
+    input.focus();
+  }
+  if(newBtn){ newBtn.addEventListener('click', newChat); }
+  var startId=0; try{ startId=parseInt(localStorage.getItem(CIDKEY)||'0',10)||0; }catch(e){}
+  if(startId>0){ loadThread(startId); }
+})();
+
+// Resizable gutter between the chat (middle) and the pillar rail (right). The
+// left shell nav is untouched. Width persists in localStorage; double-click resets.
+(function(){
+  var cowork=document.querySelector('.cowork');
+  var rail=document.querySelector('.cowork-main');
+  var rez=document.getElementById('cwResizer');
+  if(!cowork||!rail||!rez) return;
+  var KEY='anokiiRailW', MIN=320, MAXHARD=760, cur=420;
+  function maxW(){ return Math.min(MAXHARD, Math.round(cowork.getBoundingClientRect().width*0.6)); }
+  function setW(w){ w=Math.round(Math.max(MIN, Math.min(maxW(), w))); cur=w; rail.style.setProperty('--rail-w', w+'px'); }
+  var stored=0; try{ stored=parseInt(localStorage.getItem(KEY)||'0',10)||0; }catch(e){}
+  if(stored>0) setW(stored);
+  var dragging=false;
+  function pt(e){ return (e.touches&&e.touches[0])?e.touches[0].clientX:e.clientX; }
+  function onDown(e){ dragging=true; rez.classList.add('drag'); document.body.style.userSelect='none'; document.body.style.cursor='col-resize'; e.preventDefault(); }
+  function onMove(e){ if(!dragging) return; setW(cowork.getBoundingClientRect().right - pt(e)); e.preventDefault(); }
+  function onUp(){ if(!dragging) return; dragging=false; rez.classList.remove('drag'); document.body.style.userSelect=''; document.body.style.cursor=''; try{ localStorage.setItem(KEY,String(cur)); }catch(e){} }
+  rez.addEventListener('mousedown',onDown);
+  window.addEventListener('mousemove',onMove);
+  window.addEventListener('mouseup',onUp);
+  rez.addEventListener('touchstart',onDown,{passive:false});
+  window.addEventListener('touchmove',onMove,{passive:false});
+  window.addEventListener('touchend',onUp);
+  rez.addEventListener('dblclick',function(){ rail.style.removeProperty('--rail-w'); cur=420; try{ localStorage.removeItem(KEY); }catch(e){} });
+})();
+</script>
+{% endblock %}

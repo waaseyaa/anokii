@@ -1,0 +1,85 @@
+{% extends "anokii/_shell.html.twig" %}
+
+{% block title %}Analytics{% endblock %}
+
+{% block shell_styles %}
+  .abar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+  .aspacer{flex:1}
+  .abar form{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .abar label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted,#6b7076)}
+  .abar input[type=date]{border:1px solid var(--color-line,#e3e1db);border-radius:9px;padding:7px 10px;font:inherit;font-size:13px;background:var(--color-card,#fff)}
+  .abar button{font-size:13px;border-radius:9px;padding:8px 14px;border:1px solid var(--color-primary,#0f766e);background:var(--color-primary,#0f766e);color:var(--color-primary-ink,#fff);cursor:pointer}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px}
+  .stat{background:var(--color-card,#fff);border:1px solid var(--color-line,#e3e1db);border-radius:14px;padding:18px 20px}
+  .stat b{display:block;font-size:34px;font-weight:800;color:var(--color-ink,#15171a);line-height:1.1}
+  .stat span{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted,#6b7076)}
+  .panel{background:var(--color-card,#fff);border:1px solid var(--color-line,#e3e1db);border-radius:14px;padding:18px 20px;margin-bottom:16px}
+  .panel h2{margin:0 0 12px;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-primary,#0f766e)}
+  table.at{width:100%;border-collapse:collapse;font-size:13.5px}
+  table.at th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted,#6b7076);text-align:left;padding:6px 8px;border-bottom:1px solid var(--color-line,#e3e1db)}
+  table.at td{padding:7px 8px;border-bottom:1px solid var(--color-line,#e3e1db);color:var(--color-ink,#33373a)}
+  table.at tr:last-child td{border-bottom:none}
+  table.at td.num{text-align:right;font-variant-numeric:tabular-nums}
+  table.at th.num{text-align:right}
+  .ahead{margin-bottom:18px}
+  .ahead .ey{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-muted,#6b7076);margin:0}
+  .ahead h1{margin:2px 0 6px;font-size:26px;color:var(--color-ink,#15171a)}
+  .ahead .sub{margin:0;color:var(--color-muted,#6b7076);font-size:14px;max-width:60ch}
+  .empty{color:var(--color-muted,#6b7076);font-size:13.5px}
+{% endblock %}
+
+{% block content %}
+<div class="ahead">
+  <p class="ey">Analytics</p>
+  <h1>Analytics</h1>
+  <p class="sub">First-party analytics: cookieless and self-hosted in your own database, with no third party anywhere. Pageviews and engagement from the public site.</p>
+</div>
+
+<div class="abar">
+  <form method="get">
+    <label for="from">From</label><input type="date" id="from" name="from" value="{{ range.from }}">
+    <label for="to">To</label><input type="date" id="to" name="to" value="{{ range.to }}">
+    <button type="submit">Apply</button>
+  </form>
+  <div class="aspacer"></div>
+  <span style="font-size:12.5px;color:var(--color-muted,#6b7076)">{{ range.from }} to {{ range.to }} (UTC)</span>
+</div>
+
+<div class="stats">
+  <div class="stat"><b>{{ report.totals.views }}</b><span>Pageviews</span></div>
+  <div class="stat"><b>{{ report.totals.visitors }}</b><span>Unique visitors</span></div>
+</div>
+
+<div class="panel">
+  <h2>Pages</h2>
+{% if report.pages is empty %}  <p class="empty">No pageviews in this range.</p>
+{% else %}  <table class="at">
+    <tr><th>Path</th><th class="num">Views</th><th class="num">Visitors</th><th class="num">Avg scroll</th><th class="num">Avg dwell</th></tr>
+{% for row in report.pages %}    <tr>
+      <td>{{ row.path }}</td>
+      <td class="num">{{ row.views }}</td>
+      <td class="num">{{ row.visitors }}</td>
+      <td class="num">{{ row.avg_scroll|round }}%</td>
+      <td class="num">{{ (row.avg_dwell_ms / 1000)|round(1) }}s</td>
+    </tr>
+{% endfor %}  </table>
+{% endif %}</div>
+
+<div class="panel">
+  <h2>Referrers</h2>
+{% if report.referrers is empty %}  <p class="empty">No external referrers in this range.</p>
+{% else %}  <table class="at">
+    <tr><th>Host</th><th class="num">Views</th></tr>
+{% for ref in report.referrers %}    <tr><td>{{ ref.host }}</td><td class="num">{{ ref.count }}</td></tr>
+{% endfor %}  </table>
+{% endif %}</div>
+
+<div class="panel">
+  <h2>Devices</h2>
+{% if report.devices is empty %}  <p class="empty">No device data in this range.</p>
+{% else %}  <table class="at">
+    <tr><th>Device</th><th class="num">Views</th></tr>
+{% for d in report.devices %}    <tr><td>{{ d.device }}</td><td class="num">{{ d.count }}</td></tr>
+{% endfor %}  </table>
+{% endif %}</div>
+{% endblock %}
