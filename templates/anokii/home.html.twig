@@ -1,0 +1,40 @@
+{% extends "anokii/_shell.html.twig" %}
+
+{% block title %}Workspace{% endblock %}
+
+{% block shell_styles %}
+  .ahero{background:var(--anokii-shell-side-bg);border-radius:16px;margin-bottom:22px;overflow:hidden}
+  .ahero .inner{position:relative;padding:30px 32px}
+  .ahero h1{color:#fff;font-size:30px;letter-spacing:.01em;margin:0 0 6px;max-width:none}
+  .ahero .mean{position:relative;color:var(--anokii-shell-side-muted);font-size:13px;font-style:italic;margin:0 0 10px}
+  .ahero p{margin:0;color:var(--anokii-shell-side-muted);max-width:640px;position:relative;font-size:15.5px;line-height:1.6}
+  .ahero .chips{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;position:relative}
+  .ahero .chips span{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:20px;padding:5px 12px;font-size:12px;color:#fff;letter-spacing:.02em}
+{% endblock %}
+
+{% block content %}
+<section class="ahero">
+  <div class="inner">
+    <h1>Welcome, {{ user_label|default('') }}</h1>
+    <div class="mean">Anokii workspace</div>
+    <p>Your tools live here. Pick one to get started; more light up as the workspace grows.</p>
+    <div class="chips">
+      {% for chip in hero_chips|default([]) %}<span>{{ chip }}</span>{% endfor %}
+    </div>
+  </div>
+</section>
+
+{% set tiles = [] %}
+{% for m in modules|default([]) %}
+  {% if m.tile %}
+    {% set tiles = tiles|merge([{
+      label: m.label,
+      href: m.href,
+      desc: m.desc,
+      icon: m.icon,
+      badge: m.live ? null : 'Soon'
+    }]) %}
+  {% endif %}
+{% endfor %}
+{% include 'anokii/_dashboard_grid.html.twig' with { cards: tiles } %}
+{% endblock %}

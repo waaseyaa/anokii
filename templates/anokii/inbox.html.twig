@@ -1,0 +1,82 @@
+{% extends "anokii/_shell.html.twig" %}
+
+{% block title %}Inbox{% endblock %}
+
+{% block shell_styles %}
+  .ibar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+  .ispacer{flex:1}
+  .btn{font-size:13.5px;letter-spacing:.02em;border-radius:9px;padding:9px 15px;border:1px solid var(--anokii-shell-line);background:var(--anokii-shell-card);color:var(--anokii-shell-ink);cursor:pointer;display:inline-flex;align-items:center;gap:8px;text-decoration:none}
+  .btn:hover{background:var(--anokii-shell-bg)}
+  .ilist{background:var(--anokii-shell-card);border:1px solid var(--anokii-shell-line);border-radius:14px;overflow:hidden}
+  .irow{padding:16px 18px;border-bottom:1px solid var(--anokii-shell-line)}
+  .irow:last-child{border-bottom:none}
+  .irow.unread{background:rgba(15,118,110,.05);border-left:3px solid var(--anokii-shell-accent)}
+  .ihead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .ihead b{font-size:15px;color:var(--anokii-shell-ink)}
+  .ihead .dot{width:8px;height:8px;border-radius:50%;background:var(--anokii-shell-accent);flex:0 0 auto}
+  .ihead .when{margin-left:auto;font-size:12.5px;color:var(--anokii-shell-muted);white-space:nowrap}
+  .itags{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+  .itag{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--anokii-shell-accent);background:rgba(15,118,110,.1);border-radius:20px;padding:3px 10px}
+  .itag.muted{color:var(--anokii-shell-muted);background:var(--anokii-shell-bg)}
+  .imsg{margin:10px 0 0;color:var(--anokii-shell-ink);font-size:14px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+  .iempty{background:var(--anokii-shell-card);border:1px dashed var(--anokii-shell-line);border-radius:14px;padding:48px 24px;text-align:center;color:var(--anokii-shell-muted)}
+  .iempty b{display:block;color:var(--anokii-shell-ink);font-size:16px;margin-bottom:4px}
+  .ahead{margin-bottom:18px}
+  .ahead .ey{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--anokii-shell-muted)}
+  .ahead h1{font-size:24px;margin:2px 0 4px}
+  .ahead .sub{color:var(--anokii-shell-muted);font-size:14px}
+{% endblock %}
+
+{% block content %}
+<div class="ahead">
+  <p class="ey">Inbox</p>
+  <h1>Inbox</h1>
+  <p class="sub">Submissions from the public contact form, newest first.</p>
+</div>
+
+<div class="ibar">
+  <span style="font-size:13.5px;color:var(--anokii-shell-muted)">{{ submissions|length }} submission{{ submissions|length == 1 ? '' : 's' }}{% if unread > 0 %} &middot; <b style="color:var(--anokii-shell-accent)">{{ unread }} unread</b>{% endif %}</span>
+  <div class="ispacer"></div>
+{% if unread > 0 %}  <button class="btn" id="markRead" type="button">Mark all read</button>
+{% endif %}</div>
+
+{% if submissions is empty %}
+<div class="iempty"><b>Nothing yet</b>Submissions from the contact form will appear here.</div>
+{% else %}
+<div class="ilist">
+{% for s in submissions %}  <div class="irow{{ s.is_read ? '' : ' unread' }}">
+    <div class="ihead">
+{% if not s.is_read %}      <span class="dot" title="Unread"></span>
+{% endif %}      <b>{{ s.email }}</b>
+      <span class="when">{{ s.submitted_at }}</span>
+    </div>
+    <div class="itags">
+{% if s.name %}      <span class="itag muted">{{ s.name }}</span>
+{% endif %}{% if s.org %}      <span class="itag muted">{{ s.org }}</span>
+{% endif %}{% if s.topic %}      <span class="itag">{{ s.topic }}</span>
+{% endif %}    </div>
+{% if s.message %}    <p class="imsg">{{ s.message }}</p>
+{% endif %}  </div>
+{% endfor %}</div>
+{% endif %}
+{% endblock %}
+
+{% block page_scripts %}
+<script>
+(function () {
+  var btn = document.getElementById('markRead');
+  if (!btn) return;
+  btn.addEventListener('click', function () {
+    btn.disabled = true;
+    fetch('/admin/anokii/inbox/read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: '{}'
+    }).then(function (r) { return r.json(); }).then(function () {
+      window.location.reload();
+    }).catch(function () { btn.disabled = false; });
+  });
+})();
+</script>
+{% endblock %}

@@ -6,6 +6,52 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.1.0-alpha.11] - 2026-06-27
+
+The login-gated workspace is now the out-of-box distribution baseline. Previously every
+consuming app re-implemented it; the generic workspace now ships in the package and an instance
+gets it by registering one provider. The sovereign/shared-graph tenancy-tier split is retired in
+favour of module-driven surfaces, and the lean standalone `/admin/anokii` graph-counts admin is
+removed. Proven on a fresh instance (NorthOps) on the `waaseyaa/full ^0.1.0-alpha.250` floor
+before tagging. Design: `docs/specs/anokii-workspace-extraction.md`.
+
+### Added
+
+- `Anokii\Provider\WorkspaceServiceProvider`: mounts the login-gated workspace at
+  `/admin/anokii/*` — the shell (dashboard, settings, login/logout/one-time set-password via the
+  shared `WorkspaceLoginController`) and the baseline tools: Identity, Documents, Drive, Pages,
+  Inbox, and the canonical first-party Analytics. Also mounts the public cookieless analytics
+  collector at `POST /api/collect`. Routes register `allowAll()` and each controller enforces the
+  session via `DashboardGate`/`Auth`; route priority 100 beats the admin SPA catch-all.
+- `Anokii\Access\WorkspaceRoles`: the canonical administrator/editor/viewer role model (subclass
+  of `AbstractWorkspaceRoles`) plus a `handler()` factory composing the six baseline entity access
+  policies.
+- Six entity types and their access policies, extracted generic from the fnpi app:
+  `identity_pillar` (translatable, two-axis), `document`, `document_note`, `drive_asset`, `page`,
+  `contact_submission` (`Anokii\Entity\*`, `Anokii\Access\*`).
+- The tool services and controllers under `Anokii\Workspace\*` (Identity/Documents/Drive/Pages/
+  Inbox/Analytics) and their Twig templates under `templates/anokii/*`, all rendering through the
+  shared `_shell.html.twig`.
+- `Anokii\Workspace\WorkspaceShell`: drives the dashboard nav and tiles from the shared
+  `AdminModules` catalog.
+
+### Changed
+
+- Framework floor raised to `waaseyaa/full ^0.1.0-alpha.250`.
+- `CoIntelligenceServiceProvider`: the public graph-chat surface (`POST /api/chat`) now mounts
+  purely on the `public-graph-chat` module being enabled; the sovereign/shared-graph tenancy-tier
+  branching is removed (surfaces are module-driven).
+
+### Removed
+
+- `Anokii\Controller\AnokiiAdminController` (the lean standalone `/admin/anokii` graph-counts
+  admin) — superseded by the login-gated workspace dashboard.
+
+### Deferred
+
+- The stateful gated Co-Intelligence chat surface (conversations + confirm-before-apply proposals)
+  remains app-provided in fnpi until it is extracted in alpha.12.
+
 ## [0.1.0-alpha.3] - 2026-06-22
 
 Entity validation fix found during the rhtcircle adoption. The graph entities'

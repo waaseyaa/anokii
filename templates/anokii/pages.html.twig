@@ -1,0 +1,227 @@
+{% extends "anokii/_shell.html.twig" %}
+
+{% block shell_styles %}
+  /* Pages list */
+  .ptable{width:100%;border-collapse:separate;border-spacing:0;background:var(--anokii-shell-card);border:1px solid var(--anokii-shell-line);border-radius:14px;overflow:hidden}
+  .ptable th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--anokii-shell-muted);font-weight:600;padding:13px 18px;border-bottom:1px solid var(--anokii-shell-line);background:var(--anokii-shell-bg)}
+  .ptable td{padding:14px 18px;border-bottom:1px solid var(--anokii-shell-line);font-size:14px;color:var(--anokii-shell-ink);vertical-align:middle}
+  .ptable tr:last-child td{border-bottom:none}
+  .ptable .ppath{color:var(--anokii-shell-accent);font-weight:600}
+  .ptable .ptitle{color:var(--anokii-shell-muted)}
+  .pstate{display:inline-flex;align-items:center;gap:6px;font-size:12px;letter-spacing:.03em;padding:3px 10px;border-radius:999px;border:1px solid var(--anokii-shell-line)}
+  .pstate .dot{width:8px;height:8px;border-radius:50%}
+  .pstate.live{color:#1a7f4b;border-color:#bfe6cf} .pstate.live .dot{background:#1a7f4b}
+  .pstate.draft{color:#9a6b16;border-color:#f0dcb4} .pstate.draft .dot{background:#c98a1e}
+  .pstate.unpub{color:var(--anokii-shell-muted);border-color:var(--anokii-shell-line)} .pstate.unpub .dot{background:var(--anokii-shell-muted)}
+  .pedit{font-size:13px;font-weight:600;letter-spacing:.03em;color:var(--anokii-shell-accent-ink);background:var(--anokii-shell-accent);border:none;border-radius:8px;padding:7px 16px;cursor:pointer;text-decoration:none;display:inline-block}
+  .pedit:hover{filter:brightness(1.05)}
+  /* Editor */
+  .pwrap{max-width:960px}
+  .pbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 20px;padding:12px 16px;background:var(--anokii-shell-card);border:1px solid var(--anokii-shell-line);border-radius:12px;position:sticky;top:8px;z-index:5}
+  .pbar .back{font-size:13px;color:var(--anokii-shell-accent);text-decoration:none;margin-right:auto}
+  .pbar .back:hover{text-decoration:underline}
+  .pbtn{font-size:13px;font-weight:600;letter-spacing:.03em;border-radius:8px;padding:8px 16px;cursor:pointer;border:1px solid var(--anokii-shell-line);background:var(--anokii-shell-card);color:var(--anokii-shell-ink);text-decoration:none;display:inline-block}
+  .pbtn:hover{border-color:var(--anokii-shell-accent)}
+  .pbtn.primary{background:var(--anokii-shell-accent);border-color:var(--anokii-shell-accent);color:var(--anokii-shell-accent-ink)}
+  .pbtn.primary:hover{filter:brightness(1.05)}
+  .pbtn:disabled{opacity:.5;cursor:default}
+  .psaved{font-size:12.5px;color:var(--anokii-shell-accent);min-width:90px}
+  .pcard{background:var(--anokii-shell-card);border:1px solid var(--anokii-shell-line);border-radius:14px;padding:18px 20px;margin-bottom:18px}
+  .pcard h3{margin:0 0 14px;font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--anokii-shell-muted);font-weight:600}
+  .pfield{margin-bottom:13px}
+  .pfield label{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--anokii-shell-muted);margin-bottom:5px}
+  .pfield input,.pfield textarea{width:100%;box-sizing:border-box;font-family:inherit;font-size:14px;color:var(--anokii-shell-ink);border:1px solid var(--anokii-shell-line);border-radius:9px;padding:9px 11px;background:var(--anokii-shell-bg)}
+  .pfield textarea{resize:vertical;line-height:1.5;min-height:64px}
+  .pfield input:focus,.pfield textarea:focus{outline:none;border-color:var(--anokii-shell-accent);box-shadow:0 0 0 3px rgba(15,118,110,.16)}
+  .pblock{border:1px solid var(--anokii-shell-line);border-radius:11px;padding:14px 15px;margin-bottom:13px;background:var(--anokii-shell-bg)}
+  .pblock-top{display:flex;align-items:center;gap:9px;margin-bottom:11px}
+  .pblock-type{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--anokii-shell-accent)}
+  .pblock-n{font-size:11px;color:var(--anokii-shell-muted)}
+  .pblock .pfield input,.pblock .pfield textarea{background:var(--anokii-shell-card)}
+  .pkept{font-size:12px;color:var(--anokii-shell-muted);font-style:italic;margin-top:4px}
+  .pblock-empty{font-size:13px;color:var(--anokii-shell-muted);font-style:italic}
+  /* page header */
+  .ahead{margin:0 0 22px}
+  .ahead .ey{font-size:11.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--anokii-shell-muted);margin:0 0 4px}
+  .ahead h1{font-size:26px;margin:0 0 6px;color:var(--anokii-shell-ink)}
+  .ahead .sub{color:var(--anokii-shell-muted);font-size:14px;max-width:680px}
+  /* history */
+  .phist{display:none;border-top:1px dashed var(--anokii-shell-line);margin-top:10px;padding-top:12px}
+  .phist.open{display:block}
+  .phist ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+  .phist li{display:flex;align-items:flex-start;gap:11px;font-size:13px;line-height:1.45}
+  .phist .meta{color:var(--anokii-shell-muted);font-size:11.5px;letter-spacing:.02em}
+  .phist .tag{font-size:10.5px;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:999px;border:1px solid var(--anokii-shell-line);white-space:nowrap}
+  .phist .tag.live{color:#1a7f4b;border-color:#bfe6cf}
+  .phist .tag.draft{color:#9a6b16;border-color:#f0dcb4}
+  .phist .roll{font-size:12px;font-weight:600;color:var(--anokii-shell-accent);background:none;border:none;cursor:pointer;padding:2px 4px;margin-left:auto}
+  .phist .roll:hover{text-decoration:underline}
+  .phist .empty{color:var(--anokii-shell-muted);font-size:13px}
+{% endblock %}
+
+{% block content %}
+  <div class="ahead">
+    <p class="ey">Website</p>
+    <h1>Pages</h1>
+    <p class="sub">Edit and publish the public site. Each save is a draft; the live page only changes when you publish, and you can roll back to any earlier version.</p>
+  </div>
+
+{% if editing %}
+  <div class="pwrap" id="peditor" data-id="{{ page.id }}" data-draft="{{ page.draft_rev }}" data-published="{{ page.published_rev is null ? '' : page.published_rev }}">
+    <div class="pbar">
+      <a class="back" href="/admin/anokii/pages">&larr; All pages</a>
+      <span class="psaved" id="psaved"></span>
+      <a class="pbtn" id="ppreview" href="/admin/anokii/pages/{{ page.id }}/preview" target="_blank" rel="noopener">Preview draft</a>
+      <button type="button" class="pbtn" id="phistbtn" aria-expanded="false">History</button>
+      <button type="button" class="pbtn" id="psave">Save draft</button>
+      <button type="button" class="pbtn primary" id="ppublish">Publish</button>
+    </div>
+
+    <div class="pcard">
+      <h3>{{ page.path }} &middot; page settings</h3>
+      <div class="pfield"><label>Title</label><input type="text" id="f-title" value="{{ page.title }}"></div>
+      <div class="pfield"><label>Meta description</label><textarea id="f-meta_description" rows="2">{{ page.meta_description }}</textarea></div>
+      <div class="pfield"><label>Meta robots</label><input type="text" id="f-meta_robots" value="{{ page.meta_robots }}" placeholder="index,follow"></div>
+      <div class="pfield"><label>Head styles (CSS)</label><textarea id="f-head_styles" rows="3">{{ page.head_styles }}</textarea></div>
+    </div>
+
+    <div class="pcard">
+      <h3>Content blocks</h3>
+      <div id="pblocks"></div>
+    </div>
+
+    <div class="pcard">
+      <h3>Revision history</h3>
+      <div class="phist open" id="phist"><p class="empty">Loading...</p></div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    var wrap=document.getElementById('peditor');
+    var id=wrap.getAttribute('data-id');
+    var BLOCKS={{ page.blocks|json_encode|raw }};
+    function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+    // Render an editable field per scalar-string block field; non-string fields
+    // (lists, numbers, flags) are preserved verbatim and counted, not edited here.
+    function renderBlocks(){
+      var host=document.getElementById('pblocks');
+      if(!BLOCKS.length){ host.innerHTML='<p class="pblock-empty">This page has no blocks.</p>'; return; }
+      var html='';
+      BLOCKS.forEach(function(blk,bi){
+        html+='<div class="pblock"><div class="pblock-top"><span class="pblock-type">'+esc(blk.type)+'</span><span class="pblock-n">block '+(bi+1)+'</span></div>';
+        var edited=0, kept=0;
+        Object.keys(blk).forEach(function(k){
+          if(k==='type') return;
+          var v=blk[k];
+          if(typeof v==='string'){
+            edited++;
+            var long=v.length>60||v.indexOf('\n')>=0;
+            var ctrl=long
+              ? '<textarea data-bi="'+bi+'" data-bk="'+esc(k)+'" rows="2">'+esc(v)+'</textarea>'
+              : '<input type="text" data-bi="'+bi+'" data-bk="'+esc(k)+'" value="'+esc(v)+'">';
+            html+='<div class="pfield"><label>'+esc(k)+'</label>'+ctrl+'</div>';
+          } else { kept++; }
+        });
+        if(!edited){ html+='<div class="pblock-empty">No editable text in this block.</div>'; }
+        if(kept){ html+='<div class="pkept">+ '+kept+' structured field'+(kept>1?'s':'')+' preserved as-is.</div>'; }
+        html+='</div>';
+      });
+      host.innerHTML=html;
+    }
+    renderBlocks();
+
+    function collect(){
+      // Update the in-memory blocks from the edited string fields, preserving
+      // everything else (non-string fields, untouched blocks).
+      var blocks=JSON.parse(JSON.stringify(BLOCKS));
+      document.querySelectorAll('#pblocks [data-bi]').forEach(function(el){
+        var bi=+el.getAttribute('data-bi'), bk=el.getAttribute('data-bk');
+        if(blocks[bi]) blocks[bi][bk]=el.value;
+      });
+      return {
+        title:document.getElementById('f-title').value,
+        meta_description:document.getElementById('f-meta_description').value,
+        meta_robots:document.getElementById('f-meta_robots').value,
+        head_styles:document.getElementById('f-head_styles').value,
+        blocks:blocks
+      };
+    }
+    function flash(msg){ var el=document.getElementById('psaved'); el.textContent=msg; setTimeout(function(){ if(el.textContent===msg) el.textContent=''; },2600); }
+
+    document.getElementById('psave').addEventListener('click',function(){
+      var btn=this; btn.disabled=true;
+      fetch('/admin/anokii/pages/'+encodeURIComponent(id)+'/save',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(collect())})
+        .then(function(r){ return r.json().catch(function(){return {ok:false};}); })
+        .then(function(d){ btn.disabled=false;
+          if(!d||!d.ok){ flash((d&&d.error)||'Save failed'); return; }
+          BLOCKS=collect().blocks; flash('Draft saved (rev '+d.draft_rev+')'); loadHistory();
+        });
+    });
+    document.getElementById('ppublish').addEventListener('click',function(){
+      var btn=this; btn.disabled=true;
+      fetch('/admin/anokii/pages/'+encodeURIComponent(id)+'/publish',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:'{}'})
+        .then(function(r){ return r.json().catch(function(){return {ok:false};}); })
+        .then(function(d){ btn.disabled=false;
+          if(!d||!d.ok){ flash((d&&d.error)||'Publish failed'); return; }
+          flash('Published (rev '+d.published_rev+' is live)'); loadHistory();
+        });
+    });
+
+    function rollback(rev){
+      fetch('/admin/anokii/pages/'+encodeURIComponent(id)+'/rollback',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({rev:rev})})
+        .then(function(r){ return r.json().catch(function(){return {ok:false};}); })
+        .then(function(d){ if(!d||!d.ok){ flash((d&&d.error)||'Rollback failed'); return; } flash('Rolled live view back to rev '+d.published_rev); loadHistory(); });
+    }
+    function renderHistory(panel, revisions){
+      if(!revisions || !revisions.length){ panel.innerHTML='<p class="empty">No history yet.</p>'; return; }
+      var html='<ol>';
+      revisions.forEach(function(r){
+        var tags=''; if(r.is_published) tags+='<span class="tag live">Live</span> '; if(r.is_draft) tags+='<span class="tag draft">Draft</span> ';
+        var roll=(!r.is_published)?'<button type="button" class="roll" data-rev="'+r.rev+'">Make live</button>':'';
+        html+='<li><div style="flex:1"><div>rev '+r.rev+' '+tags+'</div>'
+          +'<div class="meta">'+esc(r.log)+' &middot; '+esc(r.when)+'</div></div>'+roll+'</li>';
+      });
+      html+='</ol>'; panel.innerHTML=html;
+      panel.querySelectorAll('.roll').forEach(function(b){ b.addEventListener('click',function(){ rollback(+b.getAttribute('data-rev')); }); });
+    }
+    function loadHistory(){
+      var panel=document.getElementById('phist');
+      return fetch('/admin/anokii/pages/'+encodeURIComponent(id)+'/history',{credentials:'same-origin'})
+        .then(function(r){ return r.json().catch(function(){return {ok:false};}); })
+        .then(function(d){ renderHistory(panel, d&&d.ok?d.revisions:[]); });
+    }
+    document.getElementById('phistbtn').addEventListener('click',function(){
+      var panel=document.getElementById('phist'); var open=panel.classList.toggle('open'); panel.style.display=open?'block':'none';
+      this.setAttribute('aria-expanded',open?'true':'false');
+    });
+    loadHistory();
+  })();
+  </script>
+{% else %}
+  <table class="ptable">
+    <thead><tr><th>Path</th><th>Title</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for p in pages %}
+      <tr>
+        <td><span class="ppath">{{ p.path }}</span></td>
+        <td class="ptitle">{{ p.title }}</td>
+        <td>
+          {% if not p.is_live %}
+            <span class="pstate unpub"><span class="dot"></span>Not published</span>
+          {% elseif p.has_unpublished_changes %}
+            <span class="pstate draft"><span class="dot"></span>Draft ahead (live rev {{ p.published_rev }})</span>
+          {% else %}
+            <span class="pstate live"><span class="dot"></span>Live &middot; rev {{ p.published_rev }}</span>
+          {% endif %}
+        </td>
+        <td style="text-align:right"><a class="pedit" href="/admin/anokii/pages/{{ p.id }}">Edit</a></td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4" style="color:var(--anokii-shell-muted)">No pages yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+{% endif %}
+{% endblock %}
