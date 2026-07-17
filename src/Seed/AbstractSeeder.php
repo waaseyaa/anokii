@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Anokii\Seed;
 
-use Waaseyaa\CLI\CliIO;
+use Waaseyaa\CLI\Command\SymfonyCommandIO;
 
 /**
  * Base for an idempotent Anokii data seeder.
@@ -16,7 +16,7 @@ use Waaseyaa\CLI\CliIO;
  * the data and the two domain operations (does-it-exist, create-it) via
  * {@see seedRecords()}.
  *
- * Built strictly on the framework CLI: {@see CliIO} is the only I/O surface, so a
+ * Built strictly on the framework CLI: {@see SymfonyCommandIO} is the only I/O surface, so a
  * subclass can be wired into a ServiceProvider's nativeCommands() or a
  * CommandDefinition handler unchanged.
  *
@@ -43,7 +43,7 @@ abstract class AbstractSeeder
      *
      * @api
      */
-    abstract protected function seedRecords(CliIO $io): void;
+    abstract protected function seedRecords(SymfonyCommandIO $io): void;
 
     /**
      * Run the seeder: reset counters, delegate to {@see seedRecords()}, print the
@@ -51,7 +51,7 @@ abstract class AbstractSeeder
      *
      * @api
      */
-    final public function run(CliIO $io): int
+    final public function run(SymfonyCommandIO $io): int
     {
         $this->created = 0;
         $this->skipped = 0;
@@ -82,7 +82,7 @@ abstract class AbstractSeeder
      *
      * @api
      */
-    protected function seedIf(CliIO $io, string $label, bool $exists, callable $create): bool
+    protected function seedIf(SymfonyCommandIO $io, string $label, bool $exists, callable $create): bool
     {
         if ($exists) {
             $this->skip($io, $label);
@@ -101,7 +101,7 @@ abstract class AbstractSeeder
      *
      * @api
      */
-    protected function skip(CliIO $io, string $label): void
+    protected function skip(SymfonyCommandIO $io, string $label): void
     {
         ++$this->skipped;
         $io->writeln(sprintf('Skip %s (exists): %s', $this->noun(), $label));
@@ -113,7 +113,7 @@ abstract class AbstractSeeder
      *
      * @api
      */
-    protected function markCreated(CliIO $io, string $label): void
+    protected function markCreated(SymfonyCommandIO $io, string $label): void
     {
         ++$this->created;
         $io->writeln(sprintf('Seeded %s: %s', $this->noun(), $label));

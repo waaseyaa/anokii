@@ -34,8 +34,11 @@ final class Auth
 {
     /**
      * The signed-in user for this request, or null when there is no valid
-     * session. Returns null (never throws) on any load failure so callers can
-     * treat "no account" and "broken account" identically at the gate.
+     * session or the account no longer exists. A missing or deleted account
+     * resolves to null without throwing. An infrastructure failure while loading
+     * (storage misconfigured, database unavailable) propagates rather than being
+     * silently converted to "no account", so a real fault surfaces instead of
+     * hiding as a routine logged-out state.
      *
      * @api
      */
@@ -50,11 +53,11 @@ final class Auth
             return null;
         }
 
-        try {
-            $user = $entityTypeManager->getStorage('user')->load((int) $uid);
-        } catch (\Throwable) {
-            return null;
-        }
+        // find() returns null for a missing/deleted account; it only throws on a
+        // genuine storage fault, which must not be swallowed here. Catching it
+        // is what let the alpha.254 storage regression masquerade as a routine
+        // logged-out state for a month.
+        $user = $entityTypeManager->getRepository('user')->find((string) $uid);
 
         return $user instanceof User ? $user : null;
     }
@@ -110,8 +113,11 @@ final class Auth
     }
 
     /**
-     * Resolve a user by email address, or null when unknown or unloadable.
-     * Email is matched case-insensitively against the 'mail' entity key.
+     * Resolve a user by email address, or null when no account matches. Email is
+     * matched case-insensitively against the 'mail' entity key. An
+     * infrastructure failure while looking up propagates rather than being
+     * swallowed: on the login path a database fault must surface as an error, it
+     * must never present to the visitor as "wrong email or password".
      *
      * @api
      */
@@ -122,11 +128,12 @@ final class Auth
             return null;
         }
 
-        try {
-            $user = $entityTypeManager->getStorage('user')->loadByKey('mail', $email);
-        } catch (\Throwable) {
-            return null;
-        }
+        // No match returns an empty array (→ null); an exception is a real
+        // storage fault and is deliberately left to propagate, so a broken
+        // database on the login path becomes a 500, not a false "wrong
+        // password". This is the core defect the alpha.254 postmortem named.
+        $matches = $entityTypeManager->getRepository('user')->findBy(['mail' => $email], null, 1);
+        $user = $matches[0] ?? null;
 
         return $user instanceof User ? $user : null;
     }

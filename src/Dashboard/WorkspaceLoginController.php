@@ -115,7 +115,7 @@ final class WorkspaceLoginController extends DashboardGate
             return new JsonResponse(['ok' => false, 'error' => 'No account found for this link.'], 404);
         }
 
-        $this->entityTypeManager?->getStorage('user')->save($user->setRawPassword($password));
+        $this->entityTypeManager?->getRepository('user')->save($user->setRawPassword($password));
         $this->tokens->consume($token);
 
         return new JsonResponse(['ok' => true, 'redirect' => $this->loginPathValue]);
