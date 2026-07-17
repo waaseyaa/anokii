@@ -46,12 +46,17 @@ final class InviteHandler
         $baseUrl = rtrim((string) ($io->option('base-url') ?? $this->defaultBaseUrl), '/');
 
         try {
-            $storage = $this->entityTypeManager->getStorage('user');
-            $user = $storage->loadByKey('mail', $email);
+            $repository = $this->entityTypeManager->getRepository('user');
+            $matches = $repository->findBy(['mail' => $email], null, 1);
+            $user = $matches[0] ?? null;
 
             if (!$user instanceof User) {
-                $user = $storage->create(['name' => $name !== '' ? $name : $email, 'mail' => $email, 'status' => 1]);
-                $storage->save($user);
+                // The repository has no create(); construct the entity directly,
+                // the pattern the framework's own RegisterController uses. save()
+                // back-fills the auto-assigned uid onto $user, so id() is valid
+                // immediately below.
+                $user = new User(['name' => $name !== '' ? $name : $email, 'mail' => $email, 'status' => 1]);
+                $repository->save($user);
                 $io->writeln(sprintf('Created account for %s (uid %s).', $email, (string) $user->id()));
             } else {
                 $io->writeln(sprintf('Account for %s already exists (uid %s).', $email, (string) $user->id()));

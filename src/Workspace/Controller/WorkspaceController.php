@@ -109,7 +109,7 @@ final class WorkspaceController extends DashboardGate
             $updated = $updated->setRawPassword($new);
         }
 
-        $this->entityTypeManager?->getStorage('user')->save($updated);
+        $this->entityTypeManager?->getRepository('user')->save($updated);
 
         return new JsonResponse(['ok' => true]);
     }

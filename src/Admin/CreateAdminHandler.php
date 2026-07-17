@@ -66,11 +66,15 @@ final class CreateAdminHandler
         $name = (string) ($io->option('name') ?? '');
 
         try {
-            $storage = $this->entityTypeManager->getStorage('user');
-            $user = $storage->loadByKey('mail', $email);
+            $repository = $this->entityTypeManager->getRepository('user');
+            $matches = $repository->findBy(['mail' => $email], null, 1);
+            $user = $matches[0] ?? null;
 
             if (!$user instanceof User) {
-                $user = $storage->create(['name' => $name !== '' ? $name : $email, 'mail' => $email, 'status' => 1]);
+                // The repository has no create(); construct the entity directly,
+                // the pattern the framework's own RegisterController uses. The
+                // User constructor marks it new when no uid is present.
+                $user = new User(['name' => $name !== '' ? $name : $email, 'mail' => $email, 'status' => 1]);
                 $created = true;
             } else {
                 $created = false;
@@ -83,7 +87,7 @@ final class CreateAdminHandler
             // setter returns a new instance; persist the final one.
             $user = $this->roles->apply($user, $this->adminRoleId);
             $user = $user->setRawPassword($password);
-            $storage->save($user);
+            $repository->save($user);
         } catch (\Throwable $e) {
             $io->error('Failed to create admin: ' . $e->getMessage());
 
