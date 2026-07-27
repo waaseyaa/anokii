@@ -146,7 +146,12 @@ final class WorkspaceServiceProvider extends ServiceProvider implements Provides
     {
         $access = WorkspaceRoles::handler();
 
-        $shell = new WorkspaceController($entityTypeManager);
+        // Audited authority for User internals (credentials/roles) — required
+        // by login + password flows on framework ≥ alpha.269 (sealed fields).
+        $internalFieldReader = $this->resolve(\Waaseyaa\Access\User\UserInternalFieldReaderInterface::class);
+        \assert($internalFieldReader instanceof \Waaseyaa\Access\User\UserInternalFieldReaderInterface);
+
+        $shell = new WorkspaceController($entityTypeManager, $internalFieldReader);
         $login = new WorkspaceLoginController(
             $entityTypeManager,
             new SetupTokenRepository($this->db()),
@@ -154,6 +159,7 @@ final class WorkspaceServiceProvider extends ServiceProvider implements Provides
             '/admin/anokii',
             'anokii/login.html.twig',
             'anokii/set-password.html.twig',
+            $internalFieldReader,
         );
         $identity = new IdentityController($entityTypeManager, new PillarService($entityTypeManager), $access);
         $documents = new DocumentsController(

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Anokii\Support;
 
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Waaseyaa\Access\User\UserInternalFieldReaderInterface;
 use Waaseyaa\Auth\AuthManager;
 use Waaseyaa\Entity\EntityTypeManager;
 use Waaseyaa\User\User;
@@ -85,13 +86,17 @@ final class Auth
         ?EntityTypeManager $entityTypeManager,
         string $email,
         string $password,
+        UserInternalFieldReaderInterface $internalFields,
     ): ?User {
         $user = self::userByEmail($entityTypeManager, $email);
         if ($user === null) {
             return null;
         }
 
-        $auth = new AuthManager();
+        // Credential verification goes through the framework's audited
+        // internal-field authority (framework ≥ alpha.269 seals the password
+        // hash as Internal; AuthManager owns the capability-scoped read).
+        $auth = new AuthManager($internalFields);
         if (!$auth->authenticate($user, $password)) {
             return null;
         }
@@ -109,7 +114,10 @@ final class Auth
      */
     public static function logout(): void
     {
-        (new AuthManager())->logout();
+        // Logout only tears the session down — it never reads user internals,
+        // so the AuthManager is constructed with a loud null-object reader
+        // rather than real read authority.
+        (new AuthManager(new UnusedInternalFieldReader()))->logout();
     }
 
     /**

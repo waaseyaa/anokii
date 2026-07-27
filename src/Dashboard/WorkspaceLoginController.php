@@ -10,6 +10,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Waaseyaa\Access\User\UserInternalFieldReaderInterface;
 use Waaseyaa\Entity\EntityTypeManager;
 
 /**
@@ -42,9 +43,10 @@ final class WorkspaceLoginController extends DashboardGate
         private readonly string $homePath,
         private readonly string $loginTemplate,
         private readonly string $setPasswordTemplate,
+        UserInternalFieldReaderInterface $internalFieldReader,
         private readonly int $minPasswordLength = 10,
     ) {
-        parent::__construct($entityTypeManager);
+        parent::__construct($entityTypeManager, $internalFieldReader);
     }
 
     protected function loginPath(): string
@@ -67,7 +69,8 @@ final class WorkspaceLoginController extends DashboardGate
         $email = trim((string) ($data['email'] ?? ''));
         $password = (string) ($data['password'] ?? '');
 
-        $user = Auth::login($this->entityTypeManager, $email, $password);
+        \assert($this->internalFields !== null); // constructor requires it
+        $user = Auth::login($this->entityTypeManager, $email, $password, $this->internalFields);
         if ($user === null) {
             return new JsonResponse(['ok' => false, 'error' => 'Wrong email or password.'], 401);
         }
