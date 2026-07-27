@@ -37,6 +37,7 @@ final class CreateAdminHandler
         private readonly string $passwordEnvVar,
         private readonly string $adminRoleId,
         private readonly string $loginPath,
+        private readonly \Waaseyaa\Access\User\UserInternalFieldReaderInterface $internalFieldReader,
     ) {}
 
     public function run(SymfonyCommandIO $io): int
@@ -83,10 +84,11 @@ final class CreateAdminHandler
                 }
             }
 
-            // Stamp the admin role (+ its permission) and the password hash. Each
-            // setter returns a new instance; persist the final one.
-            $user = $this->roles->apply($user, $this->adminRoleId);
+            // Stamp the password hash, then the admin role (+ its permission)
+            // through the audited reader. Each setter returns a new instance;
+            // persist the final one.
             $user = $user->setRawPassword($password);
+            $user = $this->roles->apply($user, $this->adminRoleId, $this->internalFieldReader);
             $repository->save($user);
         } catch (\Throwable $e) {
             $io->error('Failed to create admin: ' . $e->getMessage());

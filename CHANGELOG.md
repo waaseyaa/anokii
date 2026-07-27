@@ -6,6 +6,35 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.1.0-alpha.13] - 2026-07-27
+
+Framework ≥ alpha.269 sealed User `roles`/`permissions`/`pass`/`mail` as Internal
+(fail-closed field reads, waaseyaa #2064): the entity's own `getRoles()`,
+`hasPermission()`, and `checkPassword()` now throw `FieldReadDenied` outside an
+audited capability, and `AuthManager` requires the audited
+`UserInternalFieldReaderInterface` at construction. Anokii alpha.12 (verified at
+alpha.266) crashed at login (`Too few arguments to AuthManager::__construct()`)
+and in `app:create-admin` (`Field user.roles requires an explicit audited
+capability`) on newer frameworks. This release migrates every internal-field
+touchpoint to the audited authority, mirroring the framework's own
+`user:assign-role` handler.
+
+### Changed (breaking within the workspace surface)
+
+- **`Support\Auth::login()` takes the audited reader** (`UserInternalFieldReaderInterface`, new required 4th parameter) and constructs `AuthManager` with it; credential verification runs through the framework's capability-scoped snapshot. `Auth::logout()` keeps the framework's exact session teardown via a loud null-object reader (logout never reads internals).
+- **`AbstractWorkspaceRoles::apply()` takes the audited reader** (new required 3rd parameter) and merges the CURRENT roles from `maintenanceAuthorization()` instead of the sealed entity; parameter/return loosened to `EntityInterface` (the framework handler's own shape).
+- **`AdminLoginController` / `WorkspaceLoginController` constructors take the reader**; the post-login permission gate decides via the new `Access\WorkspacePermissions::allows()` (snapshot semantics mirroring `User::hasPermission()`, `administrator` holds everything).
+- **`DashboardGate` constructor gains an optional reader**; `requirePermission()` decides from the snapshot and throws a loud `LogicException` when mounted without one (misconfiguration must not present as a silent 403).
+- **`WorkspaceController` password change** verifies the current password via `AuthManager::authenticate()` (audited) instead of the sealed `User::checkPassword()`.
+- **`CreateAdminHandler` constructor takes the reader** and threads it to role application.
+- **Framework floor raised to `waaseyaa/full ^0.1.0-alpha.276`** — the audited reader surface and `AuthManager` signature require it; alpha.276 also carries the FTS5 schema-introspection boot fix (waaseyaa #2056) that unblocked the portfolio from alpha.250.
+
+### Added
+
+- `Access\WorkspacePermissions` — pure snapshot-based permission decision.
+- `Shell::roleLabel()` degrades to the neutral "Member" chip label when the sealed entity cannot answer (cosmetic surface; a follow-up may source the chip from the request principal).
+- Test doubles for the audited surface (`FakeInternalFieldReader`, `StubUser`) and coverage for audited role application + snapshot permission gating.
+
 ## [0.1.0-alpha.12] - 2026-07-27
 
 Login was broken on every consumer running framework ≥ alpha.254: Anokii's auth

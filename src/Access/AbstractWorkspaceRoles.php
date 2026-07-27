@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Anokii\Access;
 
+use Waaseyaa\Access\User\UserInternalFieldReaderInterface;
+use Waaseyaa\Entity\EntityInterface;
 use Waaseyaa\Foundation\ServiceProvider\Capability\ProvidesRolesInterface;
 use Waaseyaa\User\Role;
 use Waaseyaa\User\User;
@@ -133,31 +135,38 @@ abstract class AbstractWorkspaceRoles implements ProvidesRolesInterface
     /**
      * Apply a workspace role to a user: set the role (replacing any other role
      * from this model, preserving non-workspace roles) and stamp its permission
-     * strings. Returns the updated User.
+     * strings. Returns the updated user.
      *
-     * IMPORTANT: {@see User::setRoles()} / {@see User::setPermissions()} return a
-     * new instance (entities are immutable through setters); they do NOT mutate
-     * in place. Callers MUST persist the RETURNED user, not the argument:
+     * The CURRENT roles are read through the audited
+     * {@see UserInternalFieldReaderInterface} (`maintenanceAuthorization()`
+     * snapshot), never off the entity: framework ≥ alpha.269 seals User
+     * `roles`/`permissions` as Internal and `getRoles()` throws FieldReadDenied
+     * outside an audited capability. Mirrors the framework's own
+     * `user:assign-role` handler.
      *
-     *   $updated = $roles->apply($user, 'editor');
+     * IMPORTANT: entity setters return a new instance (entities are immutable
+     * through setters); they do NOT mutate in place. Callers MUST persist the
+     * RETURNED user, not the argument:
+     *
+     *   $updated = $roles->apply($user, 'editor', $internalFields);
      *   $storage->save($updated);
      *
      * @api
      */
-    public function apply(User $user, string $roleId): User
+    public function apply(EntityInterface $user, string $roleId, UserInternalFieldReaderInterface $internalFields): EntityInterface
     {
         $defs = $this->roleDefinitions();
         $permissions = $defs[$roleId]['permissions'] ?? [];
 
         // Drop any role from this model; keep roles owned by other models.
         $kept = array_values(array_filter(
-            $user->getRoles(),
+            $internalFields->maintenanceAuthorization($user)->roles,
             static fn (string $role): bool => !array_key_exists($role, $defs),
         ));
 
         return $user
-            ->setRoles(array_values(array_unique([...$kept, $roleId])))
-            ->setPermissions($permissions);
+            ->set('roles', array_values(array_unique([...$kept, $roleId])))
+            ->set('permissions', $permissions);
     }
 
     /**

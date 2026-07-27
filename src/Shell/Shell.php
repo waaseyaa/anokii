@@ -68,7 +68,15 @@ final class Shell
      */
     public static function roleLabel(User $user, array $roleLabels = []): string
     {
-        $roles = $user->getRoles();
+        try {
+            $roles = $user->getRoles();
+        } catch (\Waaseyaa\Entity\Exception\FieldReadDenied | \Waaseyaa\Entity\Exception\MissingFieldReadContext) {
+            // Framework ≥ alpha.269 seals `roles` as Internal; without an
+            // audited capability the entity cannot answer. The chip label is
+            // cosmetic — degrade to the neutral label rather than threading
+            // read authority through every shell render.
+            return 'Member';
+        }
         if ($roles === []) {
             return 'Member';
         }

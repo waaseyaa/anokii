@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Anokii\Dashboard;
 
+use Anokii\Access\WorkspacePermissions;
 use Anokii\Support\Auth;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Waaseyaa\Access\User\UserInternalFieldReaderInterface;
 use Waaseyaa\Entity\EntityTypeManager;
 use Waaseyaa\User\Middleware\CsrfMiddleware;
 
@@ -40,9 +42,10 @@ final class AdminLoginController extends DashboardGate
         private readonly string $homePath,
         private readonly ?string $requiredPermission,
         private readonly LoginBrand $brand,
+        UserInternalFieldReaderInterface $internalFieldReader,
         private readonly string $pathPrefix = '/admin',
     ) {
-        parent::__construct($entityTypeManager);
+        parent::__construct($entityTypeManager, $internalFieldReader);
     }
 
     protected function loginPath(): string
@@ -66,8 +69,13 @@ final class AdminLoginController extends DashboardGate
         $password = (string) $request->request->get('password', '');
         $next = $this->safeNext($request);
 
-        $user = Auth::login($this->entityTypeManager, $email, $password);
-        if ($user === null || ($this->requiredPermission !== null && !$user->hasPermission($this->requiredPermission))) {
+        \assert($this->internalFields !== null); // constructor requires it
+        $user = Auth::login($this->entityTypeManager, $email, $password, $this->internalFields);
+        $permitted = $user !== null && (
+            $this->requiredPermission === null
+            || WorkspacePermissions::allows($this->internalFields->maintenanceAuthorization($user), $this->requiredPermission)
+        );
+        if (!$permitted) {
             if ($user !== null) {
                 Auth::logout();
             }
