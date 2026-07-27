@@ -6,6 +6,27 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.1.0-alpha.12] - 2026-07-27
+
+Login was broken on every consumer running framework ≥ alpha.254: Anokii's auth
+paths still called the deleted `getStorage('user')->loadByKey()` storage seam, and a
+blanket `catch (\Throwable)` in `Auth` converted that infrastructure fault into a
+false "wrong email or password". Password resets appeared to succeed but accounts
+could never be loaded at login. (waaseyaa/anokii#4, PR #5)
+
+### Fixed
+
+- **`Auth::currentUser()` / `Auth::userByEmail()` migrated to the EntityRepository API** (`getRepository('user')` + `find()`/`findBy()`), replacing the legacy `getStorage()`/`loadByKey()` calls the framework removed at alpha.254. All six call sites migrated, including the admin `CreateAdminHandler`/`InviteHandler` commands, `WorkspaceLoginController`, `AbstractSeeder`, and `WorkspaceController`.
+- **Auth no longer swallows infrastructure faults.** The blanket `catch (\Throwable) { return null; }` around user lookup is removed: a missing or deleted account still resolves to `null` without throwing, but a genuine storage fault now propagates and is logged instead of presenting to visitors as a failed login.
+
+### Added
+
+- Runnable PHPUnit setup (`phpunit/phpunit` dev dependency + `phpunit.xml.dist`) — the existing suite (42 tests, 90 assertions) previously had no way to run.
+
+### Notes
+
+- Framework constraint stays at `waaseyaa/full ^0.1.0-alpha.250` (caret): anokii is a library and an exact pin would make it uninstallable for consumers still on older floors. The caret resolves cleanly against current framework releases (verified green at alpha.275).
+
 ## [0.1.0-alpha.11] - 2026-06-27
 
 The login-gated workspace is now the out-of-box distribution baseline. Previously every
