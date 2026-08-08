@@ -15,6 +15,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- The Waaseyaa dependency floor is now alpha.290, including the framework-owned application secret and community isolation contracts; packaged-runtime coverage and operator setup now declare both requirements explicitly.
 - All Anokii-owned persistent entities now declare field-read classifications and, in sovereign mode, use the active community as their storage boundary. Graph content intended for public retrieval is explicitly Public; tenant and classification metadata is Protected.
 - Drive, Documents, Identity, Pages, Inbox, Analytics, settings, and the shared shell now use the framework's audited account/profile boundaries and canonical community context.
 - The workspace shell provides an accessible collapsed mobile navigation with accurate state, Escape handling, and focus return.

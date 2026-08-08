@@ -18,6 +18,7 @@ final class PackagedRuntimeBootTest extends TestCase
 
         putenv('APP_ENV=local');
         putenv('WAASEYAA_DB=' . $database);
+        putenv('ANOKII_COMMUNITY_ID=packaged-runtime-test');
         putenv('ANOKII_PRIVACY_SECRET=0123456789abcdef0123456789abcdef');
         putenv('WAASEYAA_JWT_SECRET=abcdef0123456789abcdef0123456789');
 
