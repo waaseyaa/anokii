@@ -54,7 +54,10 @@
 
     .anokii-app{ display:grid; grid-template-columns:var(--anokii-shell-sidebar-w) 1fr; min-height:100vh; }
     .anokii-side{ background:var(--anokii-shell-side-bg); color:#fff; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; border-right:1px solid var(--anokii-shell-side-line); }
-    .anokii-brand{ display:flex; align-items:center; gap:11px; padding:18px 16px 14px; border-bottom:1px solid var(--anokii-shell-side-line); }
+    .anokii-brandrow{ display:flex; align-items:center; border-bottom:1px solid var(--anokii-shell-side-line); }
+    .anokii-brand{ display:flex; align-items:center; gap:11px; padding:18px 16px 14px; flex:1; }
+    .anokii-navtoggle{ display:none; margin-right:10px; width:42px; height:42px; border:1px solid var(--anokii-shell-side-line); border-radius:8px; background:transparent; color:#fff; cursor:pointer; place-items:center; }
+    .anokii-navtoggle svg{ width:22px; height:22px; }
     .anokii-nav{ padding:8px 10px; flex:1; overflow:auto; }
     .anokii-navgroup{ font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--anokii-shell-side-muted); padding:14px 12px 6px; }
     .anokii-navlink{ display:flex; align-items:center; gap:11px; padding:9px 12px; border-radius:9px; color:var(--anokii-shell-side-muted); font-size:14.5px; font-weight:500; margin:2px 0; transition:background .12s, color .12s; }
@@ -73,7 +76,15 @@
     .anokii-main{ display:flex; flex-direction:column; min-width:0; }
     .anokii-content{ padding:26px 30px 60px; flex:1; min-width:0; }
 
-    @media(max-width:880px){ .anokii-app{ grid-template-columns:1fr; } .anokii-side{ position:static; height:auto; } }
+    @media(max-width:880px){
+      .anokii-app{ grid-template-columns:1fr; }
+      .anokii-side{ position:static; height:auto; }
+      .anokii-js .anokii-navtoggle{ display:grid; }
+      .anokii-js .anokii-nav,.anokii-js .anokii-userchip{ display:none; }
+      .anokii-js .anokii-side.nav-open .anokii-nav,.anokii-js .anokii-side.nav-open .anokii-userchip{ display:flex; }
+      .anokii-js .anokii-side.nav-open .anokii-nav{ flex-direction:column; max-height:calc(100vh - 70px); }
+      .anokii-content{ padding:20px 16px 44px; }
+    }
     {% block shell_styles %}{% endblock %}
   </style>
   {% block head_extra %}{% endblock %}
@@ -81,10 +92,15 @@
 <body>
   <div class="anokii-app">
     <aside class="anokii-side">
-      <a class="anokii-brand" href="{{ home_path|default('/') }}">
-        {% block brand %}<b>Anokii</b>{% endblock %}
-      </a>
-      <nav class="anokii-nav">
+      <div class="anokii-brandrow">
+        <a class="anokii-brand" href="{{ home_path|default('/') }}">
+          {% block brand %}<b>Anokii</b>{% endblock %}
+        </a>
+        <button class="anokii-navtoggle" type="button" aria-expanded="false" aria-controls="anokii-workspace-nav" aria-label="Open workspace navigation">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <nav class="anokii-nav" id="anokii-workspace-nav" aria-label="Workspace">
         {# Sidebar nav. A richer instance can override this block to render its own
            nav markup (its own classes, data attributes, search hooks). The default
            output is unchanged, so basic installs render identically. #}
@@ -95,7 +111,7 @@
             <div class="anokii-navgroup">{{ item.group }}</div>
             {% set current_group = item.group %}
           {% endif %}
-          <a class="anokii-navlink{{ nav_active == item.id ? ' on' : '' }}" href="{{ item.href }}">
+          <a class="anokii-navlink{{ nav_active == item.id ? ' on' : '' }}" href="{{ item.href }}"{% if nav_active == item.id %} aria-current="page"{% endif %}>
             {% if item.icon is defined %}<svg viewBox="0 0 24 24" fill="none">{{ item.icon|raw }}</svg>{% endif %}
             <span>{{ item.label }}</span>
             {% if item.badge is defined and item.badge %}<span class="anokii-badge">{{ item.badge }}</span>{% endif %}
@@ -125,6 +141,34 @@
       {% block main_footer %}{% endblock %}
     </main>
   </div>
+  <script>
+    document.documentElement.classList.add('anokii-js');
+    (() => {
+      const side = document.querySelector('.anokii-side');
+      const toggle = document.querySelector('.anokii-navtoggle');
+      if (!(side instanceof HTMLElement) || !(toggle instanceof HTMLButtonElement)) return;
+      const close = () => {
+        side.classList.remove('nav-open');
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.setAttribute('aria-label', 'Open workspace navigation');
+      };
+      toggle.addEventListener('click', () => {
+        const open = !side.classList.contains('nav-open');
+        side.classList.toggle('nav-open', open);
+        toggle.setAttribute('aria-expanded', String(open));
+        toggle.setAttribute('aria-label', open ? 'Close workspace navigation' : 'Open workspace navigation');
+      });
+      side.querySelector('.anokii-nav')?.addEventListener('click', event => {
+        if (event.target instanceof Element && event.target.closest('a')) close();
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && side.classList.contains('nav-open')) {
+          close();
+          toggle.focus();
+        }
+      });
+    })();
+  </script>
   {% block page_scripts %}{% endblock %}
 </body>
 </html>

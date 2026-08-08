@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Anokii\CoIntelligence;
 
+use Anokii\Support\Values;
 use Waaseyaa\Database\DatabaseInterface;
 
 /**
@@ -263,15 +264,15 @@ final class GraphRetriever implements RetrieverInterface
     {
         $out = [];
         foreach ($this->rows('SELECT name, _data FROM place') as [$name, $data]) {
-            $slug = (string) ($data['slug'] ?? '');
+            $slug = Values::str($data['slug'] ?? null);
             if ($slug === '') {
                 continue;
             }
             $out[$slug] = [
                 'name' => $name,
-                'lat' => (float) ($data['lat'] ?? 0),
-                'lng' => (float) ($data['lng'] ?? 0),
-                'travel' => (string) ($data['travel_note'] ?? ''),
+                'lat' => Values::float($data['lat'] ?? null),
+                'lng' => Values::float($data['lng'] ?? null),
+                'travel' => Values::str($data['travel_note'] ?? null),
             ];
         }
 
@@ -285,15 +286,15 @@ final class GraphRetriever implements RetrieverInterface
     {
         $out = [];
         foreach ($this->rows('SELECT name, _data FROM community') as [$name, $data]) {
-            $slug = (string) ($data['slug'] ?? '');
+            $slug = Values::str($data['slug'] ?? null);
             if ($slug === '') {
                 continue;
             }
-            $region = is_array($data['region'] ?? null) ? $data['region'] : json_decode((string) ($data['region'] ?? ''), true);
+            $region = $data['region'] ?? null;
             $out[$slug] = [
                 'name' => $name,
-                'place' => (string) ($data['located_at'] ?? ''),
-                'region' => is_array($region) ? array_values(array_map(strval(...), $region)) : [],
+                'place' => Values::str($data['located_at'] ?? null),
+                'region' => Values::stringList(is_array($region) ? $region : json_decode(Values::str($region), true)),
             ];
         }
 
@@ -307,14 +308,14 @@ final class GraphRetriever implements RetrieverInterface
     {
         $out = [];
         foreach ($this->rows('SELECT name, _data FROM service') as [$name, $data]) {
-            $slug = (string) ($data['slug'] ?? '');
+            $slug = Values::str($data['slug'] ?? null);
             if ($slug === '') {
                 continue;
             }
             $out[$slug] = [
                 'name' => $name,
-                'place' => (string) ($data['located_at'] ?? ''),
-                'topic' => (string) ($data['has_topic'] ?? ''),
+                'place' => Values::str($data['located_at'] ?? null),
+                'topic' => Values::str($data['has_topic'] ?? null),
             ];
         }
 
@@ -328,16 +329,16 @@ final class GraphRetriever implements RetrieverInterface
     {
         $out = [];
         foreach ($this->rows('SELECT name, _data FROM project') as [$name, $data]) {
-            $slug = (string) ($data['slug'] ?? '');
+            $slug = Values::str($data['slug'] ?? null);
             if ($slug === '') {
                 continue;
             }
-            $relates = is_array($data['relates_to'] ?? null) ? $data['relates_to'] : json_decode((string) ($data['relates_to'] ?? ''), true);
+            $relates = $data['relates_to'] ?? null;
             $out[$slug] = [
                 'name' => $name,
-                'place' => (string) ($data['located_at'] ?? ''),
-                'topic' => (string) ($data['has_topic'] ?? ''),
-                'relates' => is_array($relates) ? array_values(array_map(strval(...), $relates)) : [],
+                'place' => Values::str($data['located_at'] ?? null),
+                'topic' => Values::str($data['has_topic'] ?? null),
+                'relates' => Values::stringList(is_array($relates) ? $relates : json_decode(Values::str($relates), true)),
             ];
         }
 
@@ -352,12 +353,12 @@ final class GraphRetriever implements RetrieverInterface
         $chunks = [];
         foreach ($this->rows('SELECT title, _data FROM doc_chunk') as [$title, $data]) {
             $chunks[] = [
-                'source_url' => (string) ($data['source_url'] ?? ''),
+                'source_url' => Values::str($data['source_url'] ?? null),
                 'title' => $title,
-                'heading' => (string) ($data['heading'] ?? ''),
-                'text' => (string) ($data['text'] ?? ''),
-                'entity_type' => (string) ($data['entity_type'] ?? ''),
-                'entity_id' => (string) ($data['entity_id'] ?? ''),
+                'heading' => Values::str($data['heading'] ?? null),
+                'text' => Values::str($data['text'] ?? null),
+                'entity_type' => Values::str($data['entity_type'] ?? null),
+                'entity_id' => Values::str($data['entity_id'] ?? null),
             ];
         }
 
@@ -377,11 +378,11 @@ final class GraphRetriever implements RetrieverInterface
         $out = [];
         try {
             foreach ($this->db->query($sql) as $row) {
-                $values = array_values($row);
-                $label = (string) ($values[0] ?? '');
-                $data = json_decode((string) ($row['_data'] ?? ''), true);
+                $columns = Values::map($row);
+                $label = Values::str(array_values($columns)[0] ?? null);
+                $data = json_decode(Values::str($columns['_data'] ?? null), true);
                 if (is_array($data)) {
-                    $out[] = [$label, $data];
+                    $out[] = [$label, Values::map($data)];
                 }
             }
         } catch (\Throwable) {

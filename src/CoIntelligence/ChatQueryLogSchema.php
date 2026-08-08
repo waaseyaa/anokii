@@ -4,19 +4,18 @@ declare(strict_types=1);
 
 namespace Anokii\CoIntelligence;
 
+use Anokii\Support\Values;
 use Waaseyaa\Database\DatabaseInterface;
 
 /**
- * Creates the anonymous Co-Intelligence query-log table on demand.
+ * Test fixture for the anonymous Co-Intelligence query-log table.
  *
- * The framework has no migration CLI, so the table is ensured at boot, guarded
- * by tableExists() (the established Waaseyaa convention for supporting,
- * non-entity tables). The package owns this table so the no-PII log does not
- * depend on any app's analytics schema.
+ * Production schema and legacy-redaction ownership lives in versioned app
+ * migrations. This helper remains for isolated in-memory tests.
  *
- * SOVEREIGNTY NOTE (OCAP): every column is content-only. There is deliberately
- * no IP, no visitor hash, no view/session id, and no account, nothing that links
- * a question to a person.
+ * SOVEREIGNTY NOTE (OCAP): there is no IP, visitor/session id, account, or raw
+ * question. The legacy question column is retained for schema compatibility and
+ * contains only `[redacted]`.
  *
  * @api
  */
@@ -30,6 +29,7 @@ final class ChatQueryLogSchema
     {
         $schema = $this->db->schema();
         if ($schema->tableExists(self::TABLE)) {
+            $this->redactLegacyQuestions();
             return;
         }
 
@@ -51,5 +51,19 @@ final class ChatQueryLogSchema
                 'idx_cq_topic' => ['topic'],
             ],
         ]);
+    }
+
+    private function redactLegacyQuestions(): void
+    {
+        foreach ($this->db->select(self::TABLE)->condition('question', '[redacted]', '<>')->execute() as $row) {
+            $values = Values::map($row);
+            if (($values['question'] ?? null) === '[redacted]') {
+                continue;
+            }
+            $this->db->update(self::TABLE)
+                ->fields(['question' => '[redacted]'])
+                ->condition('id', Values::int($values['id'] ?? null))
+                ->execute();
+        }
     }
 }

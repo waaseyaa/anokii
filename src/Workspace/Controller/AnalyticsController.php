@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Anokii\Workspace\Controller;
 
+use Anokii\Access\AccountBoundary;
 use Anokii\Support\Auth;
 use Anokii\Workspace\Analytics\AnalyticsReport;
 use Anokii\Workspace\WorkspaceShell;
@@ -27,6 +28,7 @@ final class AnalyticsController
     public function __construct(
         private readonly ?EntityTypeManager $entityTypeManager,
         private readonly AnalyticsReport $report,
+        private readonly AccountBoundary $accounts,
         private readonly string $loginPath = '/admin/anokii/login',
     ) {}
 
@@ -45,7 +47,7 @@ final class AnalyticsController
         $from = $this->cleanDate($request->query->get('from'), gmdate('Y-m-d', strtotime('-29 days')));
         $to = $this->cleanDate($request->query->get('to'), gmdate('Y-m-d'));
 
-        $context = WorkspaceShell::context($user, 'analytics') + [
+        $context = WorkspaceShell::context($this->accounts->identity($user), $user->id(), 'analytics') + [
             'report' => $this->report->summary($from, $to),
             'range' => ['from' => $from, 'to' => $to],
         ];

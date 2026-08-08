@@ -27,7 +27,11 @@ final class AnalyticsCollector
     public function __construct(
         private readonly DatabaseInterface $db,
         private readonly string $secret,
-    ) {}
+    ) {
+        if (strlen($this->secret) < 32) {
+            throw new \InvalidArgumentException('Analytics privacy secret must contain at least 32 bytes.');
+        }
+    }
 
     /**
      * @param array<string,mixed> $beacon decoded JSON beacon

@@ -44,7 +44,12 @@ final class PageAccessPolicy extends AbstractEntityAccessPolicy
         // publish / rollback: move the live (published) pointer. Higher bar than
         // a draft edit; everything else follows the standard base shape.
         if ($operation === 'publish') {
-            return $account->hasPermission(WorkspaceRoles::PUBLISH_PAGES)
+            $principal = $this->claims($account);
+            if ($principal === null) {
+                return self::mutableAccountDenied();
+            }
+
+            return $principal->hasPermission(WorkspaceRoles::PUBLISH_PAGES)
                 ? AccessResult::allowed('publish pages may change the live view')
                 : AccessResult::neutral('publishing a page requires publish pages');
         }

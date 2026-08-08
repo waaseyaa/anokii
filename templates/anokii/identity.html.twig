@@ -27,6 +27,14 @@
   }
   /* maturity card */
   .maturity{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-bottom:26px;box-shadow:var(--card-shadow)}
+  .pillar-create{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:18px;box-shadow:var(--card-shadow)}
+  .pillar-create h2{font-size:16px;margin-bottom:10px}
+  .pillar-create form{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) auto;gap:9px;align-items:end}
+  .pillar-create label{display:flex;flex-direction:column;gap:4px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+  .pillar-create input{min-width:0;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font:inherit;color:var(--ink);background:var(--bg)}
+  .pillar-create button{border:0;border-radius:9px;padding:10px 16px;background:var(--cyan2);color:#fff;font:inherit;font-weight:600;cursor:pointer}
+  .pillar-create .msg{grid-column:1/-1;min-height:18px;font-size:13px;color:#a4291c}
+  @media(max-width:760px){.pillar-create form{grid-template-columns:1fr}.pillar-create .msg{grid-column:1}}
   .maturity h2{font-size:11.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:0 0 13px;font-weight:600;font-family:"Oswald",sans-serif}
   .bar{display:flex;height:14px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--bg)}
   .bar span{display:block;height:100%;transition:width .3s}
@@ -204,6 +212,18 @@
       <p class="sub">The pillars are on the right. Ask Co-Intelligence here to read or change them. When it drafts an edit, it appears on the pillar for you to approve, attributed to you and saved as a revision.</p>
     </div>
 
+    {% if can_create %}
+    <div class="pillar-create">
+      <h2>Create a pillar</h2>
+      <form id="pillarCreateForm">
+        <label>Title<input id="pillarCreateTitle" type="text" maxlength="120" required></label>
+        <label>Section<input id="pillarCreateSection" type="text" maxlength="80" placeholder="Identity"></label>
+        <button type="submit">Create draft</button>
+        <div class="msg" id="pillarCreateMsg" role="status" aria-live="polite"></div>
+      </form>
+    </div>
+    {% endif %}
+
     <div class="maturity">
       <h2>Identity maturity</h2>
       <div class="bar" id="bar">
@@ -290,6 +310,17 @@
 </div>
 
 <script>
+var pillarCreateForm=document.getElementById('pillarCreateForm');
+if(pillarCreateForm){
+  pillarCreateForm.addEventListener('submit',function(event){
+    event.preventDefault();
+    var message=document.getElementById('pillarCreateMsg');
+    fetch('/admin/anokii/identity/create',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({title:document.getElementById('pillarCreateTitle').value,section:document.getElementById('pillarCreateSection').value})})
+      .then(function(response){return response.json().then(function(data){return {status:response.status,data:data};});})
+      .then(function(result){if(result.status===201&&result.data.ok){location.reload();return;}message.textContent=result.data.error||'Could not create the pillar.';})
+      .catch(function(){message.textContent='Could not create the pillar.';});
+  });
+}
 // Pillar work surface: inline status + notes edits (saved as revisions), history.
 (function(){
   var order=['defined','draft','work','gap'];
@@ -305,7 +336,7 @@
   }
   function stamp(pid, by, at){
     var el=document.querySelector('.edited[data-pid="'+pid+'"]');
-    if(el && by){ el.innerHTML='Last edited by '+by+' · '+at; el.classList.add('saveflash'); setTimeout(function(){el.classList.remove('saveflash');},900); }
+    if(el && by){ el.textContent='Last edited by '+by+' · '+at; el.classList.add('saveflash'); setTimeout(function(){el.classList.remove('saveflash');},900); }
   }
   function save(body){
     return fetch('/admin/anokii/identity/save',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(body)})
@@ -429,10 +460,10 @@
   function forgetCid(){ cid=0; try{ localStorage.removeItem(CIDKEY); }catch(e){} }
 
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
-  // Render the agent's markdown through the shared renderer (/js/anokii-md.js:
-  // tables, rules, lists, headings, pillar-status pills). Falls back to escaped
-  // text with line breaks if the shared script is unavailable.
-  function fmt(t){ if(window.AnokiiMd && window.AnokiiMd.render){ return window.AnokiiMd.render(t); } return '<p>'+esc(t).replace(/\n/g,'<br>')+'</p>'; }
+  // Agent output is untrusted. Keep the distribution renderer text-only until
+  // a sanitizer-owned markdown contract is part of Anokii itself; a consuming
+  // site's global renderer is not an authority to inject HTML here.
+  function fmt(t){ return '<p>'+esc(t).replace(/\n/g,'<br>')+'</p>'; }
   function fmtVal(v){ if(v===null||v===undefined||v==='') return '(none)'; if(typeof v==='object') return JSON.stringify(v); var s=String(v); return s.length>140?s.slice(0,137)+'...':s; }
   function fullVal(v){ if(v===null||v===undefined||v==='') return '(empty)'; if(typeof v==='object') return JSON.stringify(v); return String(v); }
   function addMsg(role){ var m=document.createElement('div'); m.className='imsg '+(role==='user'?'user':'ai'); var a=document.createElement('div'); a.className='av'; a.textContent=role==='user'?'YOU':'CI'; var b=document.createElement('div'); b.className='ibub'; m.appendChild(a); m.appendChild(b); stream.appendChild(m); stream.scrollTop=stream.scrollHeight; return b; }
@@ -448,9 +479,7 @@
         if(ev==='meta'){ if(d.conversation_id) rememberCid(d.conversation_id); }
         else if(ev==='delta'){ if(!started){ bub.textContent=''; started=true; } raw+=d.text||''; bub.textContent=raw; stream.scrollTop=stream.scrollHeight; }
         else if(ev==='proposal'){ proposed=true; routeProposal(bub,raw,d); }
-        else if(ev==='applied'){ if(d.ok) didApply=true; else if(d.error){ if(!started){ bub.textContent=''; started=true; } raw+=(raw?'
-
-':'')+d.error; bub.textContent=raw; stream.scrollTop=stream.scrollHeight; } }
+        else if(ev==='applied'){ if(d.ok) didApply=true; else if(d.error){ if(!started){ bub.textContent=''; started=true; } raw+=(raw?'\n\n':'')+d.error; bub.textContent=raw; stream.scrollTop=stream.scrollHeight; } }
       }); return pump(); }); }
       function fin(){ if(!proposed){ bub.innerHTML=fmt(raw)||'<p>Done.</p>'; } busy=false; sendBtn.disabled=false; stream.scrollTop=stream.scrollHeight; if(didApply){ var n=addMsg('ai'); n.innerHTML='<span class="iwork"><span class="d"></span>Change applied. Refreshing the pillars...</span>'; setTimeout(function(){ location.reload(); },1400); } }
       return pump();

@@ -14,16 +14,16 @@ use Waaseyaa\Entity\Attribute\Field;
  *
  * @api
  */
-#[ContentEntityType(id: 'organization', label: 'Organization', description: 'A provider of services in the graph.')]
+#[ContentEntityType(id: 'organization', label: 'Organization', description: 'A provider of services in the graph.', storageBackend: \Waaseyaa\Entity\Storage\PrimaryStorageBackend::SQL_COLUMN)]
 #[ContentEntityKeys(id: 'id', uuid: 'uuid', label: 'name')]
 final class Organization extends GraphEntityBase
 {
-    #[Field(label: 'Name', required: true, settings: ['weight' => 0])]
+    #[Field(label: 'Name', required: true, settings: ['weight' => 0], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $name = '';
 
-    #[Field(label: 'Slug', required: true, settings: ['weight' => 1])]
+    #[Field(label: 'Slug', required: true, settings: ['weight' => 1], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $slug = '';
 
-    #[Field(label: 'Source URL', description: 'Public page this organization is described on.', required: false, settings: ['weight' => 2])]
+    #[Field(label: 'Source URL', description: 'Public page this organization is described on.', required: false, settings: ['weight' => 2], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $source_url = '';
 }

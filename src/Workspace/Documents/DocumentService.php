@@ -25,7 +25,12 @@ final class DocumentService
         private readonly ?EntityTypeManager $entityTypeManager,
         private readonly DocumentStorage $storage,
         private readonly GotenbergClient $gotenberg,
-    ) {}
+        private readonly string $communityId,
+    ) {
+        if (trim($communityId) === '') {
+            throw new \InvalidArgumentException('DocumentService requires an active community id.');
+        }
+    }
 
     /** @return list<Document> current revision of every document, newest-updated first */
     public function listDocuments(): array
@@ -73,13 +78,22 @@ final class DocumentService
     ): Document {
         [$sourceUri, $mime, $size, $previewUri] = $this->prepareVersion($sourcePath, $sourceFilename, $previewPath, $ownerUid);
 
-        $doc = new Document();
-        $doc->set('uuid', Uuid::v4()->toRfc4122());
-        $doc->setTitle($title)->setFolder($folder)->setOwner($ownerUid, $ownerLabel);
-        $doc->setVersion($sourceUri, $sourceFilename, $mime, $size, $previewUri, $versionLabel, $ownerUid, $ownerLabel);
-        $doc->set('updated_at', gmdate('Y-m-d\TH:i:s\Z'));
-        $doc->enforceIsNew();
-        $this->documents()->save($doc);
+        try {
+            $doc = new Document([
+                'uuid' => Uuid::v4()->toRfc4122(),
+                'community_id' => $this->communityId,
+                'classification_label' => 'nation-restricted',
+            ]);
+            $doc->setTitle($title)->setFolder($folder)->setOwner($ownerUid, $ownerLabel);
+            $doc->setVersion($sourceUri, $sourceFilename, $mime, $size, $previewUri, $versionLabel, $ownerUid, $ownerLabel);
+            $doc->set('updated_at', gmdate('Y-m-d\TH:i:s\Z'));
+            $doc->enforceIsNew();
+            $this->documents()->save($doc);
+        } catch (\Throwable $exception) {
+            $this->discardVersionFiles($sourceUri, $previewUri);
+
+            throw $exception;
+        }
 
         return $doc;
     }
@@ -103,9 +117,15 @@ final class DocumentService
 
         [$sourceUri, $mime, $size, $previewUri] = $this->prepareVersion($sourcePath, $sourceFilename, $previewPath, $authorUid);
 
-        $doc->setVersion($sourceUri, $sourceFilename, $mime, $size, $previewUri, $versionLabel, $authorUid, $authorLabel);
-        $doc->set('updated_at', gmdate('Y-m-d\TH:i:s\Z'));
-        $this->documents()->save($doc);
+        try {
+            $doc->setVersion($sourceUri, $sourceFilename, $mime, $size, $previewUri, $versionLabel, $authorUid, $authorLabel);
+            $doc->set('updated_at', gmdate('Y-m-d\TH:i:s\Z'));
+            $this->documents()->save($doc);
+        } catch (\Throwable $exception) {
+            $this->discardVersionFiles($sourceUri, $previewUri);
+
+            throw $exception;
+        }
 
         return $doc;
     }
@@ -164,8 +184,11 @@ final class DocumentService
 
     public function addNote(string $uuid, int $authorUid, string $authorLabel, string $body): DocumentNote
     {
-        $note = new DocumentNote();
-        $note->set('uuid', Uuid::v4()->toRfc4122());
+        $note = new DocumentNote([
+            'uuid' => Uuid::v4()->toRfc4122(),
+            'community_id' => $this->communityId,
+            'classification_label' => 'nation-restricted',
+        ]);
         $note->fill($uuid, $authorUid, $authorLabel, $body, gmdate('Y-m-d\TH:i:s\Z'));
         $note->enforceIsNew();
         $this->notes()->save($note);
@@ -201,7 +224,17 @@ final class DocumentService
 
         if ($previewPath !== null && is_file($previewPath)) {
             // Seed path: a pre-converted .pdf was supplied.
-            $previewUri = $this->storage->store($previewPath, $previewName, $ownerUid)->uri;
+            try {
+                $previewUri = $this->storage->store($previewPath, $previewName, $ownerUid)->uri;
+            } catch (\Throwable $exception) {
+                $this->storage->delete($source->uri);
+
+                throw $exception;
+            }
+        } elseif ($source->mimeType === 'application/pdf') {
+            // A PDF source is already render-safe; reuse the stored bytes as
+            // the preview instead of duplicating them on the storage volume.
+            $previewUri = $source->uri;
         } elseif ($this->isDocx($source->mimeType, $sourceFilename) && $this->gotenberg->isConfigured()) {
             // Live path: convert the .docx to a .pdf preview via Gotenberg. A
             // conversion failure must not lose the document, so the source is
@@ -215,6 +248,18 @@ final class DocumentService
         }
 
         return [$source->uri, $source->mimeType, $source->size, $previewUri];
+    }
+
+    private function discardVersionFiles(string $sourceUri, string $previewUri): void
+    {
+        foreach (array_unique(array_filter([$sourceUri, $previewUri])) as $uri) {
+            try {
+                $this->storage->delete($uri);
+            } catch (\Throwable) {
+                // Preserve the original persistence failure. A reconciliation
+                // scan can report the cleanup failure without hiding its cause.
+            }
+        }
     }
 
     private function isDocx(string $mime, string $filename): bool

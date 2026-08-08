@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Anokii\Provider;
 
 use Anokii\CoIntelligence\ChatPromptBuilder;
-use Anokii\CoIntelligence\ChatQueryLogSchema;
 use Anokii\CoIntelligence\ChatVoice;
 use Anokii\CoIntelligence\GraphRetriever;
 use Anokii\CoIntelligence\SqliteChatQueryLog;
 use Anokii\CoIntelligence\SqliteRateLimiter;
 use Anokii\CoIntelligence\TopicVocabulary;
 use Anokii\Config\DistributionConfig;
+use Anokii\Config\TenancyMode;
 use Anokii\Controller\PublicChatController;
 use Anokii\Entity\Community;
 use Anokii\Entity\DocChunk;
@@ -20,12 +20,12 @@ use Anokii\Entity\Place;
 use Anokii\Entity\Project;
 use Anokii\Entity\Service;
 use Anokii\Entity\Topic;
+use Anokii\Support\Values;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Yaml\Yaml;
 use Waaseyaa\AI\Agent\Provider\AnthropicProvider;
 use Waaseyaa\AI\Agent\Provider\ProviderInterface;
 use Waaseyaa\Database\DatabaseInterface;
-use Waaseyaa\Database\DBALDatabase;
 use Waaseyaa\Entity\EntityType;
 use Waaseyaa\Entity\EntityTypeManager;
 use Waaseyaa\Foundation\Log\LoggerInterface;
@@ -47,10 +47,9 @@ use Waaseyaa\Routing\WaaseyaaRouter;
  *   workspace controllers remain app-provided until they are extracted in a later
  *   increment); this provider only contributes the shared engine and entities.
  *
- * The model provider is never forked here; only the binding is chosen. The DB is
- * pinned to the persistent SQLite file because resolve(DatabaseInterface) at
- * route-build time can hand back an ephemeral connection (the controller is built
- * once, not per request), which would defeat the rate limiter and the log.
+ * The model provider is never forked here; only the binding is chosen. All
+ * support tables use the kernel-owned DatabaseInterface so alternate drivers,
+ * transactions, tenancy, and lifecycle remain framework concerns.
  *
  * @api
  */
@@ -58,12 +57,6 @@ final class CoIntelligenceServiceProvider extends ServiceProvider
 {
     /** Chat model, the locked Claude Sonnet default. */
     private const MODEL = 'claude-sonnet-4-6';
-
-    /**
-     * Route priority for /admin/anokii so it beats the framework admin SPA GET
-     * catch-all at /admin/{path} (priority 0). Matches the sovereign workspace.
-     */
-    private const ROUTE_PRIORITY = 100;
 
     /** @var list<class-string> the package-canonical graph entity classes */
     private const ENTITY_CLASSES = [
@@ -81,16 +74,20 @@ final class CoIntelligenceServiceProvider extends ServiceProvider
     public function register(): void
     {
         // Distribution posture, safe-by-default sovereign when the file is absent.
+        $distribution = DistributionConfig::fromFile($this->projectRoot . '/config/anokii.yaml');
         $this->singleton(
             DistributionConfig::class,
-            fn(): DistributionConfig => DistributionConfig::fromFile($this->projectRoot . '/config/anokii.yaml'),
+            fn(): DistributionConfig => $distribution,
         );
 
         // The graph entity model. A package's entities are NOT auto-discovered
         // from the app's src/, so the provider registers them explicitly from
         // their attribute metadata, giving every consumer one shared shape.
+        $tenancy = $distribution->tenancyMode() === TenancyMode::Sovereign
+            ? ['scope' => EntityType::TENANCY_SCOPE_COMMUNITY]
+            : null;
         foreach (self::ENTITY_CLASSES as $class) {
-            $this->entityType(EntityType::fromClass($class));
+            $this->entityType(EntityType::fromClass($class, tenancy: $tenancy));
         }
 
         // Rebind the LLM provider to Anthropic from the server-side key. Left
@@ -106,16 +103,8 @@ final class CoIntelligenceServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        if (!$this->kernelPresent()) {
-            return;
-        }
-        // Ensure the no-PII chat-log table on the persistent file. Wrapped so a
-        // storage hiccup never takes down a page.
-        try {
-            new ChatQueryLogSchema($this->persistentDatabase())->ensure();
-        } catch (\Throwable) {
-            // best effort
-        }
+        // Supporting tables and legacy redaction are versioned app migrations.
+        // Provider boot is deliberately free of schema and data writes.
     }
 
     public function routes(WaaseyaaRouter $router, ?EntityTypeManager $entityTypeManager = null): void
@@ -145,9 +134,9 @@ final class CoIntelligenceServiceProvider extends ServiceProvider
             prompts: new ChatPromptBuilder($this->chatVoice($chatConfig)),
             provider: $configured
                 ? new AnthropicProvider($key, self::MODEL)
-                : $this->resolve(ProviderInterface::class),
+                : $this->resolveOrFail(ProviderInterface::class),
             limiter: new SqliteRateLimiter($db, $this->rateMaxRequests($chatConfig), $this->rateWindowSeconds($chatConfig)),
-            logger: $this->resolve(LoggerInterface::class),
+            logger: $this->resolveOrFail(LoggerInterface::class),
             queryLog: new SqliteChatQueryLog($db),
             topics: new TopicVocabulary(),
             configured: $configured,
@@ -194,9 +183,8 @@ final class CoIntelligenceServiceProvider extends ServiceProvider
             return [];
         }
         $parsed = Yaml::parseFile($path);
-        $chat = is_array($parsed) ? ($parsed['chat'] ?? null) : null;
 
-        return is_array($chat) ? $chat : [];
+        return Values::map(Values::map($parsed)['chat'] ?? null);
     }
 
     /**
@@ -257,8 +245,8 @@ final class CoIntelligenceServiceProvider extends ServiceProvider
      */
     private function rateMaxRequests(array $chat): int
     {
-        $rl = is_array($chat['rate_limit'] ?? null) ? $chat['rate_limit'] : [];
-        $v = (int) ($rl['max_requests'] ?? 0);
+        $rl = Values::map($chat['rate_limit'] ?? null);
+        $v = Values::int($rl['max_requests'] ?? null);
 
         return $v > 0 ? $v : 12;
     }
@@ -270,8 +258,8 @@ final class CoIntelligenceServiceProvider extends ServiceProvider
      */
     private function rateWindowSeconds(array $chat): int
     {
-        $rl = is_array($chat['rate_limit'] ?? null) ? $chat['rate_limit'] : [];
-        $v = (int) ($rl['window_seconds'] ?? 0);
+        $rl = Values::map($chat['rate_limit'] ?? null);
+        $v = Values::int($rl['window_seconds'] ?? null);
 
         return $v > 0 ? $v : 60;
     }
@@ -283,25 +271,44 @@ final class CoIntelligenceServiceProvider extends ServiceProvider
      */
     private function positiveInt(array $chat, string $key, int $default): int
     {
-        $v = (int) ($chat[$key] ?? 0);
+        $v = Values::int($chat[$key] ?? null);
 
         return $v > 0 ? $v : $default;
     }
 
-    private function persistentDatabase(): DatabaseInterface
+    /**
+     * A container binding narrowed to its declared interface. The container
+     * returns `object`; handing that straight to a typed constructor would fail
+     * with a bare TypeError, so a missing or mis-bound service is reported here
+     * against the service name instead.
+     *
+     * @template T of object
+     *
+     * @param class-string<T> $id
+     *
+     * @return T
+     */
+    private function resolveOrFail(string $id): object
     {
-        return $this->persistent ??= DBALDatabase::createSqlite($this->databasePath());
+        $resolved = $this->resolve($id);
+        if (!$resolved instanceof $id) {
+            throw new \RuntimeException(sprintf('Co-Intelligence requires the %s binding.', $id));
+        }
+
+        return $resolved;
     }
 
-    private function databasePath(): string
+    private function persistentDatabase(): DatabaseInterface
     {
-        $configured = getenv('WAASEYAA_DB') ?: '';
-        if ($configured === '') {
-            return $this->projectRoot . '/storage/waaseyaa.sqlite';
+        if ($this->persistent instanceof DatabaseInterface) {
+            return $this->persistent;
         }
-        $isAbsolute = str_starts_with($configured, '/') || preg_match('#^[A-Za-z]:[\\\\/]#', $configured) === 1;
+        $resolved = $this->resolve(DatabaseInterface::class);
+        if (!$resolved instanceof DatabaseInterface) {
+            throw new \RuntimeException('Co-Intelligence requires the kernel DatabaseInterface binding.');
+        }
 
-        return $isAbsolute ? $configured : $this->projectRoot . '/' . ltrim($configured, './');
+        return $this->persistent = $resolved;
     }
 
     private function kernelPresent(): bool

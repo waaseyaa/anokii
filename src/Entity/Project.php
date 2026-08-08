@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Anokii\Entity;
 
+use Anokii\Support\Values;
 use Waaseyaa\Entity\Attribute\ContentEntityKeys;
 use Waaseyaa\Entity\Attribute\ContentEntityType;
 use Waaseyaa\Entity\Attribute\Field;
@@ -15,26 +16,26 @@ use Waaseyaa\Entity\Attribute\Field;
  *
  * @api
  */
-#[ContentEntityType(id: 'project', label: 'Project', description: 'A shared project related to one or more communities.')]
+#[ContentEntityType(id: 'project', label: 'Project', description: 'A shared project related to one or more communities.', storageBackend: \Waaseyaa\Entity\Storage\PrimaryStorageBackend::SQL_COLUMN)]
 #[ContentEntityKeys(id: 'id', uuid: 'uuid', label: 'name')]
 final class Project extends GraphEntityBase
 {
-    #[Field(label: 'Name', required: true, settings: ['weight' => 0])]
+    #[Field(label: 'Name', required: true, settings: ['weight' => 0], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $name = '';
 
-    #[Field(label: 'Slug', required: true, settings: ['weight' => 1])]
+    #[Field(label: 'Slug', required: true, settings: ['weight' => 1], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $slug = '';
 
-    #[Field(label: 'Relates to', description: 'JSON array of community slugs this project concerns.', required: false, settings: ['weight' => 2])]
+    #[Field(label: 'Relates to', description: 'JSON array of community slugs this project concerns.', required: false, settings: ['weight' => 2], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $relates_to = '';
 
-    #[Field(label: 'Located at', description: 'Place slug.', required: false, settings: ['weight' => 3])]
+    #[Field(label: 'Located at', description: 'Place slug.', required: false, settings: ['weight' => 3], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $located_at = '';
 
-    #[Field(label: 'Topic', description: 'Topic slug.', required: false, settings: ['weight' => 4])]
+    #[Field(label: 'Topic', description: 'Topic slug.', required: false, settings: ['weight' => 4], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $has_topic = '';
 
-    #[Field(label: 'Source URL', required: false, settings: ['weight' => 5])]
+    #[Field(label: 'Source URL', required: false, settings: ['weight' => 5], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $source_url = '';
 
     public function getLocatedAt(): string
@@ -52,8 +53,6 @@ final class Project extends GraphEntityBase
      */
     public function getRelatesTo(): array
     {
-        $decoded = json_decode($this->str('relates_to'), true);
-
-        return is_array($decoded) ? array_values(array_map(strval(...), $decoded)) : [];
+        return Values::stringList(json_decode($this->str('relates_to'), true));
     }
 }

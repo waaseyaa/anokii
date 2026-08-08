@@ -6,6 +6,7 @@ namespace Anokii\Support;
 
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Waaseyaa\Access\User\UserInternalFieldReaderInterface;
+use Waaseyaa\Access\User\UserSessionSnapshot;
 use Waaseyaa\Auth\AuthManager;
 use Waaseyaa\Entity\EntityTypeManager;
 use Waaseyaa\User\User;
@@ -49,8 +50,8 @@ final class Auth
             return null;
         }
 
-        $uid = $_SESSION['waaseyaa_uid'] ?? null;
-        if ($uid === null || $uid === '') {
+        $uid = Values::str($_SESSION['waaseyaa_uid'] ?? null);
+        if ($uid === '') {
             return null;
         }
 
@@ -58,7 +59,7 @@ final class Auth
         // genuine storage fault, which must not be swallowed here. Catching it
         // is what let the alpha.254 storage regression masquerade as a routine
         // logged-out state for a month.
-        $user = $entityTypeManager->getRepository('user')->find((string) $uid);
+        $user = $entityTypeManager->getRepository('user')->find($uid);
 
         return $user instanceof User ? $user : null;
     }
@@ -117,7 +118,7 @@ final class Auth
         // Logout only tears the session down — it never reads user internals,
         // so the AuthManager is constructed with a loud null-object reader
         // rather than real read authority.
-        (new AuthManager(new UnusedInternalFieldReader()))->logout();
+        new AuthManager(new UnusedInternalFieldReader())->logout();
     }
 
     /**
@@ -164,15 +165,32 @@ final class Auth
     }
 
     /**
-     * A friendly display label for a signed-in user: the name when set,
-     * otherwise the email address.
+     * A friendly display label for a signed-in account: the name when set,
+     * otherwise the email address, otherwise the account id.
+     *
+     * Takes the AUDITED identity snapshot rather than the User entity, so this
+     * method cannot reach a sealed field: `name` is Protected and `mail` is
+     * Internal on framework ≥ alpha.269, and reading either off the entity threw
+     * (MissingFieldReadContext / FieldReadDenied) — a 500 on every shell page.
+     * {@see \Anokii\Access\AccountBoundary} owns the one audited read that
+     * produces the snapshot; this is pure formatting over already-released
+     * values.
+     *
+     * The last resort is the account id, not a fabricated name: an account the
+     * shell genuinely cannot name is labelled truthfully rather than presented
+     * as someone else, and attribution written to a revision stays traceable.
      *
      * @api
      */
-    public static function label(User $user): string
+    public static function label(UserSessionSnapshot $identity, int|string $accountId): string
     {
-        $name = trim($user->getName());
+        $name = trim($identity->name);
+        if ($name !== '') {
+            return $name;
+        }
 
-        return $name !== '' ? $name : $user->getEmail();
+        $mail = trim($identity->mail);
+
+        return $mail !== '' ? $mail : 'Account #' . $accountId;
     }
 }

@@ -56,7 +56,11 @@ final class PillarService
     public function __construct(
         private readonly ?EntityTypeManager $entityTypeManager,
         array $translations = [],
+        private readonly string $communityId = '',
     ) {
+        if (trim($communityId) === '') {
+            throw new \InvalidArgumentException('PillarService requires an active community id.');
+        }
         $this->translations = $translations;
     }
 
@@ -131,8 +135,11 @@ final class PillarService
         string $updatedAt,
         string $revisionLog,
     ): Pillar {
-        $pillar = new Pillar();
-        $pillar->set('uuid', Uuid::v4()->toRfc4122());
+        $pillar = new Pillar([
+            'uuid' => Uuid::v4()->toRfc4122(),
+            'community_id' => $this->communityId,
+            'classification_label' => 'nation-restricted',
+        ]);
         $pillar->fill(
             $pid,
             $section,

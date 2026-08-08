@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Anokii\Entity;
 
+use Anokii\Support\Values;
 use Waaseyaa\Entity\Attribute\ContentEntityKeys;
 use Waaseyaa\Entity\Attribute\ContentEntityType;
+use Waaseyaa\Entity\Attribute\Field;
 use Waaseyaa\Entity\ContentEntityBase;
+use Waaseyaa\Entity\FieldReadLevel;
 
 /**
  * One submission from the public contact form.
@@ -34,44 +37,55 @@ use Waaseyaa\Entity\ContentEntityBase;
 #[ContentEntityKeys(id: 'id', uuid: 'uuid', label: 'email')]
 final class ContactSubmission extends ContentEntityBase
 {
+    use SovereignMetadataTrait;
+
+    #[Field(read: FieldReadLevel::Protected)] public string $email = '';
+    #[Field(read: FieldReadLevel::Protected)] public string $name = '';
+    #[Field(required: false, read: FieldReadLevel::Protected)] public string $org = '';
+    #[Field(required: false, read: FieldReadLevel::Protected)] public string $topic = '';
+    #[Field(type: 'text', read: FieldReadLevel::Protected)] public string $message = '';
+    #[Field(read: FieldReadLevel::Protected)] public string $submitted_at = '';
+    #[Field(required: false, read: FieldReadLevel::Protected)] public string $source_path = '';
+    #[Field(read: FieldReadLevel::Protected)] public bool $is_read = false;
+
     public function getEmail(): string
     {
-        return (string) ($this->get('email') ?? '');
+        return Values::str($this->get('email'));
     }
 
     public function getName(): string
     {
-        return (string) ($this->get('name') ?? '');
+        return Values::str($this->get('name'));
     }
 
     public function getOrg(): string
     {
-        return (string) ($this->get('org') ?? '');
+        return Values::str($this->get('org'));
     }
 
     public function getTopic(): string
     {
-        return (string) ($this->get('topic') ?? '');
+        return Values::str($this->get('topic'));
     }
 
     public function getMessage(): string
     {
-        return (string) ($this->get('message') ?? '');
+        return Values::str($this->get('message'));
     }
 
     public function getSubmittedAt(): string
     {
-        return (string) ($this->get('submitted_at') ?? '');
+        return Values::str($this->get('submitted_at'));
     }
 
     public function getSourcePath(): string
     {
-        return (string) ($this->get('source_path') ?? '');
+        return Values::str($this->get('source_path'));
     }
 
     public function isRead(): bool
     {
-        return (int) ($this->get('is_read') ?? 0) === 1;
+        return Values::int($this->get('is_read')) === 1;
     }
 
     public function markRead(): static

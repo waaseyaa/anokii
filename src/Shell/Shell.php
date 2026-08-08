@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Anokii\Shell;
 
 use Anokii\Support\Auth;
-use Waaseyaa\User\User;
+use Waaseyaa\Access\User\UserSessionSnapshot;
 
 /**
  * Builds the shared template context every Anokii shell page needs: the active
@@ -18,6 +18,12 @@ use Waaseyaa\User\User;
  * itself and the per-role human labels, both passed in by the caller, so this
  * class never imports an instance's nav registry or role model.
  *
+ * The shell is a presenter over an AUDITED identity snapshot, never over the
+ * User entity: `name`/`mail`/`roles` are sealed, so the caller obtains the
+ * snapshot once from {@see \Anokii\Access\AccountBoundary::identity()} and
+ * passes it in. That removes the read authority this class used to lack — and
+ * with it the swallowed FieldReadDenied that made every chip read "Member".
+ *
  * @api
  */
 final class Shell
@@ -25,7 +31,10 @@ final class Shell
     /**
      * Assemble the base shell context for a page.
      *
-     * @param User                       $user       The signed-in account.
+     * @param UserSessionSnapshot        $identity   Audited name/mail/roles of the
+     *                                               signed-in account.
+     * @param int|string                 $accountId  The signed-in account's id, used
+     *                                               only as the last-resort label.
      * @param string                     $active     The id of the active nav entry.
      * @param array<string, mixed>       $extra      Instance context merged on top
      *                                               (for example the nav/module list
@@ -41,24 +50,25 @@ final class Shell
      * @api
      */
     public static function context(
-        User $user,
+        UserSessionSnapshot $identity,
+        int|string $accountId,
         string $active,
         array $extra = [],
         array $roleLabels = [],
     ): array {
-        $label = Auth::label($user);
+        $label = Auth::label($identity, $accountId);
 
         return [
             'nav_active' => $active,
             'user_label' => $label,
-            'user_role' => self::roleLabel($user, $roleLabels),
+            'user_role' => self::roleLabel($identity, $roleLabels),
             'user_initials' => self::initials($label),
         ] + $extra;
     }
 
     /**
      * Resolve a human role label for the user chip. When $roleLabels maps one
-     * of the user's role ids, that label wins (in the user's role order);
+     * of the account's role ids, that label wins (in the account's role order);
      * otherwise the first role id is humanized ("band_admin" to "Band Admin").
      * Falls back to "Member" when the account holds no roles.
      *
@@ -66,17 +76,9 @@ final class Shell
      *
      * @api
      */
-    public static function roleLabel(User $user, array $roleLabels = []): string
+    public static function roleLabel(UserSessionSnapshot $identity, array $roleLabels = []): string
     {
-        try {
-            $roles = $user->getRoles();
-        } catch (\Waaseyaa\Entity\Exception\FieldReadDenied | \Waaseyaa\Entity\Exception\MissingFieldReadContext) {
-            // Framework ≥ alpha.269 seals `roles` as Internal; without an
-            // audited capability the entity cannot answer. The chip label is
-            // cosmetic — degrade to the neutral label rather than threading
-            // read authority through every shell render.
-            return 'Member';
-        }
+        $roles = $identity->roles;
         if ($roles === []) {
             return 'Member';
         }

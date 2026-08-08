@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Anokii\Entity;
 
+use Anokii\Support\Values;
 use Waaseyaa\Entity\Attribute\ContentEntityKeys;
 use Waaseyaa\Entity\Attribute\ContentEntityType;
 use Waaseyaa\Entity\Attribute\Field;
@@ -18,20 +19,20 @@ use Waaseyaa\Entity\Attribute\Field;
  *
  * @api
  */
-#[ContentEntityType(id: 'community', label: 'Community', description: 'A vantage community onto the shared graph, with a curated region catchment.')]
+#[ContentEntityType(id: 'community', label: 'Community', description: 'A vantage community onto the shared graph, with a curated region catchment.', storageBackend: \Waaseyaa\Entity\Storage\PrimaryStorageBackend::SQL_COLUMN)]
 #[ContentEntityKeys(id: 'id', uuid: 'uuid', label: 'name')]
 final class Community extends GraphEntityBase
 {
-    #[Field(label: 'Name', required: true, settings: ['weight' => 0])]
+    #[Field(label: 'Name', required: true, settings: ['weight' => 0], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $name = '';
 
-    #[Field(label: 'Slug', description: 'Stable vantage identifier used in the URL and the /api/chat community parameter.', required: true, settings: ['weight' => 1])]
+    #[Field(label: 'Slug', description: 'Stable vantage identifier used in the URL and the /api/chat community parameter.', required: true, settings: ['weight' => 1], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $slug = '';
 
-    #[Field(label: 'Located at', description: 'Slug of this community\'s own Place.', required: false, settings: ['weight' => 2])]
+    #[Field(label: 'Located at', description: 'Slug of this community\'s own Place.', required: false, settings: ['weight' => 2], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $located_at = '';
 
-    #[Field(label: 'Region', description: 'JSON array of Place slugs forming the curated catchment, ordered by distance.', required: false, settings: ['weight' => 3])]
+    #[Field(label: 'Region', description: 'JSON array of Place slugs forming the curated catchment, ordered by distance.', required: false, settings: ['weight' => 3], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $region = '';
 
     public function getLocatedAt(): string
@@ -44,8 +45,6 @@ final class Community extends GraphEntityBase
      */
     public function getRegion(): array
     {
-        $decoded = json_decode($this->str('region'), true);
-
-        return is_array($decoded) ? array_values(array_map(strval(...), $decoded)) : [];
+        return Values::stringList(json_decode($this->str('region'), true));
     }
 }

@@ -31,7 +31,7 @@
   <h2>Profile</h2>
   <form id="profileForm">
     <div class="fld"><label for="name">Name</label><input type="text" id="name" value="{{ profile_name }}"></div>
-    <div class="fld"><label for="email">Email</label><input type="email" id="email" value="{{ profile_email }}"></div>
+    <div class="fld"><label for="email">Email</label><input type="email" id="email" value="{{ profile_email }}" readonly aria-describedby="emailHelp"><small id="emailHelp">Contact an administrator to verify an email change.</small></div>
     <button class="abtn" type="submit">Save profile</button>
     <div class="msg" id="profileMsg"></div>
   </form>
@@ -40,8 +40,9 @@
 <div class="panel">
   <h2>Change password</h2>
   <form id="pwForm">
-    <div class="fld"><label for="current">Current password</label><input type="password" id="current" autocomplete="current-password"></div>
-    <div class="fld"><label for="newpw">New password</label><input type="password" id="newpw" autocomplete="new-password" minlength="10"></div>
+    <input type="email" name="username" autocomplete="username" value="{{ profile_email }}" hidden>
+    <div class="fld"><label for="current">Current password</label><input type="password" id="current" name="current_password" autocomplete="current-password"></div>
+    <div class="fld"><label for="newpw">New password</label><input type="password" id="newpw" name="new_password" autocomplete="new-password" minlength="10"></div>
     <button class="abtn" type="submit">Change password</button>
     <div class="msg" id="pwMsg"></div>
   </form>
@@ -65,7 +66,7 @@
   document.getElementById('profileForm').addEventListener('submit', function(e){
     e.preventDefault();
     var m=document.getElementById('profileMsg');
-    post({name:document.getElementById('name').value, email:document.getElementById('email').value})
+    post({name:document.getElementById('name').value})
       .then(function(d){ show(m, !!(d&&d.ok), (d&&d.ok)?'Profile saved.':((d&&d.error)||'Could not save.')); });
   });
   document.getElementById('pwForm').addEventListener('submit', function(e){

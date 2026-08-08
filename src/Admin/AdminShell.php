@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Anokii\Admin;
 
 use Anokii\Shell\Shell;
-use Waaseyaa\User\User;
+use Waaseyaa\Access\User\UserSessionSnapshot;
 
 /**
  * Builds the render context for an Anokii admin page: the shared shell chrome
@@ -27,7 +27,8 @@ final class AdminShell
     /**
      * Assemble the context for an admin page rendered through anokii/_shell.html.twig.
      *
-     * @param User                                                                                                       $user    Signed-in account.
+     * @param UserSessionSnapshot                                                                                        $identity Audited identity of the signed-in account (see {@see \Anokii\Access\AccountBoundary::identity()}).
+     * @param int|string                                                                                                 $accountId Signed-in account id; the last-resort chip label.
      * @param string                                                                                                     $active  Active module/nav id.
      * @param list<array{id:string,label:string,group:string,live:bool,href:string,desc:string,icon:string,badge:string,tile:bool}> $modules Resolved module set (see AdminModules::resolve()).
      * @param array<string, mixed>                                                                                       $opts    Branding/theme + page extras: brand_title, brand_tag, theme_href, home_path, logout_path, page_title, plus any page-specific context.
@@ -38,7 +39,8 @@ final class AdminShell
      * @api
      */
     public static function context(
-        User $user,
+        UserSessionSnapshot $identity,
+        int|string $accountId,
         string $active,
         array $modules,
         array $opts = [],
@@ -56,7 +58,7 @@ final class AdminShell
                 'icon' => $m['icon'],
                 'badge' => $m['badge'],
             ];
-            if (($m['tile'] ?? false) !== true) {
+            if ($m['tile'] !== true) {
                 continue;
             }
             $card = [
@@ -89,6 +91,6 @@ final class AdminShell
             'preview_cards' => $preview,
         ] + $opts + $defaults;
 
-        return Shell::context($user, $active, $extra, $roleLabels);
+        return Shell::context($identity, $accountId, $active, $extra, $roleLabels);
     }
 }

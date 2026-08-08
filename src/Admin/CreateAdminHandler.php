@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Anokii\Admin;
 
 use Anokii\Access\AbstractWorkspaceRoles;
+use Anokii\Support\Values;
 use Waaseyaa\CLI\Command\SymfonyCommandIO;
 use Waaseyaa\Entity\EntityTypeManager;
 use Waaseyaa\User\User;
@@ -42,16 +43,16 @@ final class CreateAdminHandler
 
     public function run(SymfonyCommandIO $io): int
     {
-        $email = strtolower(trim((string) $io->argument('email')));
+        $email = strtolower(Values::trimmed($io->argument('email')));
         if ($email === '' || !str_contains($email, '@')) {
             $io->error('Provide a valid email: app:create-admin <email> [--name=...] [--password=...]');
 
             return 1;
         }
 
-        $password = (string) ($io->option('password') ?? '');
+        $password = Values::str($io->option('password'));
         if ($password === '') {
-            $password = (string) (getenv($this->passwordEnvVar) ?: '');
+            $password = getenv($this->passwordEnvVar) ?: '';
         }
         if ($password === '') {
             $io->error(sprintf('No password given. Pass --password=... or set %s (from the vault). The password is never hardcoded.', $this->passwordEnvVar));
@@ -64,7 +65,7 @@ final class CreateAdminHandler
             return 1;
         }
 
-        $name = (string) ($io->option('name') ?? '');
+        $name = Values::str($io->option('name'));
 
         try {
             $repository = $this->entityTypeManager->getRepository('user');

@@ -145,7 +145,7 @@ final class DistributionConfigTest extends TestCase
     public function missingFileResolvesToSafeDefaults(): void
     {
         $config = DistributionConfig::fromFile(
-            sys_get_temp_dir() . '/anokii_no_such_config_' . uniqid() . '.yaml'
+            sys_get_temp_dir() . '/anokii_no_such_config_' . uniqid() . '.yaml',
         );
 
         self::assertSame(TenancyMode::Sovereign, $config->tenancyMode());

@@ -7,7 +7,6 @@ namespace Anokii\Access;
 use Waaseyaa\Access\AccessResult;
 use Waaseyaa\Access\AccountInterface;
 use Waaseyaa\Access\Gate\PolicyAttribute;
-use Waaseyaa\Entity\EntityInterface;
 
 /**
  * Access posture for public contact-form submissions (`contact_submission`),

@@ -7,6 +7,7 @@ namespace Anokii\Access;
 use Waaseyaa\Access\AccessPolicyInterface;
 use Waaseyaa\Access\AccessResult;
 use Waaseyaa\Access\AccountInterface;
+use Waaseyaa\Access\AuthorizationPrincipalInterface;
 use Waaseyaa\Access\FieldAccessPolicyInterface;
 use Waaseyaa\Entity\EntityInterface;
 
@@ -32,15 +33,25 @@ use Waaseyaa\Entity\EntityInterface;
  * open-by-default, only Forbidden restricts). A subclass is therefore the
  * intersection type the framework's EntityAccessHandler discovers via instanceof.
  *
- * Classification-awareness: {@see fieldAccess()} is open-by-default and delegates
- * to {@see classifiedFieldAccess()}, which a subclass overrides to forbid
- * specific fields based on the entity's classification label and the account's
- * clearance. The base default grants everything, so classification gating is an
- * opt-in extension point, not a hidden behavior.
+ * This policy does not implement classification or tenant isolation. The
+ * framework's cross-cutting classification policy only applies when an entity
+ * actually carries a configured classification label. Do not treat this class,
+ * or a Neutral field result from it, as evidence of an OCAP boundary.
  *
  * Register a subclass with the framework via the #[PolicyAttribute(entityType:
  * '<id>')] attribute (or #[AccessPolicy] for plugin discovery) on the concrete
  * class, exactly as a hand-written policy would be.
+ *
+ * Immutable-principal contract: the framework's interfaces type the account
+ * parameter as {@see AccountInterface} — PHP forbids narrowing it in an
+ * implementation — but they document it as an
+ * {@see AuthorizationPrincipalInterface}, and EntityAccessHandler enforces that
+ * before any policy runs. This base holds itself to the documented contract
+ * anyway (see {@see claims()}): claims are read only off an immutable principal,
+ * and any other account denies. A mutable User cannot answer `hasPermission()`
+ * at all on framework ≥ alpha.269 — its `roles`/`permissions` are sealed
+ * Internal and throw FieldReadDenied — so consulting one could only ever produce
+ * an exception, and guessing in its place would be worse than refusing.
  *
  * @api
  */
@@ -76,12 +87,17 @@ abstract class AbstractEntityAccessPolicy implements AccessPolicyInterface, Fiel
 
     public function access(EntityInterface $entity, string $operation, AccountInterface $account): AccessResult
     {
+        $principal = $this->claims($account);
+        if ($principal === null) {
+            return self::mutableAccountDenied();
+        }
+
         if ($operation === 'view') {
-            return $this->viewAccess($entity, $account);
+            return $this->viewAccess($entity, $principal);
         }
 
         if ($operation === 'delete') {
-            return $account->hasPermission($this->administerPermission())
+            return $principal->hasPermission($this->administerPermission())
                 ? AccessResult::allowed($this->administerPermission() . ' may delete')
                 : AccessResult::neutral('deleting requires ' . $this->administerPermission());
         }
@@ -89,7 +105,7 @@ abstract class AbstractEntityAccessPolicy implements AccessPolicyInterface, Fiel
         // Every remaining operation (update, and any custom write op) is gated
         // by the edit permission. Fails closed via Neutral under the handler's
         // deny-by-default semantics.
-        return $account->hasPermission($this->editPermission())
+        return $principal->hasPermission($this->editPermission())
             ? AccessResult::allowed($this->editPermission() . ' may write')
             : AccessResult::neutral('writing requires ' . $this->editPermission());
     }
@@ -100,9 +116,40 @@ abstract class AbstractEntityAccessPolicy implements AccessPolicyInterface, Fiel
             return AccessResult::neutral();
         }
 
-        return $account->hasPermission($this->editPermission())
+        $principal = $this->claims($account);
+        if ($principal === null) {
+            return self::mutableAccountDenied();
+        }
+
+        return $principal->hasPermission($this->editPermission())
             ? AccessResult::allowed($this->editPermission() . ' may create')
             : AccessResult::neutral('creating requires ' . $this->editPermission());
+    }
+
+    /**
+     * The account's immutable claims, or null when it is not a principal and
+     * therefore cannot be consulted. Every legitimate framework account
+     * (AuthorizationPrincipal, AnonymousUser, DevAdminAccount) implements
+     * {@see AuthorizationPrincipalInterface}; only the mutable, sealed User
+     * entity does not.
+     */
+    final protected function claims(AccountInterface $account): ?AuthorizationPrincipalInterface
+    {
+        return $account instanceof AuthorizationPrincipalInterface ? $account : null;
+    }
+
+    /**
+     * Fail-closed answer for an account that never passed the audited identity
+     * boundary. Forbidden rather than Neutral: this is a broken contract, not an
+     * absence of opinion, and Neutral could still be OR'd into an Allow by
+     * another policy for the same entity type.
+     */
+    final protected static function mutableAccountDenied(): AccessResult
+    {
+        return AccessResult::forbidden(
+            'Access decisions require an immutable AuthorizationPrincipal; '
+            . 'snapshot the account at the audited identity boundary first.',
+        );
     }
 
     /**
@@ -112,7 +159,7 @@ abstract class AbstractEntityAccessPolicy implements AccessPolicyInterface, Fiel
      *
      * @api
      */
-    protected function viewAccess(EntityInterface $entity, AccountInterface $account): AccessResult
+    protected function viewAccess(EntityInterface $entity, AuthorizationPrincipalInterface $account): AccessResult
     {
         return $account->isAuthenticated()
             ? AccessResult::allowed('signed-in workspace users may read')
@@ -137,7 +184,15 @@ abstract class AbstractEntityAccessPolicy implements AccessPolicyInterface, Fiel
             return AccessResult::neutral();
         }
 
-        return $this->classifiedFieldAccess($entity, $fieldName, $operation, $account);
+        $principal = $this->claims($account);
+        if ($principal === null) {
+            // Field access is open-by-default, so "no opinion" would EXPOSE the
+            // field here. An account whose clearance cannot be read must be
+            // Forbidden, not waved through.
+            return self::mutableAccountDenied();
+        }
+
+        return $this->classifiedFieldAccess($entity, $fieldName, $operation, $principal);
     }
 
     /**
@@ -151,7 +206,7 @@ abstract class AbstractEntityAccessPolicy implements AccessPolicyInterface, Fiel
         EntityInterface $entity,
         string $fieldName,
         string $operation,
-        AccountInterface $account,
+        AuthorizationPrincipalInterface $account,
     ): AccessResult {
         return AccessResult::neutral();
     }

@@ -28,8 +28,8 @@ use Waaseyaa\Foundation\Log\LoggerInterface;
  * vantage community, hand them to the model with a grounded/cited system prompt,
  * and stream the answer back as SSE. Off-corpus questions and the not-configured
  * case short-circuit to a deterministic message and never call the model.
- * Rate-limited per client. The no-PII query log records the question, outcome,
- * topic, and cited source URLs only.
+ * Rate-limited per client. The no-PII query log records outcome, inferred topic,
+ * and cited source URLs, never raw question text or a client identifier.
  *
  * The vantage list, default vantage, and model id are install configuration,
  * passed in by the service provider; the engine and contract are the package's.
@@ -176,12 +176,11 @@ final class PublicChatController
                 $queryLog->record($community, $question, $outcome, $topic, $sourceUrls);
 
                 $usage = $response->usage + ['input_tokens' => 0, 'output_tokens' => 0];
-                // No PII: only the question and the chunks used (cited source
-                // URLs) are recorded, plus the vantage, outcome, topic, tokens.
+                // Never log raw question text: users may type personal data even
+                // though the assistant is instructed not to solicit it.
                 $logger->info('chat.llm.completed', [
                     'model' => $model,
                     'community' => $community,
-                    'question' => $question,
                     'outcome' => $outcome,
                     'topic' => $topic ?? 'none',
                     'web_research' => $webResearch,
@@ -289,17 +288,8 @@ final class PublicChatController
 
     private function clientKey(Request $request): string
     {
-        // Behind Cloudflare + cloudflared, the real client is in CF-Connecting-IP;
-        // fall back to the first X-Forwarded-For hop, then the socket address.
-        $cf = $request->headers->get('CF-Connecting-IP');
-        if (is_string($cf) && $cf !== '') {
-            return $cf;
-        }
-        $xff = $request->headers->get('X-Forwarded-For');
-        if (is_string($xff) && $xff !== '') {
-            return trim(explode(',', $xff)[0]);
-        }
-
-        return (string) $request->getClientIp();
+        // Forwarded headers only influence this when Symfony has been configured
+        // with an explicitly trusted proxy list.
+        return (string) ($request->getClientIp() ?? 'unknown');
     }
 }

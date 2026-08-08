@@ -18,26 +18,26 @@ use Waaseyaa\Entity\Attribute\Field;
  *
  * @api
  */
-#[ContentEntityType(id: 'service', label: 'Service', description: 'A service provided by an organization at a place, on a topic.')]
+#[ContentEntityType(id: 'service', label: 'Service', description: 'A service provided by an organization at a place, on a topic.', storageBackend: \Waaseyaa\Entity\Storage\PrimaryStorageBackend::SQL_COLUMN)]
 #[ContentEntityKeys(id: 'id', uuid: 'uuid', label: 'name')]
 final class Service extends GraphEntityBase
 {
-    #[Field(label: 'Name', required: true, settings: ['weight' => 0])]
+    #[Field(label: 'Name', required: true, settings: ['weight' => 0], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $name = '';
 
-    #[Field(label: 'Slug', required: true, settings: ['weight' => 1])]
+    #[Field(label: 'Slug', required: true, settings: ['weight' => 1], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $slug = '';
 
-    #[Field(label: 'Provided by', description: 'Organization slug.', required: false, settings: ['weight' => 2])]
+    #[Field(label: 'Provided by', description: 'Organization slug.', required: false, settings: ['weight' => 2], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $provided_by = '';
 
-    #[Field(label: 'Located at', description: 'Place slug.', required: false, settings: ['weight' => 3])]
+    #[Field(label: 'Located at', description: 'Place slug.', required: false, settings: ['weight' => 3], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $located_at = '';
 
-    #[Field(label: 'Topic', description: 'Topic slug.', required: false, settings: ['weight' => 4])]
+    #[Field(label: 'Topic', description: 'Topic slug.', required: false, settings: ['weight' => 4], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $has_topic = '';
 
-    #[Field(label: 'Source URL', required: false, settings: ['weight' => 5])]
+    #[Field(label: 'Source URL', required: false, settings: ['weight' => 5], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $source_url = '';
 
     public function getLocatedAt(): string

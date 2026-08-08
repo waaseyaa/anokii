@@ -73,7 +73,7 @@
     </a>
   {% endfor %}
   {% if documents is empty %}
-    <div class="dempty"><b>No documents yet</b><span>Upload a .docx to start a document with version history and notes.</span></div>
+    <div class="dempty"><b>No documents yet</b><span>Upload a PDF, Word document, or DOCX file to start version history and notes.</span></div>
   {% endif %}
 </div>
 
@@ -93,9 +93,9 @@
     toast('Uploading ' + file.name + '...');
     var xhr=new XMLHttpRequest(); xhr.open('POST','/admin/anokii/documents/create');
     var t=xsrf(); if(t){ xhr.setRequestHeader('X-XSRF-TOKEN', t); }
-    xhr.onload=function(){ var r={}; try{ r=JSON.parse(xhr.responseText); }catch(_){}
+    xhr.onload=function(){ fileInput.value=''; var r={}; try{ r=JSON.parse(xhr.responseText); }catch(_){}
       if(xhr.status>=200&&xhr.status<300&&r.ok){ window.location=r.redirect; } else { toast(r.error||'Upload failed.'); } };
-    xhr.onerror=function(){ toast('Upload failed.'); };
+    xhr.onerror=function(){ fileInput.value=''; toast('Upload failed.'); };
     xhr.send(fd);
   });
 })();

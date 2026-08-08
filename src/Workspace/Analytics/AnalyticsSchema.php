@@ -7,12 +7,10 @@ namespace Anokii\Workspace\Analytics;
 use Waaseyaa\Database\DatabaseInterface;
 
 /**
- * Creates the append-only analytics event table on demand.
+ * Test fixture for the append-only analytics event table.
  *
- * The framework has no migration CLI for non-entity tables, so the table is
- * ensured at boot, guarded by tableExists(). This is a non-entity,
- * audit-log-style table and therefore uses DatabaseInterface directly (per
- * framework convention).
+ * Production schema ownership lives in the versioned app migrations. This
+ * helper remains for isolated unit tests that use an in-memory database.
  *
  * This is the canonical first-party analytics schema for the Anokii
  * distribution: cookieless, sovereign, stored in the instance's own database.

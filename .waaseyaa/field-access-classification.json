@@ -1,0 +1,9 @@
+{
+    "fields": {
+        "identity_pillar|*|entity_id": "public",
+        "identity_pillar|*|revision_author": "protected",
+        "identity_pillar|*|revision_created": "public",
+        "pipeline|*|label": "public",
+        "trace|*|label": "internal"
+    }
+}

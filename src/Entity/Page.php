@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Anokii\Entity;
 
+use Anokii\Support\Values;
 use Waaseyaa\Entity\Attribute\ContentEntityKeys;
 use Waaseyaa\Entity\Attribute\ContentEntityType;
+use Waaseyaa\Entity\Attribute\Field;
 use Waaseyaa\Entity\ContentEntityBase;
+use Waaseyaa\Entity\FieldReadLevel;
 use Waaseyaa\Entity\RevisionableInterface;
 
 /**
@@ -31,9 +34,21 @@ use Waaseyaa\Entity\RevisionableInterface;
 #[ContentEntityKeys(id: 'id', uuid: 'uuid', label: 'title', revision: 'revision_id')]
 final class Page extends ContentEntityBase implements RevisionableInterface
 {
+    use SovereignMetadataTrait;
+
+    #[Field(read: FieldReadLevel::Public)] public string $title = '';
+    #[Field(read: FieldReadLevel::Public)] public string $path = '';
+    #[Field(read: FieldReadLevel::Public)] public ?string $meta_description = null;
+    #[Field(read: FieldReadLevel::Public)] public ?string $meta_robots = null;
+    #[Field(type: 'text', read: FieldReadLevel::Public)] public ?string $head_styles = null;
+    #[Field(read: FieldReadLevel::Public)] public string $status = 'draft';
+    /** @var list<array<string, mixed>> */
+    #[Field(type: 'json', required: false, read: FieldReadLevel::Public)] public array $blocks = [];
+    #[Field(read: FieldReadLevel::Public)] public string $revision_log = '';
+
     public function getTitle(): string
     {
-        return (string) ($this->get('title') ?? '');
+        return Values::str($this->get('title'));
     }
 
     public function setTitle(string $title): static
@@ -45,7 +60,7 @@ final class Page extends ContentEntityBase implements RevisionableInterface
 
     public function getPath(): string
     {
-        return (string) ($this->get('path') ?? '');
+        return Values::str($this->get('path'));
     }
 
     public function setPath(string $path): static
@@ -59,7 +74,7 @@ final class Page extends ContentEntityBase implements RevisionableInterface
     {
         $value = $this->get('meta_description');
 
-        return $value === null ? null : (string) $value;
+        return $value === null ? null : Values::str($value);
     }
 
     public function setMetaDescription(?string $description): static
@@ -73,7 +88,7 @@ final class Page extends ContentEntityBase implements RevisionableInterface
     {
         $value = $this->get('meta_robots');
 
-        return $value === null ? null : (string) $value;
+        return $value === null ? null : Values::str($value);
     }
 
     public function setMetaRobots(?string $robots): static
@@ -87,7 +102,7 @@ final class Page extends ContentEntityBase implements RevisionableInterface
     {
         $value = $this->get('head_styles');
 
-        return $value === null ? null : (string) $value;
+        return $value === null ? null : Values::str($value);
     }
 
     public function setHeadStyles(?string $headStyles): static
@@ -99,12 +114,15 @@ final class Page extends ContentEntityBase implements RevisionableInterface
 
     public function getStatus(): string
     {
-        return (string) ($this->get('status') ?? 'draft');
+        return Values::str($this->get('status'), 'draft');
     }
 
     public function setStatus(string $status): static
     {
         $this->set('status', $status);
+        if ($status === 'published') {
+            $this->setClassificationLabel('public');
+        }
 
         return $this;
     }
@@ -118,13 +136,7 @@ final class Page extends ContentEntityBase implements RevisionableInterface
      */
     public function getBlocks(): array
     {
-        $blocks = $this->get('blocks');
-        if (!\is_array($blocks)) {
-            return [];
-        }
-
-        /** @var list<array<string, mixed>> $blocks */
-        return array_values(array_filter($blocks, '\is_array'));
+        return Values::mapList($this->get('blocks'));
     }
 
     /**
@@ -132,7 +144,7 @@ final class Page extends ContentEntityBase implements RevisionableInterface
      */
     public function setBlocks(array $blocks): static
     {
-        $this->set('blocks', array_values($blocks));
+        $this->set('blocks', $blocks);
 
         return $this;
     }

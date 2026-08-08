@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Anokii\Entity;
 
+use Anokii\Support\Values;
 use Waaseyaa\Entity\Attribute\ContentEntityKeys;
 use Waaseyaa\Entity\Attribute\ContentEntityType;
+use Waaseyaa\Entity\Attribute\Field;
 use Waaseyaa\Entity\ContentEntityBase;
+use Waaseyaa\Entity\FieldReadLevel;
 use Waaseyaa\Entity\RevisionableInterface;
 
 /**
@@ -42,15 +45,36 @@ use Waaseyaa\Entity\RevisionableInterface;
  *   updated_at          last-edited stamp (preserved verbatim on migration)
  */
 #[ContentEntityType(id: 'identity_pillar', label: 'Identity pillar', description: 'A revisionable Identity Workspace pillar with status, notes, and history.')]
-#[ContentEntityKeys(id: 'id', uuid: 'uuid', label: 'title', revision: 'revision_id')]
+#[ContentEntityKeys(id: 'id', uuid: 'uuid', label: 'title', revision: 'revision_id', langcode: 'langcode', default_langcode: 'default_langcode')]
 final class Pillar extends ContentEntityBase implements RevisionableInterface
 {
+    use SovereignMetadataTrait;
+
+    #[Field(read: FieldReadLevel::Public)] public string $pid = '';
+    #[Field(read: FieldReadLevel::Public)] public string $section = '';
+    #[Field(read: FieldReadLevel::Public)] public string $title = '';
+    #[Field(required: false, read: FieldReadLevel::Public)] public string $now_label = '';
+    #[Field(type: 'text', required: false, read: FieldReadLevel::Public)] public string $body = '';
+    #[Field(read: FieldReadLevel::Public)] public bool $is_quote = false;
+    #[Field(required: false, read: FieldReadLevel::Public)] public string $decide_label = '';
+    #[Field(type: 'text', required: false, read: FieldReadLevel::Public)] public string $decision = '';
+    #[Field(read: FieldReadLevel::Public)] public string $status = 'draft';
+    #[Field(type: 'text', required: false, read: FieldReadLevel::Public)] public string $notes = '';
+    /** @var list<array{t:string, cyan:bool}> */
+    #[Field(type: 'json', required: false, read: FieldReadLevel::Public)] public array $pills = [];
+    #[Field(read: FieldReadLevel::Public)] public bool $is_full = false;
+    #[Field(read: FieldReadLevel::Public)] public int $sort_order = 0;
+    #[Field(read: FieldReadLevel::Public)] public int $editor_uid = 0;
+    #[Field(read: FieldReadLevel::Public)] public string $editor_label = '';
+    #[Field(read: FieldReadLevel::Public)] public string $updated_at = '';
+    #[Field(read: FieldReadLevel::Public)] public string $revision_log = '';
+
     /** Valid maturity statuses, in display order. */
     public const STATUSES = ['defined', 'draft', 'work', 'gap'];
 
     public function getPid(): string
     {
-        return (string) ($this->get('pid') ?? '');
+        return Values::str($this->get('pid'));
     }
 
     public function setPid(string $pid): static
@@ -62,42 +86,42 @@ final class Pillar extends ContentEntityBase implements RevisionableInterface
 
     public function getSection(): string
     {
-        return (string) ($this->get('section') ?? '');
+        return Values::str($this->get('section'));
     }
 
     public function getTitle(): string
     {
-        return (string) ($this->get('title') ?? '');
+        return Values::str($this->get('title'));
     }
 
     public function getNowLabel(): string
     {
-        return (string) ($this->get('now_label') ?? '');
+        return Values::str($this->get('now_label'));
     }
 
     public function getBody(): string
     {
-        return (string) ($this->get('body') ?? '');
+        return Values::str($this->get('body'));
     }
 
     public function isQuote(): bool
     {
-        return (int) ($this->get('is_quote') ?? 0) === 1;
+        return Values::int($this->get('is_quote')) === 1;
     }
 
     public function getDecideLabel(): string
     {
-        return (string) ($this->get('decide_label') ?? '');
+        return Values::str($this->get('decide_label'));
     }
 
     public function getDecision(): string
     {
-        return (string) ($this->get('decision') ?? '');
+        return Values::str($this->get('decision'));
     }
 
     public function getStatus(): string
     {
-        return (string) ($this->get('status') ?? '');
+        return Values::str($this->get('status'));
     }
 
     public function setStatus(string $status): static
@@ -109,7 +133,7 @@ final class Pillar extends ContentEntityBase implements RevisionableInterface
 
     public function getNotes(): string
     {
-        return (string) ($this->get('notes') ?? '');
+        return Values::str($this->get('notes'));
     }
 
     public function setNotes(string $notes): static
@@ -122,15 +146,9 @@ final class Pillar extends ContentEntityBase implements RevisionableInterface
     /** @return list<array{t:string,cyan:bool}> */
     public function getPills(): array
     {
-        $pills = $this->get('pills');
-        if (!is_array($pills)) {
-            return [];
-        }
         $out = [];
-        foreach ($pills as $pill) {
-            if (is_array($pill)) {
-                $out[] = ['t' => (string) ($pill['t'] ?? ''), 'cyan' => (bool) ($pill['cyan'] ?? false)];
-            }
+        foreach (Values::mapList($this->get('pills')) as $pill) {
+            $out[] = ['t' => Values::str($pill['t'] ?? null), 'cyan' => Values::bool($pill['cyan'] ?? null)];
         }
 
         return $out;
@@ -138,12 +156,12 @@ final class Pillar extends ContentEntityBase implements RevisionableInterface
 
     public function isFull(): bool
     {
-        return (int) ($this->get('is_full') ?? 0) === 1;
+        return Values::int($this->get('is_full')) === 1;
     }
 
     public function getSortOrder(): int
     {
-        return (int) ($this->get('sort_order') ?? 0);
+        return Values::int($this->get('sort_order'));
     }
 
     /**
@@ -160,12 +178,12 @@ final class Pillar extends ContentEntityBase implements RevisionableInterface
             return $author;
         }
 
-        return (int) ($this->get('editor_uid') ?? 0);
+        return Values::int($this->get('editor_uid'));
     }
 
     public function getEditorLabel(): string
     {
-        return (string) ($this->get('editor_label') ?? '');
+        return Values::str($this->get('editor_label'));
     }
 
     /**
@@ -181,7 +199,7 @@ final class Pillar extends ContentEntityBase implements RevisionableInterface
 
     public function getUpdatedAt(): string
     {
-        return (string) ($this->get('updated_at') ?? '');
+        return Values::str($this->get('updated_at'));
     }
 
     public function setUpdatedAt(string $updatedAt): static
@@ -225,14 +243,15 @@ final class Pillar extends ContentEntityBase implements RevisionableInterface
         $this->set('title', $title);
         $this->set('now_label', $nowLabel);
         $this->set('body', $body);
-        $this->set('is_quote', $isQuote ? 1 : 0);
+        $this->set('is_quote', $isQuote);
         $this->set('decide_label', $decideLabel);
         $this->set('decision', $decision);
         $this->set('status', $status);
         $this->set('notes', $notes);
-        $this->set('pills', array_values($pills));
-        $this->set('is_full', $isFull ? 1 : 0);
+        $this->set('pills', $pills);
+        $this->set('is_full', $isFull);
         $this->set('sort_order', $sortOrder);
+        $this->set('editor_uid', 0);
         $this->set('editor_label', $editorLabel);
         $this->set('updated_at', $updatedAt);
 

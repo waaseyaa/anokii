@@ -7,10 +7,9 @@ namespace Anokii\CoIntelligence;
 /**
  * Records one anonymous Co-Intelligence query for content-gap mining.
  *
- * Strictly OCAP-aligned and anonymous: implementations must store only the
- * question content and its outcome, never an IP, session/visitor id, account, or
- * anything that links a question to a person. This is the "what are people asking
- * that we cannot answer" loop, with no personal data behind it.
+ * Strictly OCAP-aligned and anonymous: implementations may use the question to
+ * derive non-identifying classifications but must never persist or log the raw
+ * prompt, an IP, session/visitor id, account, or anything linking it to a person.
  *
  * @api
  */
@@ -18,7 +17,7 @@ interface ChatQueryLogInterface
 {
     /**
      * @param string       $community vantage community slug (empty for treaty-wide)
-     * @param string       $question  the question text (content only)
+     * @param string       $question  transient input; implementations must not persist it
      * @param string       $outcome   answered | refused | no_match | error | unavailable
      * @param string|null  $topic     inferred topic slug, or null when none matched
      * @param list<string> $sources   cited source URLs (empty when none)

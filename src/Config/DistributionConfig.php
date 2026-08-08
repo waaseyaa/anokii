@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Anokii\Config;
 
+use Anokii\Support\Values;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -23,11 +24,12 @@ use Symfony\Component\Yaml\Yaml;
  *   - module in both lists          -> preview wins (the conservative reading)
  *
  * This class is a distribution-level posture selector. It does NOT replace the
- * framework's per-entity CommunityScope isolation or FieldAccessPolicyInterface;
- * it chooses which posture the install wires those primitives into.
+ * framework's per-entity CommunityScope isolation or FieldAccessPolicyInterface.
+ * It is configuration metadata and a module gate only; it must never be cited as
+ * proof that an entity type was actually community-scoped or classified.
  *
- * Status: DRAFT (WP04). The shape is the design contract; production wiring of
- * the surfaces this gates lands in a later increment.
+ * Status: DRAFT. Production tenancy/classification wiring remains a release
+ * blocker for any claim of cross-community or restricted-data isolation.
  *
  * @api
  */
@@ -38,9 +40,7 @@ final class DistributionConfig
     /**
      * @param array<string, mixed> $raw Parsed top-level config document.
      */
-    private function __construct(private readonly array $raw)
-    {
-    }
+    private function __construct(private readonly array $raw) {}
 
     /**
      * Build from a parsed array (the canonical constructor for tests and callers
@@ -68,9 +68,7 @@ final class DistributionConfig
             return new self([]);
         }
 
-        $parsed = Yaml::parseFile($path);
-
-        return new self(is_array($parsed) ? $parsed : []);
+        return new self(Values::map(Yaml::parseFile($path)));
     }
 
     /**

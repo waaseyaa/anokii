@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace Anokii\CoIntelligence;
 
+use Anokii\Support\Values;
 use Waaseyaa\Database\DatabaseInterface;
 
 /**
  * Append-only, anonymous Co-Intelligence query log backed by SQLite (table
  * {@see ChatQueryLogSchema::TABLE}).
  *
- * Records timestamp, vantage community, question text, outcome, inferred topic,
- * and cited sources only. No IP, visitor hash, view/session id, account, or
- * anything that links a question to a person. A write failure is swallowed so
- * logging never breaks the user-facing chat response.
+ * Records timestamp, vantage community, outcome, inferred topic, and cited
+ * sources only. The legacy `question` column receives a fixed redaction marker;
+ * raw prompts can contain PII even when the assistant never solicits it.
  *
  * @api
  */
@@ -35,7 +35,7 @@ final class SqliteChatQueryLog implements ChatQueryLogInterface
                 [
                     gmdate('Y-m-d H:i:s'),
                     substr($community, 0, 32),
-                    substr($question, 0, 500),
+                    '[redacted]',
                     substr($outcome, 0, 16),
                     $topic !== null ? substr($topic, 0, 64) : null,
                     substr($sourcesCsv, 0, 512),
@@ -47,7 +47,7 @@ final class SqliteChatQueryLog implements ChatQueryLogInterface
     }
 
     /**
-     * Recent log rows for the admin review surface. Content-only columns, newest
+     * Recent log rows for the admin review surface. Non-prompt columns, newest
      * first. Returns an empty list if the table is absent.
      *
      * @return list<array{created_at: string, community: string, question: string, outcome: string, topic: string, sources: string}>
@@ -61,13 +61,14 @@ final class SqliteChatQueryLog implements ChatQueryLogInterface
                 'SELECT created_at, community, question, outcome, topic, sources FROM ' . ChatQueryLogSchema::TABLE
                 . ' ORDER BY id DESC LIMIT ' . $limit,
             ) as $row) {
+                $values = Values::map($row);
                 $out[] = [
-                    'created_at' => (string) ($row['created_at'] ?? ''),
-                    'community' => (string) ($row['community'] ?? ''),
-                    'question' => (string) ($row['question'] ?? ''),
-                    'outcome' => (string) ($row['outcome'] ?? ''),
-                    'topic' => (string) ($row['topic'] ?? ''),
-                    'sources' => (string) ($row['sources'] ?? ''),
+                    'created_at' => Values::str($values['created_at'] ?? null),
+                    'community' => Values::str($values['community'] ?? null),
+                    'question' => Values::str($values['question'] ?? null),
+                    'outcome' => Values::str($values['outcome'] ?? null),
+                    'topic' => Values::str($values['topic'] ?? null),
+                    'sources' => Values::str($values['sources'] ?? null),
                 ];
             }
         } catch (\Throwable) {

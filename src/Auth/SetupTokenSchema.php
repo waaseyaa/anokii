@@ -7,14 +7,15 @@ namespace Anokii\Auth;
 use Waaseyaa\Database\DatabaseInterface;
 
 /**
- * Table for one-time "set your password" invite tokens, used by the workspace
+ * Test fixture for the one-time "set your password" invite-token table.
  * admin tier ({@see \Anokii\Dashboard\WorkspaceLoginController} +
  * {@see \Anokii\Admin\InviteHandler}).
  *
  * Only the SHA-256 hash of a token is stored; the plaintext is shown once at
  * mint time (printed as the invite link) and never persisted. This lets an
  * account holder set their own initial password without a password ever
- * appearing in code or chat. Plain DatabaseInterface (a non-entity index table).
+ * appearing in code or chat. Production schema ownership lives in the
+ * versioned app migrations; this helper remains for isolated in-memory tests.
  *
  * @api
  */

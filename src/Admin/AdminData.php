@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Anokii\Admin;
 
 use Anokii\CoIntelligence\SqliteChatQueryLog;
+use Anokii\Support\Values;
 use Waaseyaa\Database\DatabaseInterface;
 
 /**
@@ -53,7 +54,7 @@ final class AdminData
     {
         try {
             foreach ($this->db->query('SELECT COUNT(*) AS c FROM ' . $table) as $row) {
-                return (int) ($row['c'] ?? 0);
+                return Values::int(Values::map($row)['c'] ?? null);
             }
         } catch (\Throwable) {
             return -1;

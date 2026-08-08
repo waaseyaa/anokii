@@ -1,0 +1,12 @@
+tenancy_mode: sovereign
+
+# Module surfaces are opt-in. The authenticated core workspace provider remains
+# available; public graph chat stays disabled until explicitly enabled here.
+modules:
+  enabled: []
+  preview: []
+
+data_residency:
+  ownership: nation
+  default_classification: nation-restricted
+  cross_tenant_reads: false

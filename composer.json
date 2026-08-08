@@ -13,10 +13,21 @@
         }
     ],
     "require": {
-        "waaseyaa/full": "^0.1.0-alpha.276",
-        "symfony/yaml": "^7.0"
+        "ext-fileinfo": "*",
+        "ext-zip": "*",
+        "php": "^8.5",
+        "symfony/dotenv": "^7.0",
+        "symfony/http-foundation": "^7.0",
+        "symfony/uid": "^7.0",
+        "symfony/yaml": "^7.0",
+        "twig/twig": "^3.0",
+        "waaseyaa/ai-agent": "^0.1.0-alpha.289",
+        "waaseyaa/deployer": "^0.1.0-alpha.289",
+        "waaseyaa/full": "^0.1.0-alpha.289"
     },
     "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.0",
+        "phpstan/phpstan": "^2.1",
         "phpunit/phpunit": "^13.2"
     },
     "autoload": {
@@ -33,5 +44,34 @@
     "prefer-stable": true,
     "config": {
         "sort-packages": true
+    },
+    "scripts": {
+        "analyse": "phpstan analyse --configuration=phpstan.neon --no-progress --memory-limit=1G",
+        "check": [
+            "@validate-project",
+            "@test",
+            "@analyse",
+            "@style"
+        ],
+        "readiness:field-access": "php vendor/bin/waaseyaa field-access:preflight --format=json --write-artifact",
+        "style": "php-cs-fixer fix --config=.php-cs-fixer.dist.php --dry-run --diff",
+        "test": "phpunit",
+        "validate-project": "composer validate --strict"
+    },
+    "extra": {
+        "waaseyaa": {
+            "policies": [
+                "Anokii\\Access\\ContactSubmissionAccessPolicy",
+                "Anokii\\Access\\DocumentAccessPolicy",
+                "Anokii\\Access\\DocumentNoteAccessPolicy",
+                "Anokii\\Access\\DriveFileAccessPolicy",
+                "Anokii\\Access\\IdentityPillarAccessPolicy",
+                "Anokii\\Access\\PageAccessPolicy"
+            ],
+            "providers": [
+                "Anokii\\Provider\\CoIntelligenceServiceProvider",
+                "Anokii\\Provider\\WorkspaceServiceProvider"
+            ]
+        }
     }
 }
