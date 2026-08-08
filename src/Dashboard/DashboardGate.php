@@ -6,6 +6,7 @@ namespace Anokii\Dashboard;
 
 use Anokii\Access\WorkspacePermissions;
 use Anokii\Support\Auth;
+use Anokii\Support\Values;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -197,9 +198,7 @@ abstract class DashboardGate
      */
     protected function json(Request $request): array
     {
-        $decoded = json_decode((string) $request->getContent(), true);
-
-        return is_array($decoded) ? $decoded : [];
+        return Values::map(json_decode((string) $request->getContent(), true));
     }
 
     /**

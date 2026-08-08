@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Anokii deployer overlay — inherits from Waaseyaa reference recipe.
  *
@@ -14,13 +15,13 @@ declare(strict_types=1);
 
 namespace Deployer;
 
-require 'vendor/waaseyaa/deployer/recipes/waaseyaa.php';
+require 'vendor/waaseyaa/deployer/recipe/waaseyaa.php';
 
 // ---------------------------------------------------------------------------
 // Nation-scoped storage bucket naming
 // ---------------------------------------------------------------------------
 
-set('storage_bucket', static fn (string $nation, string $env): string => "anokii-{$nation}-{$env}");
+set('storage_bucket', static fn(string $nation, string $env): string => "anokii-{$nation}-{$env}");
 
 // ---------------------------------------------------------------------------
 // Classification policy seed
@@ -50,8 +51,11 @@ after('deploy:writable', 'anokii:seed:classification');
  */
 task('anokii:tenant:bootstrap', static function (): void {
     $nation = get('nation') ?? throw new \RuntimeException(
-        'Pass --nation=<nation-short> to anokii:tenant:bootstrap'
+        'Pass --nation=<nation-short> to anokii:tenant:bootstrap',
     );
-    run("cp config/tenants/sagamok.yaml.example config/tenants/{$nation}.yaml");
-    writeln("Tenant stub created: config/tenants/{$nation}.yaml — review and customise before committing.");
+    if (!is_string($nation) || preg_match('/^[a-z0-9][a-z0-9-]{0,62}$/', $nation) !== 1) {
+        throw new \RuntimeException('Nation must be a lowercase DNS-style slug (letters, numbers, hyphens; max 63).');
+    }
+    run('cp config/tenants/sagamok.yaml.example ' . escapeshellarg('config/tenants/' . $nation . '.yaml'));
+    writeln("Tenant stub created: config/tenants/{$nation}.yaml; review and customise before committing.");
 })->desc('Bootstrap a Nation tenant config from the Sagamok example stub');

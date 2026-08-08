@@ -161,7 +161,7 @@ abstract class AbstractWorkspaceRoles implements ProvidesRolesInterface
         // Drop any role from this model; keep roles owned by other models.
         $kept = array_values(array_filter(
             $internalFields->maintenanceAuthorization($user)->roles,
-            static fn (string $role): bool => !array_key_exists($role, $defs),
+            static fn(string $role): bool => !array_key_exists($role, $defs),
         ));
 
         return $user

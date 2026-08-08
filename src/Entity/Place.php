@@ -18,23 +18,23 @@ use Waaseyaa\Entity\Attribute\Field;
  *
  * @api
  */
-#[ContentEntityType(id: 'place', label: 'Place', description: 'A town or city with coordinates, used for catchment and distance ranking.')]
+#[ContentEntityType(id: 'place', label: 'Place', description: 'A town or city with coordinates, used for catchment and distance ranking.', storageBackend: \Waaseyaa\Entity\Storage\PrimaryStorageBackend::SQL_COLUMN)]
 #[ContentEntityKeys(id: 'id', uuid: 'uuid', label: 'name')]
 final class Place extends GraphEntityBase
 {
-    #[Field(label: 'Name', required: true, settings: ['weight' => 0])]
+    #[Field(label: 'Name', required: true, settings: ['weight' => 0], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $name = '';
 
-    #[Field(label: 'Slug', description: 'Stable identifier used in region lists and references.', required: true, settings: ['weight' => 1])]
+    #[Field(label: 'Slug', description: 'Stable identifier used in region lists and references.', required: true, settings: ['weight' => 1], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $slug = '';
 
-    #[Field(label: 'Latitude', required: false, settings: ['weight' => 2])]
+    #[Field(label: 'Latitude', required: false, settings: ['weight' => 2], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $lat = '';
 
-    #[Field(label: 'Longitude', required: false, settings: ['weight' => 3])]
+    #[Field(label: 'Longitude', required: false, settings: ['weight' => 3], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $lng = '';
 
-    #[Field(label: 'Travel note', description: 'Sourced travel estimate, shown verbatim; never computed or invented.', required: false, settings: ['weight' => 4])]
+    #[Field(label: 'Travel note', description: 'Sourced travel estimate, shown verbatim; never computed or invented.', required: false, settings: ['weight' => 4], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $travel_note = '';
 
     public function getLat(): float

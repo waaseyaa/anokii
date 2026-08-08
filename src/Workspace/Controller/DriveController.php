@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Anokii\Workspace\Controller;
 
+use Anokii\Access\AccountBoundary;
 use Anokii\Entity\DriveFile;
 use Anokii\Support\Auth;
+use Anokii\Support\Values;
 use Anokii\Workspace\Drive\DriveFileService;
 use Anokii\Workspace\Drive\DriveStorage;
 use Anokii\Workspace\Drive\FileTypes;
@@ -19,6 +21,8 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Waaseyaa\Access\EntityAccessHandler;
 use Waaseyaa\Entity\EntityTypeManager;
+use Waaseyaa\Entity\Validation\EntityValidationException;
+use Waaseyaa\Foundation\Log\LoggerInterface;
 use Waaseyaa\SSR\SsrServiceProvider;
 
 /**
@@ -38,6 +42,8 @@ final class DriveController
         private readonly DriveFileService $files,
         private readonly DriveStorage $storage,
         private readonly EntityAccessHandler $access,
+        private readonly AccountBoundary $accounts,
+        private readonly LoggerInterface $logger,
     ) {}
 
     public function index(Request $request): Response
@@ -53,11 +59,15 @@ final class DriveController
         }
 
         $rows = [];
+        $principal = $this->accounts->principal($user);
         foreach ($this->files->listFiles() as $file) {
+            if (!$this->access->check($file, 'view', $principal)->isAllowed()) {
+                continue;
+            }
             $rows[] = $this->present($file);
         }
 
-        $context = WorkspaceShell::context($user, 'drive') + [
+        $context = WorkspaceShell::context($this->accounts->identity($user), $user->id(), 'drive') + [
             'files' => $rows,
             'folders' => $this->files->folders(),
         ];
@@ -80,7 +90,7 @@ final class DriveController
         if (!$uploaded instanceof UploadedFile || !$uploaded->isValid()) {
             return new JsonResponse(['ok' => false, 'error' => 'No valid file was uploaded.'], 422);
         }
-        if (!$this->access->checkCreateAccess('drive_asset', '', $user)->isAllowed()) {
+        if (!$this->access->checkCreateAccess('drive_asset', '', $this->accounts->principal($user))->isAllowed()) {
             return new JsonResponse(['ok' => false, 'error' => 'You do not have permission to upload to Drive.'], 403);
         }
 
@@ -96,28 +106,47 @@ final class DriveController
         }
 
         $now = gmdate('Y-m-d H:i:s');
-        $entity = $this->files->createFile(
-            name: $originalName,
-            mimeType: $file->mimeType,
-            kind: FileTypes::kind($file->mimeType, $originalName),
-            sizeBytes: $file->size,
-            ownerUid: $user->id(),
-            ownerLabel: Auth::label($user),
-            folder: $folder,
-            storageUri: $file->uri,
-            uploadedAt: $now,
-            editorLabel: Auth::label($user),
-            updatedAt: $now,
-            revisionLog: 'Uploaded',
-        );
+        try {
+            // One audited identity read serves both attribution stamps.
+            $ownerLabel = $this->accounts->label($user);
+            $entity = $this->files->createFile(
+                name: $originalName,
+                mimeType: $file->mimeType,
+                kind: FileTypes::kind($file->mimeType, $originalName),
+                sizeBytes: $file->size,
+                ownerUid: $user->id(),
+                ownerLabel: $ownerLabel,
+                folder: $folder,
+                storageUri: $file->uri,
+                uploadedAt: $now,
+                editorLabel: $ownerLabel,
+                updatedAt: $now,
+                revisionLog: 'Uploaded',
+            );
+        } catch (\Throwable $e) {
+            $this->logger->error('drive.upload.metadata_failed', [
+                'error' => $e->getMessage(),
+                'exception' => $e::class,
+                'violations' => $e instanceof EntityValidationException ? (string) $e->violations : null,
+            ]);
+            try {
+                $this->storage->delete($file->uri);
+            } catch (\Throwable $cleanupError) {
+                $this->logger->critical('drive.upload.cleanup_failed', [
+                    'error' => $cleanupError->getMessage(),
+                    'exception' => $cleanupError::class,
+                ]);
+                // Preserve the persistence failure in the response. A storage
+                // reconciliation scan must surface any cleanup residue.
+            }
+
+            return new JsonResponse(['ok' => false, 'error' => 'Could not record the uploaded file.'], 500);
+        }
 
         return new JsonResponse(['ok' => true, 'file' => $this->present($entity)]);
     }
 
-    /**
-     * Stream a stored file. Inline by default (so images render in the panel),
-     * forced as an attachment when ?dl=1 is present.
-     */
+    /** Stream only render-safe raster images inline; every other type downloads. */
     public function download(Request $request, string $id): Response
     {
         $user = Auth::currentUser($this->entityTypeManager);
@@ -129,6 +158,9 @@ final class DriveController
         if ($file === null) {
             return new Response('Not found', 404);
         }
+        if (!$this->access->check($file, 'view', $this->accounts->principal($user))->isAllowed()) {
+            return new Response('Not found', 404);
+        }
 
         $path = $this->storage->pathForUri($file->getStorageUri());
         if ($path === null) {
@@ -137,9 +169,12 @@ final class DriveController
 
         $response = new BinaryFileResponse($path);
         $response->headers->set('Content-Type', $file->getMimeType());
-        $disposition = $request->query->getBoolean('dl')
-            ? ResponseHeaderBag::DISPOSITION_ATTACHMENT
-            : ResponseHeaderBag::DISPOSITION_INLINE;
+        $response->headers->set('X-Content-Type-Options', 'nosniff');
+        $response->headers->set('Content-Security-Policy', "sandbox; default-src 'none'");
+        $safeInline = in_array($file->getMimeType(), ['image/jpeg', 'image/png', 'image/gif', 'image/webp'], true);
+        $disposition = !$request->query->getBoolean('dl') && $safeInline
+            ? ResponseHeaderBag::DISPOSITION_INLINE
+            : ResponseHeaderBag::DISPOSITION_ATTACHMENT;
         $response->setContentDisposition($disposition, $file->getName());
 
         return $response;
@@ -152,9 +187,8 @@ final class DriveController
             return new JsonResponse(['ok' => false, 'error' => 'Not signed in.'], 401);
         }
 
-        $decoded = json_decode((string) $request->getContent(), true);
-        $data = is_array($decoded) ? $decoded : [];
-        $uuid = trim((string) ($data['uuid'] ?? ''));
+        $data = Values::map(json_decode((string) $request->getContent(), true));
+        $uuid = Values::trimmed($data['uuid'] ?? null);
         if ($uuid === '') {
             return new JsonResponse(['ok' => false, 'error' => 'Missing file id.'], 422);
         }
@@ -163,13 +197,17 @@ final class DriveController
         if ($file === null) {
             return new JsonResponse(['ok' => false, 'error' => 'Unknown file.'], 404);
         }
-        if (!$this->access->check($file, 'delete', $user)->isAllowed()) {
+        if (!$this->access->check($file, 'delete', $this->accounts->principal($user))->isAllowed()) {
             return new JsonResponse(['ok' => false, 'error' => 'You do not have permission to delete Drive files.'], 403);
         }
 
-        $uri = $this->files->delete($uuid);
-        if ($uri !== null) {
-            $this->storage->delete($uri);
+        try {
+            $uri = $this->files->delete($uuid);
+            if ($uri !== null) {
+                $this->storage->delete($uri);
+            }
+        } catch (\Throwable) {
+            return new JsonResponse(['ok' => false, 'error' => 'Deletion could not be completed; storage reconciliation may be required.'], 500);
         }
 
         return new JsonResponse(['ok' => true]);
@@ -183,7 +221,7 @@ final class DriveController
      */
     private function present(DriveFile $file): array
     {
-        $uuid = (string) ($file->get('uuid') ?? '');
+        $uuid = Values::str($file->get('uuid'));
 
         return [
             'uuid' => $uuid,

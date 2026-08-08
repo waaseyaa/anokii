@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Anokii\Workspace\Controller;
 
+use Anokii\Access\AccountBoundary;
 use Anokii\Dashboard\DashboardGate;
+use Anokii\Support\Values;
 use Anokii\Workspace\WorkspaceShell;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -30,8 +32,24 @@ final class WorkspaceController extends DashboardGate
     public function __construct(
         ?EntityTypeManager $entityTypeManager,
         ?\Waaseyaa\Access\User\UserInternalFieldReaderInterface $internalFieldReader = null,
+        private readonly ?AccountBoundary $accounts = null,
     ) {
         parent::__construct($entityTypeManager, $internalFieldReader);
+    }
+
+    /**
+     * The audited account boundary. Absent only when the controller was mounted
+     * without it, which is a wiring fault and must fail loudly rather than
+     * degrade to an unaudited read.
+     */
+    private function accounts(): AccountBoundary
+    {
+        return $this->accounts ?? throw new \LogicException(sprintf(
+            '%s was mounted without an %s; the workspace shell cannot resolve the signed-in '
+            . 'account without audited read authority. Pass the boundary to the constructor.',
+            static::class,
+            AccountBoundary::class,
+        ));
     }
 
     protected function loginPath(): string
@@ -46,7 +64,10 @@ final class WorkspaceController extends DashboardGate
             return new RedirectResponse($this->loginPath());
         }
 
-        return $this->render('anokii/home.html.twig', WorkspaceShell::context($user, 'dashboard'));
+        return $this->render(
+            'anokii/home.html.twig',
+            WorkspaceShell::context($this->accounts()->identity($user), $user->id(), 'dashboard'),
+        );
     }
 
     public function comingSoon(Request $request, string $module): Response
@@ -60,7 +81,10 @@ final class WorkspaceController extends DashboardGate
             return new RedirectResponse('/admin/anokii');
         }
 
-        return $this->render('anokii/coming-soon.html.twig', WorkspaceShell::context($user, $module) + ['module' => $m]);
+        return $this->render(
+            'anokii/coming-soon.html.twig',
+            WorkspaceShell::context($this->accounts()->identity($user), $user->id(), $module) + ['module' => $m],
+        );
     }
 
     public function settings(Request $request): Response
@@ -70,9 +94,13 @@ final class WorkspaceController extends DashboardGate
             return new RedirectResponse($this->loginPath());
         }
 
-        return $this->render('anokii/settings.html.twig', WorkspaceShell::context($user, 'settings') + [
-            'profile_name' => $user->getName(),
-            'profile_email' => $user->getEmail(),
+        // `name` is Protected and `mail` is Internal on the sealed User; both
+        // come from the one audited session-identity read, never off the entity.
+        $identity = $this->accounts()->identity($user);
+
+        return $this->render('anokii/settings.html.twig', WorkspaceShell::context($identity, $user->id(), 'settings') + [
+            'profile_name' => $identity->name,
+            'profile_email' => $identity->mail,
         ]);
     }
 
@@ -88,17 +116,24 @@ final class WorkspaceController extends DashboardGate
         }
         $data = $this->json($request);
 
-        $name = trim((string) ($data['name'] ?? ''));
-        $email = trim((string) ($data['email'] ?? ''));
-        $current = (string) ($data['current_password'] ?? '');
-        $new = (string) ($data['new_password'] ?? '');
+        $name = Values::trimmed($data['name'] ?? null);
+        $email = Values::trimmed($data['email'] ?? null);
+        $current = Values::str($data['current_password'] ?? null);
+        $new = Values::str($data['new_password'] ?? null);
 
         $updated = $user;
+        $identity = $this->accounts()->identity($user);
         if ($name !== '') {
             $updated = $updated->setName($name);
         }
-        if ($email !== '') {
-            $updated = $updated->setEmail($email);
+        if ($email !== '' && strtolower($email) !== strtolower(trim($identity->mail))) {
+            // Changing a login identifier without a verified-email workflow can
+            // orphan an account or transfer it to an unverified address. Keep
+            // the current audited address immutable until that workflow exists.
+            return new JsonResponse([
+                'ok' => false,
+                'error' => 'Email changes require administrator verification.',
+            ], 422);
         }
 
         if ($new !== '') {

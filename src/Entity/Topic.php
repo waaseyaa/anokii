@@ -18,16 +18,16 @@ use Waaseyaa\Entity\Attribute\Field;
  *
  * @api
  */
-#[ContentEntityType(id: 'topic', label: 'Topic', description: 'A subject node that services and projects are tagged with.')]
+#[ContentEntityType(id: 'topic', label: 'Topic', description: 'A subject node that services and projects are tagged with.', storageBackend: \Waaseyaa\Entity\Storage\PrimaryStorageBackend::SQL_COLUMN)]
 #[ContentEntityKeys(id: 'id', uuid: 'uuid', label: 'name')]
 final class Topic extends GraphEntityBase
 {
-    #[Field(label: 'Name', required: true, settings: ['weight' => 0])]
+    #[Field(label: 'Name', required: true, settings: ['weight' => 0], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $name = '';
 
-    #[Field(label: 'Slug', required: true, settings: ['weight' => 1])]
+    #[Field(label: 'Slug', required: true, settings: ['weight' => 1], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $slug = '';
 
-    #[Field(label: 'Keywords', description: 'Space-separated keywords used to infer this topic from a question.', required: false, settings: ['weight' => 2])]
+    #[Field(label: 'Keywords', description: 'Space-separated keywords used to infer this topic from a question.', required: false, settings: ['weight' => 2], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $keywords = '';
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Anokii\Workspace\Analytics;
 
+use Anokii\Support\Values;
 use Waaseyaa\Database\DatabaseInterface;
 
 /**
@@ -46,8 +47,8 @@ final class AnalyticsReport
             [$from, $to],
         );
         $totals = [
-            'views' => (int) ($totalsRow['views'] ?? 0),
-            'visitors' => (int) ($totalsRow['visitors'] ?? 0),
+            'views' => Values::int($totalsRow['views'] ?? null),
+            'visitors' => Values::int($totalsRow['visitors'] ?? null),
         ];
 
         $pages = [];
@@ -57,12 +58,13 @@ final class AnalyticsReport
             . ' GROUP BY path ORDER BY views DESC',
             [$from, $to],
         );
-        foreach ($rows as $r) {
-            $path = (string) ($r['path'] ?? '');
+        foreach ($rows as $row) {
+            $r = Values::map($row);
+            $path = Values::str($r['path'] ?? null);
             $pages[$path] = [
                 'path' => $path,
-                'views' => (int) $r['views'],
-                'visitors' => (int) $r['visitors'],
+                'views' => Values::int($r['views'] ?? null),
+                'visitors' => Values::int($r['visitors'] ?? null),
                 'avg_scroll' => 0.0,
                 'avg_dwell_ms' => 0.0,
             ];
@@ -76,11 +78,12 @@ final class AnalyticsReport
             . ' GROUP BY p.path',
             [$from, $to],
         );
-        foreach ($engagement as $r) {
-            $path = (string) ($r['path'] ?? '');
+        foreach ($engagement as $row) {
+            $r = Values::map($row);
+            $path = Values::str($r['path'] ?? null);
             if (isset($pages[$path])) {
-                $pages[$path]['avg_scroll'] = round((float) $r['avg_scroll'], 1);
-                $pages[$path]['avg_dwell_ms'] = round((float) $r['avg_dwell'], 0);
+                $pages[$path]['avg_scroll'] = round(Values::float($r['avg_scroll'] ?? null), 1);
+                $pages[$path]['avg_dwell_ms'] = round(Values::float($r['avg_dwell'] ?? null), 0);
             }
         }
 
@@ -91,8 +94,9 @@ final class AnalyticsReport
             . ' GROUP BY referrer_host ORDER BY count DESC LIMIT 20',
             [$from, $to],
         );
-        foreach ($rows as $r) {
-            $referrers[] = ['host' => (string) $r['host'], 'count' => (int) $r['count']];
+        foreach ($rows as $row) {
+            $r = Values::map($row);
+            $referrers[] = ['host' => Values::str($r['host'] ?? null), 'count' => Values::int($r['count'] ?? null)];
         }
 
         $devices = [];
@@ -102,8 +106,9 @@ final class AnalyticsReport
             . ' GROUP BY device ORDER BY count DESC',
             [$from, $to],
         );
-        foreach ($rows as $r) {
-            $devices[] = ['device' => (string) $r['device'], 'count' => (int) $r['count']];
+        foreach ($rows as $row) {
+            $r = Values::map($row);
+            $devices[] = ['device' => Values::str($r['device'] ?? null), 'count' => Values::int($r['count'] ?? null)];
         }
 
         return [
@@ -129,7 +134,7 @@ final class AnalyticsReport
             [$path],
         );
 
-        return (int) ($row['views'] ?? 0);
+        return Values::int($row['views'] ?? null);
     }
 
     /**
@@ -140,7 +145,7 @@ final class AnalyticsReport
     private function one(string $sql, array $args): array
     {
         foreach ($this->db->query($sql, $args) as $row) {
-            return $row;
+            return Values::map($row);
         }
 
         return [];

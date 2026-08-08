@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Anokii\Tests\Support;
 
+use Anokii\Support\Values;
 use Waaseyaa\Entity\EntityInterface;
 
 /**
@@ -17,19 +18,21 @@ final class StubUser implements EntityInterface
     /** @param array<string, mixed> $values */
     public function __construct(private array $values = []) {}
 
-    public function id(): int|string|null
+    public function id(): int|string
     {
-        return $this->values['uid'] ?? 1;
+        $id = $this->values['uid'] ?? 1;
+
+        return is_int($id) || is_string($id) ? $id : 1;
     }
 
     public function uuid(): string
     {
-        return (string) ($this->values['uuid'] ?? 'stub-uuid');
+        return Values::str($this->values['uuid'] ?? null, 'stub-uuid');
     }
 
     public function label(): string
     {
-        return (string) ($this->values['name'] ?? 'stub');
+        return Values::str($this->values['name'] ?? null, 'stub');
     }
 
     public function getEntityTypeId(): string
@@ -60,6 +63,7 @@ final class StubUser implements EntityInterface
         return $clone;
     }
 
+    /** @return array<string, mixed> */
     public function toArray(): array
     {
         return $this->values;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Anokii\Auth;
 
+use Anokii\Support\Values;
 use Waaseyaa\Database\DatabaseInterface;
 
 /**
@@ -14,7 +15,21 @@ use Waaseyaa\Database\DatabaseInterface;
  */
 final class SetupTokenRepository
 {
-    public function __construct(private readonly DatabaseInterface $db) {}
+    private const int DEFAULT_TTL_SECONDS = 72 * 60 * 60;
+
+    private readonly \Closure $now;
+
+    /** @param ?\Closure():\DateTimeImmutable $now */
+    public function __construct(
+        private readonly DatabaseInterface $db,
+        private readonly int $ttlSeconds = self::DEFAULT_TTL_SECONDS,
+        ?\Closure $now = null,
+    ) {
+        if ($this->ttlSeconds < 1) {
+            throw new \InvalidArgumentException('Setup-token TTL must be positive.');
+        }
+        $this->now = $now ?? static fn(): \DateTimeImmutable => new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+    }
 
     private static function hash(string $token): string
     {
@@ -27,14 +42,18 @@ final class SetupTokenRepository
      */
     public function mint(string $email): string
     {
+        $email = strtolower(trim($email));
+        if ($email === '') {
+            throw new \InvalidArgumentException('A setup token requires an email address.');
+        }
         $this->db->query(
-            'DELETE FROM ' . SetupTokenSchema::TABLE . ' WHERE email = ? AND used_at IS NULL',
+            'DELETE FROM ' . SetupTokenSchema::TABLE . ' WHERE LOWER(email) = ? AND used_at IS NULL',
             [$email],
         );
         $token = bin2hex(random_bytes(32));
         $this->db->query(
             'INSERT INTO ' . SetupTokenSchema::TABLE . ' (email, token_hash, created_at, used_at) VALUES (?, ?, ?, NULL)',
-            [$email, self::hash($token), gmdate('Y-m-d H:i:s')],
+            [$email, self::hash($token), $this->timestamp($this->currentTime())],
         );
 
         return $token;
@@ -49,10 +68,11 @@ final class SetupTokenRepository
             return null;
         }
         foreach ($this->db->query(
-            'SELECT email FROM ' . SetupTokenSchema::TABLE . ' WHERE token_hash = ? AND used_at IS NULL',
-            [self::hash($token)],
+            'SELECT email FROM ' . SetupTokenSchema::TABLE
+            . ' WHERE token_hash = ? AND used_at IS NULL AND created_at >= ?',
+            [self::hash($token), $this->oldestValidTimestamp()],
         ) as $row) {
-            return (string) ($row['email'] ?? '');
+            return Values::str(Values::map($row)['email'] ?? null);
         }
 
         return null;
@@ -67,11 +87,28 @@ final class SetupTokenRepository
         if ($email === null) {
             return null;
         }
-        $this->db->query(
-            'UPDATE ' . SetupTokenSchema::TABLE . ' SET used_at = ? WHERE token_hash = ? AND used_at IS NULL',
-            [gmdate('Y-m-d H:i:s'), self::hash($token)],
-        );
+        $affected = $this->db->update(SetupTokenSchema::TABLE)
+            ->fields(['used_at' => $this->timestamp($this->currentTime())])
+            ->condition('token_hash', self::hash($token))
+            ->condition('used_at', null, 'IS NULL')
+            ->condition('created_at', $this->oldestValidTimestamp(), '>=')
+            ->execute();
 
-        return $email;
+        return $affected === 1 ? $email : null;
+    }
+
+    private function currentTime(): \DateTimeImmutable
+    {
+        return ($this->now)()->setTimezone(new \DateTimeZone('UTC'));
+    }
+
+    private function oldestValidTimestamp(): string
+    {
+        return $this->timestamp($this->currentTime()->modify('-' . $this->ttlSeconds . ' seconds'));
+    }
+
+    private function timestamp(\DateTimeImmutable $time): string
+    {
+        return $time->format('Y-m-d H:i:s');
     }
 }

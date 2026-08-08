@@ -34,22 +34,10 @@ final class DriveStorage
         'image/png',
         'image/gif',
         'image/webp',
-        'image/svg+xml',
     ];
 
     /** A neutral default ceiling of 10MB. */
     public const int DEFAULT_MAX_BYTES = 10 * 1024 * 1024;
-
-    /** Extension to MIME fallback when the fileinfo extension is unavailable. */
-    private const array MIME_BY_EXTENSION = [
-        'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png',
-        'gif' => 'image/gif', 'webp' => 'image/webp', 'svg' => 'image/svg+xml',
-        'pdf' => 'application/pdf', 'txt' => 'text/plain', 'csv' => 'text/csv',
-        'doc' => 'application/msword',
-        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'xls' => 'application/vnd.ms-excel',
-        'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    ];
 
     private readonly UploadHandler $handler;
     private readonly LocalFileRepository $repository;
@@ -76,19 +64,17 @@ final class DriveStorage
     public function store(string $sourcePath, string $originalName, ?int $ownerId): File
     {
         $size = is_file($sourcePath) ? (int) filesize($sourcePath) : 0;
-        $mimeType = $this->detectMime($sourcePath, $originalName);
-
-        // Pass an empty tmp_name so UploadHandler validates against the MIME we
-        // already resolved, rather than re-running finfo (which may be absent in
-        // some PHP builds); size + error are still enforced.
         $errors = $this->handler->validate([
             'error' => UPLOAD_ERR_OK,
             'size' => $size,
-            'tmp_name' => '',
-            'type' => $mimeType,
+            'tmp_name' => $sourcePath,
         ]);
         if ($errors !== []) {
             throw new \InvalidArgumentException(implode(' ', $errors));
+        }
+        $mimeType = $this->handler->detectMimeType($sourcePath);
+        if ($mimeType === null) {
+            throw new \InvalidArgumentException('File type could not be verified.');
         }
 
         $safeName = $this->handler->generateSafeFilename($originalName);
@@ -110,7 +96,13 @@ final class DriveStorage
             ownerId: $ownerId,
             createdTime: time(),
         );
-        $this->repository->save($file);
+        try {
+            $this->repository->save($file);
+        } catch (\Throwable $exception) {
+            @unlink($dest);
+
+            throw $exception;
+        }
 
         return $file;
     }
@@ -131,8 +123,8 @@ final class DriveStorage
     public function delete(string $uri): void
     {
         $path = $this->resolvePath($uri);
-        if ($path !== null && is_file($path)) {
-            @unlink($path);
+        if ($path !== null && is_file($path) && !unlink($path)) {
+            throw new \RuntimeException('Failed to remove Drive file bytes.');
         }
         $this->repository->delete($uri);
     }
@@ -151,21 +143,4 @@ final class DriveStorage
         return $this->filesDir . '/' . $relative;
     }
 
-    /**
-     * Resolve the MIME type from file content when the fileinfo extension is
-     * available (most accurate), otherwise fall back to the original filename's
-     * extension, otherwise a generic binary type.
-     */
-    private function detectMime(string $path, string $originalName): string
-    {
-        if (is_file($path) && extension_loaded('fileinfo')) {
-            $detected = new \finfo(FILEINFO_MIME_TYPE)->file($path);
-            if (is_string($detected) && $detected !== '') {
-                return $detected;
-            }
-        }
-
-        return self::MIME_BY_EXTENSION[strtolower(pathinfo($originalName, PATHINFO_EXTENSION))]
-            ?? 'application/octet-stream';
-    }
 }

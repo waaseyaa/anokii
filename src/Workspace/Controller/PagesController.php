@@ -4,15 +4,19 @@ declare(strict_types=1);
 
 namespace Anokii\Workspace\Controller;
 
+use Anokii\Access\AccountBoundary;
+use Anokii\Support\Auth;
+use Anokii\Support\Values;
 use Anokii\Workspace\Pages\PagesService;
 use Anokii\Workspace\WorkspaceShell;
-use Anokii\Support\Auth;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Waaseyaa\Access\EntityAccessHandler;
 use Waaseyaa\Entity\EntityTypeManager;
+use Waaseyaa\Entity\Validation\EntityValidationException;
+use Waaseyaa\Foundation\Log\LoggerInterface;
 use Waaseyaa\SSR\SsrServiceProvider;
 
 /**
@@ -33,6 +37,8 @@ final class PagesController
         private readonly ?EntityTypeManager $entityTypeManager,
         private readonly PagesService $pages,
         private readonly EntityAccessHandler $access,
+        private readonly AccountBoundary $accounts,
+        private readonly LoggerInterface $logger,
     ) {}
 
     public function index(Request $request): Response
@@ -47,7 +53,7 @@ final class PagesController
             return new Response('Anokii unavailable: Twig is not initialised.', 500);
         }
 
-        $context = WorkspaceShell::context($user, 'pages') + [
+        $context = WorkspaceShell::context($this->accounts->identity($user), $user->id(), 'pages') + [
             'editing' => false,
             'pages' => $this->pages->listPages(),
         ];
@@ -72,7 +78,7 @@ final class PagesController
             return new Response('Anokii unavailable: Twig is not initialised.', 500);
         }
 
-        $context = WorkspaceShell::context($user, 'pages') + [
+        $context = WorkspaceShell::context($this->accounts->identity($user), $user->id(), 'pages') + [
             'editing' => true,
             'page' => [
                 'id' => $id,
@@ -90,6 +96,42 @@ final class PagesController
         return $this->html($twig->render('anokii/pages.html.twig', $context));
     }
 
+    public function create(Request $request): Response
+    {
+        $user = Auth::currentUser($this->entityTypeManager);
+        if ($user === null) {
+            return new JsonResponse(['ok' => false, 'error' => 'Not signed in.'], 401);
+        }
+        if (!$this->access->checkCreateAccess('page', '', $this->accounts->principal($user))->isAllowed()) {
+            return new JsonResponse(['ok' => false, 'error' => 'You do not have permission to create pages.'], 403);
+        }
+
+        $data = Values::map(json_decode((string) $request->getContent(), true));
+        $title = Values::trimmed($data['title'] ?? null);
+        $path = $this->normalizePath(Values::trimmed($data['path'] ?? null));
+        if ($title === '' || $path === null) {
+            return new JsonResponse(['ok' => false, 'error' => 'Provide a title and a valid public path.'], 422);
+        }
+
+        try {
+            $page = $this->pages->createPage($path, $title, $this->accounts->label($user));
+        } catch (\DomainException $e) {
+            return new JsonResponse(['ok' => false, 'error' => $e->getMessage()], 409);
+        } catch (\Throwable $e) {
+            $this->logger->error('pages.create_failed', [
+                'error' => $e->getMessage(),
+                'exception' => $e::class,
+                'violations' => $e instanceof EntityValidationException ? (string) $e->violations : null,
+            ]);
+            return new JsonResponse(['ok' => false, 'error' => 'Could not create the page.'], 500);
+        }
+
+        return new JsonResponse([
+            'ok' => true,
+            'redirect' => '/admin/anokii/pages/' . (string) $page->id(),
+        ], 201);
+    }
+
     public function save(Request $request, string $id): Response
     {
         $user = Auth::currentUser($this->entityTypeManager);
@@ -101,12 +143,11 @@ final class PagesController
         if ($page === null) {
             return new JsonResponse(['ok' => false, 'error' => 'Unknown page.'], 404);
         }
-        if (!$this->access->check($page, 'update', $user)->isAllowed()) {
+        if (!$this->access->check($page, 'update', $this->accounts->principal($user))->isAllowed()) {
             return new JsonResponse(['ok' => false, 'error' => 'You do not have permission to edit pages.'], 403);
         }
 
-        $decoded = json_decode((string) $request->getContent(), true);
-        $data = is_array($decoded) ? $decoded : [];
+        $data = Values::map(json_decode((string) $request->getContent(), true));
 
         $fields = [];
         foreach (['title', 'meta_description', 'meta_robots', 'head_styles'] as $key) {
@@ -115,10 +156,10 @@ final class PagesController
             }
         }
         if (array_key_exists('blocks', $data) && is_array($data['blocks'])) {
-            $fields['blocks'] = $data['blocks'];
+            $fields['blocks'] = Values::mapList($data['blocks']);
         }
 
-        $draftRev = $this->pages->saveDraft($id, $fields, Auth::label($user));
+        $draftRev = $this->pages->saveDraft($id, $fields, $this->accounts->label($user));
         if ($draftRev === null) {
             return new JsonResponse(['ok' => false, 'error' => 'Could not save the draft.'], 422);
         }
@@ -137,9 +178,8 @@ final class PagesController
 
     public function rollback(Request $request, string $id): Response
     {
-        $decoded = json_decode((string) $request->getContent(), true);
-        $data = is_array($decoded) ? $decoded : [];
-        $rev = (int) ($data['rev'] ?? 0);
+        $data = Values::map(json_decode((string) $request->getContent(), true));
+        $rev = Values::int($data['rev'] ?? null);
         if ($rev <= 0) {
             return new JsonResponse(['ok' => false, 'error' => 'Missing revision.'], 422);
         }
@@ -225,7 +265,7 @@ final class PagesController
         if ($page === null) {
             return new JsonResponse(['ok' => false, 'error' => 'Unknown page.'], 404);
         }
-        if (!$this->access->check($page, $operation, $user)->isAllowed()) {
+        if (!$this->access->check($page, $operation, $this->accounts->principal($user))->isAllowed()) {
             return new JsonResponse(['ok' => false, 'error' => 'You do not have permission to publish pages.'], 403);
         }
 
@@ -240,5 +280,24 @@ final class PagesController
     private function html(string $body): Response
     {
         return new Response($body, 200, ['Content-Type' => 'text/html; charset=UTF-8']);
+    }
+
+    private function normalizePath(string $path): ?string
+    {
+        if ($path === '') {
+            return null;
+        }
+        $path = '/' . ltrim($path, '/');
+        if ($path !== '/') {
+            $path = rtrim($path, '/');
+        }
+        if (!preg_match('#^/(?:[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*)*)?$#', $path)) {
+            return null;
+        }
+        if ($path === '/admin' || str_starts_with($path, '/admin/') || $path === '/api' || str_starts_with($path, '/api/')) {
+            return null;
+        }
+
+        return $path;
     }
 }

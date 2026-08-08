@@ -23,14 +23,13 @@ final class DocumentStorage
 {
     private const string SUBDIR = 'documents';
 
-    private const array MIME_BY_EXTENSION = [
-        'pdf' => 'application/pdf',
-        'doc' => 'application/msword',
-        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    ];
-
     private readonly UploadHandler $handler;
     private readonly LocalFileRepository $repository;
+
+    /** @var list<string> */
+    private readonly array $allowedMimeTypes;
+
+    private readonly int $maxBytes;
 
     /**
      * @param list<string> $allowedMimeTypes
@@ -42,6 +41,8 @@ final class DocumentStorage
     ) {
         $this->handler = new UploadHandler($filesDir, $allowedMimeTypes, $maxBytes);
         $this->repository = new LocalFileRepository($filesDir);
+        $this->allowedMimeTypes = $allowedMimeTypes;
+        $this->maxBytes = $maxBytes;
     }
 
     /**
@@ -54,16 +55,21 @@ final class DocumentStorage
     public function store(string $sourcePath, string $originalName, ?int $ownerId): File
     {
         $size = is_file($sourcePath) ? (int) filesize($sourcePath) : 0;
-        $mimeType = $this->detectMime($sourcePath, $originalName);
+        if (!is_file($sourcePath)) {
+            throw new \InvalidArgumentException('File type could not be verified.');
+        }
+        if ($size > $this->maxBytes) {
+            $maxMb = round($this->maxBytes / 1_048_576);
+            throw new \InvalidArgumentException("File must be under {$maxMb}MB.");
+        }
 
-        $errors = $this->handler->validate([
-            'error' => UPLOAD_ERR_OK,
-            'size' => $size,
-            'tmp_name' => '',
-            'type' => $mimeType,
-        ]);
-        if ($errors !== []) {
-            throw new \InvalidArgumentException(implode(' ', $errors));
+        $detected = $this->handler->detectMimeType($sourcePath);
+        if ($detected === null) {
+            throw new \InvalidArgumentException('File type could not be verified.');
+        }
+        $mimeType = $this->normalizedDocumentMime($sourcePath, $originalName, $detected);
+        if ($mimeType === null || !UploadHandler::mimeTypeMatches($mimeType, $this->allowedMimeTypes)) {
+            throw new \InvalidArgumentException('File type not allowed.');
         }
 
         $safeName = $this->handler->generateSafeFilename($originalName);
@@ -85,7 +91,13 @@ final class DocumentStorage
             ownerId: $ownerId,
             createdTime: time(),
         );
-        $this->repository->save($file);
+        try {
+            $this->repository->save($file);
+        } catch (\Throwable $exception) {
+            @unlink($dest);
+
+            throw $exception;
+        }
 
         return $file;
     }
@@ -120,6 +132,15 @@ final class DocumentStorage
         return ($path !== null && is_file($path)) ? $path : null;
     }
 
+    public function delete(string $uri): void
+    {
+        $path = $this->resolvePath($uri);
+        if ($path !== null && is_file($path) && !unlink($path)) {
+            throw new \RuntimeException('Failed to remove document bytes.');
+        }
+        $this->repository->delete($uri);
+    }
+
     private function resolvePath(string $uri): ?string
     {
         $prefix = 'public://';
@@ -134,16 +155,49 @@ final class DocumentStorage
         return $this->filesDir . '/' . $relative;
     }
 
-    private function detectMime(string $path, string $originalName): string
+    private function normalizedDocumentMime(string $path, string $originalName, string $detected): ?string
     {
-        if (is_file($path) && extension_loaded('fileinfo')) {
-            $detected = new \finfo(FILEINFO_MIME_TYPE)->file($path);
-            if (is_string($detected) && $detected !== '') {
-                return $detected;
-            }
+        $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+        if ($extension === 'pdf' && $detected === 'application/pdf') {
+            return 'application/pdf';
+        }
+        if ($extension === 'docx'
+            && in_array($detected, ['application/zip', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'], true)
+            && $this->isWordprocessingOoxml($path)
+        ) {
+            return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        }
+        if ($extension === 'doc' && $this->hasOleCompoundFileSignature($path)) {
+            return 'application/msword';
         }
 
-        return self::MIME_BY_EXTENSION[strtolower(pathinfo($originalName, PATHINFO_EXTENSION))]
-            ?? 'application/octet-stream';
+        return null;
+    }
+
+    private function isWordprocessingOoxml(string $path): bool
+    {
+        $archive = new \ZipArchive();
+        if ($archive->open($path, \ZipArchive::RDONLY) !== true) {
+            return false;
+        }
+        try {
+            return $archive->locateName('[Content_Types].xml') !== false
+                && $archive->locateName('word/document.xml') !== false;
+        } finally {
+            $archive->close();
+        }
+    }
+
+    private function hasOleCompoundFileSignature(string $path): bool
+    {
+        $handle = fopen($path, 'rb');
+        if ($handle === false) {
+            return false;
+        }
+        try {
+            return fread($handle, 8) === "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1";
+        } finally {
+            fclose($handle);
+        }
     }
 }

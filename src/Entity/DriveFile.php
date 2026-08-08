@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Anokii\Entity;
 
+use Anokii\Support\Values;
 use Waaseyaa\Entity\Attribute\ContentEntityKeys;
 use Waaseyaa\Entity\Attribute\ContentEntityType;
+use Waaseyaa\Entity\Attribute\Field;
 use Waaseyaa\Entity\ContentEntityBase;
+use Waaseyaa\Entity\FieldReadLevel;
 use Waaseyaa\Entity\RevisionableInterface;
 
 /**
@@ -41,59 +44,74 @@ use Waaseyaa\Entity\RevisionableInterface;
 #[ContentEntityKeys(id: 'id', uuid: 'uuid', label: 'name', revision: 'revision_id')]
 final class DriveFile extends ContentEntityBase implements RevisionableInterface
 {
+    use SovereignMetadataTrait;
+
+    #[Field(read: FieldReadLevel::Public)] public string $name = '';
+    #[Field(read: FieldReadLevel::Public)] public string $mime_type = '';
+    #[Field(read: FieldReadLevel::Public)] public string $kind = 'gen';
+    #[Field(read: FieldReadLevel::Public)] public int $size_bytes = 0;
+    #[Field(read: FieldReadLevel::Public)] public int $owner_uid = 0;
+    #[Field(read: FieldReadLevel::Public)] public string $owner_label = '';
+    #[Field(read: FieldReadLevel::Public)] public string $folder = '';
+    #[Field(read: FieldReadLevel::Public)] public string $storage_uri = '';
+    #[Field(read: FieldReadLevel::Public)] public string $uploaded_at = '';
+    #[Field(read: FieldReadLevel::Public)] public string $editor_label = '';
+    #[Field(read: FieldReadLevel::Public)] public string $updated_at = '';
+    #[Field(read: FieldReadLevel::Public)] public string $revision_log = '';
+
     public function getName(): string
     {
-        return (string) ($this->get('name') ?? '');
+        return Values::str($this->get('name'));
     }
 
     public function getMimeType(): string
     {
-        return (string) ($this->get('mime_type') ?? '');
+        return Values::str($this->get('mime_type'));
     }
 
     public function getKind(): string
     {
-        return (string) ($this->get('kind') ?? 'gen');
+        return Values::str($this->get('kind'), 'gen');
     }
 
     public function getSizeBytes(): int
     {
-        return (int) ($this->get('size_bytes') ?? 0);
+        return Values::int($this->get('size_bytes'));
     }
 
     public function getOwnerUid(): int
     {
-        return (int) ($this->get('owner_uid') ?? 0);
+        return Values::int($this->get('owner_uid'));
     }
 
     public function getOwnerLabel(): string
     {
-        return (string) ($this->get('owner_label') ?? '');
+        return Values::str($this->get('owner_label'));
     }
 
     public function getFolder(): string
     {
-        return (string) ($this->get('folder') ?? '');
+        return Values::str($this->get('folder'));
     }
 
     public function getStorageUri(): string
     {
-        return (string) ($this->get('storage_uri') ?? '');
+        return Values::str($this->get('storage_uri'));
     }
 
     public function getUploadedAt(): string
     {
-        return (string) ($this->get('uploaded_at') ?? '');
+        return Values::str($this->get('uploaded_at'));
     }
 
     public function getEditorLabel(): string
     {
-        return (string) ($this->get('editor_label') ?? '');
+        return Values::str($this->get('editor_label'));
     }
 
     public function getUpdatedAt(): string
     {
-        return (string) ($this->get('updated_at') ?? '');
+        return Values::str($this->get('updated_at'));
     }
 
     /** When this revision was created, from the revision metadata. */

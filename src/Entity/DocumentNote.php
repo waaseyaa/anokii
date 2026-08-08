@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Anokii\Entity;
 
+use Anokii\Support\Values;
 use Waaseyaa\Entity\Attribute\ContentEntityKeys;
 use Waaseyaa\Entity\Attribute\ContentEntityType;
+use Waaseyaa\Entity\Attribute\Field;
 use Waaseyaa\Entity\ContentEntityBase;
+use Waaseyaa\Entity\FieldReadLevel;
 
 /**
  * One note in a document's discussion thread.
@@ -28,29 +31,37 @@ use Waaseyaa\Entity\ContentEntityBase;
 #[ContentEntityKeys(id: 'id', uuid: 'uuid', label: 'author_label')]
 final class DocumentNote extends ContentEntityBase
 {
+    use SovereignMetadataTrait;
+
+    #[Field(read: FieldReadLevel::Public)] public string $document_uuid = '';
+    #[Field(read: FieldReadLevel::Public)] public int $author_uid = 0;
+    #[Field(read: FieldReadLevel::Public)] public string $author_label = '';
+    #[Field(type: 'text', read: FieldReadLevel::Public)] public string $body = '';
+    #[Field(read: FieldReadLevel::Public)] public string $created_at = '';
+
     public function getDocumentUuid(): string
     {
-        return (string) ($this->get('document_uuid') ?? '');
+        return Values::str($this->get('document_uuid'));
     }
 
     public function getAuthorUid(): int
     {
-        return (int) ($this->get('author_uid') ?? 0);
+        return Values::int($this->get('author_uid'));
     }
 
     public function getAuthorLabel(): string
     {
-        return (string) ($this->get('author_label') ?? '');
+        return Values::str($this->get('author_label'));
     }
 
     public function getBody(): string
     {
-        return (string) ($this->get('body') ?? '');
+        return Values::str($this->get('body'));
     }
 
     public function getCreatedAt(): string
     {
-        return (string) ($this->get('created_at') ?? '');
+        return Values::str($this->get('created_at'));
     }
 
     public function fill(string $documentUuid, int $authorUid, string $authorLabel, string $body, string $createdAt): static

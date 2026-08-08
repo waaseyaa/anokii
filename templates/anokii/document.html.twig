@@ -78,13 +78,13 @@
   <div class="card">
     <div class="ch">
       <b>Preview</b><span class="sp"></span>
-      <a class="btn sm" id="srcBtn" href="{{ doc.source_url }}">Download .docx</a>
+      <a class="btn sm" id="srcBtn" href="{{ doc.source_url }}">Download source</a>
     </div>
     {% if doc.has_preview %}
       <iframe class="pv" id="pv" src="{{ doc.preview_url }}" title="Document preview"></iframe>
     {% else %}
       <iframe class="pv" id="pv" src="" title="Document preview" style="display:none"></iframe>
-      <div class="pv-none" id="pvNone"><b>No preview yet</b><span>This version has no PDF preview. Download the .docx to read it; new uploads convert to a preview automatically.</span></div>
+      <div class="pv-none" id="pvNone"><b>No preview yet</b><span>This version has no PDF preview. Download the source file to read it; supported office documents convert when a preview service is configured.</span></div>
     {% endif %}
     <div class="pv-cap">Showing <b id="pvLabel">{{ doc.current_label }}</b> &middot; rendered inline</div>
   </div>
@@ -140,7 +140,7 @@
 
 <script>
 (function(){
-  var UUID = {{ doc.uuid|json_encode|raw }};
+  var UUID = {{ doc.uuid|json_encode(15)|raw }};
   function xsrf(){ return (document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/)||[])[1] || ''; }
   function toast(m){ var t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(function(){t.classList.remove('show');},2600); }
   function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }

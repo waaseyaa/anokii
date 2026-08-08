@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Anokii\Workspace\Controller;
 
+use Anokii\Access\AccountBoundary;
 use Anokii\Entity\Pillar;
 use Anokii\Support\Auth;
+use Anokii\Support\Values;
 use Anokii\Workspace\Identity\PillarService;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -13,6 +15,8 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Waaseyaa\Access\EntityAccessHandler;
 use Waaseyaa\Entity\EntityTypeManager;
+use Waaseyaa\Entity\Validation\EntityValidationException;
+use Waaseyaa\Foundation\Log\LoggerInterface;
 use Waaseyaa\SSR\SsrServiceProvider;
 
 /**
@@ -40,6 +44,8 @@ final class IdentityController
         private readonly ?EntityTypeManager $entityTypeManager,
         private readonly PillarService $pillars,
         private readonly EntityAccessHandler $access,
+        private readonly AccountBoundary $accounts,
+        private readonly LoggerInterface $logger,
         private readonly array $sections = [],
     ) {}
 
@@ -62,13 +68,22 @@ final class IdentityController
         }
         foreach ($this->pillars->listPillars() as $pillar) {
             $key = $pillar->getSection();
-            if (isset($sections[$key])) {
-                $sections[$key]['pillars'][] = $this->presentPillar($pillar);
+            if (!isset($sections[$key])) {
+                $sections[$key] = [
+                    'key' => $key,
+                    'no' => str_pad((string) (count($sections) + 1), 2, '0', STR_PAD_LEFT),
+                    'title' => ucwords(str_replace(['-', '_'], ' ', $key)),
+                    'sub' => 'Identity content managed by this workspace.',
+                    'pillars' => [],
+                ];
             }
+            $sections[$key]['pillars'][] = $this->presentPillar($pillar);
         }
 
-        $context = \Anokii\Workspace\WorkspaceShell::context($user, 'identity') + [
+        $principal = $this->accounts->principal($user);
+        $context = \Anokii\Workspace\WorkspaceShell::context($this->accounts->identity($user), $user->id(), 'identity') + [
             'sections' => array_values($sections),
+            'can_create' => $this->access->check($this->creationProbe(), 'create', $principal)->isAllowed(),
             'counts' => $this->pillars->statusCounts(),
             'statuses' => [
                 ['v' => 'defined', 't' => 'Defined'],
@@ -85,6 +100,62 @@ final class IdentityController
         );
     }
 
+    public function create(Request $request): Response
+    {
+        $user = Auth::currentUser($this->entityTypeManager);
+        if ($user === null) {
+            return new JsonResponse(['ok' => false, 'error' => 'Not signed in.'], 401);
+        }
+        if (!$this->access->check($this->creationProbe(), 'create', $this->accounts->principal($user))->isAllowed()) {
+            return new JsonResponse(['ok' => false, 'error' => 'You do not have permission to create Identity pillars.'], 403);
+        }
+
+        $data = Values::map(json_decode((string) $request->getContent(), true));
+        $title = Values::trimmed($data['title'] ?? null);
+        $section = $this->slug(Values::trimmed($data['section'] ?? null));
+        if ($title === '' || mb_strlen($title) > 120) {
+            return new JsonResponse(['ok' => false, 'error' => 'Title is required and must be 120 characters or fewer.'], 422);
+        }
+        if ($section === '') {
+            $section = 'identity';
+        }
+        $pid = $this->slug($title);
+        if ($pid === '' || $this->pillars->findByPid($pid) !== null) {
+            return new JsonResponse(['ok' => false, 'error' => 'Use a unique title containing letters or numbers.'], 422);
+        }
+
+        try {
+            $this->pillars->createPillar(
+                pid: $pid,
+                section: $section,
+                title: $title,
+                nowLabel: 'Now',
+                body: '',
+                isQuote: false,
+                decideLabel: 'Decide',
+                decision: '',
+                status: 'draft',
+                notes: '',
+                pills: [],
+                isFull: false,
+                sortOrder: count($this->pillars->listPillars()) + 1,
+                editorLabel: $this->accounts->label($user),
+                updatedAt: gmdate('Y-m-d H:i:s'),
+                revisionLog: 'Pillar created',
+            );
+        } catch (\Throwable $e) {
+            $this->logger->error('identity.pillar.create_failed', [
+                'error' => $e->getMessage(),
+                'exception' => $e::class,
+                'violations' => $e instanceof EntityValidationException ? (string) $e->violations : null,
+            ]);
+
+            return new JsonResponse(['ok' => false, 'error' => 'Could not create the pillar.'], 500);
+        }
+
+        return new JsonResponse(['ok' => true, 'pid' => $pid], 201);
+    }
+
     public function save(Request $request): Response
     {
         $user = Auth::currentUser($this->entityTypeManager);
@@ -92,10 +163,9 @@ final class IdentityController
             return new JsonResponse(['ok' => false, 'error' => 'Not signed in.'], 401);
         }
 
-        $decoded = json_decode((string) $request->getContent(), true);
-        $data = is_array($decoded) ? $decoded : [];
+        $data = Values::map(json_decode((string) $request->getContent(), true));
 
-        $pid = trim((string) ($data['pid'] ?? ''));
+        $pid = Values::trimmed($data['pid'] ?? null);
         if ($pid === '') {
             return new JsonResponse(['ok' => false, 'error' => 'Missing pillar id.'], 422);
         }
@@ -106,14 +176,14 @@ final class IdentityController
         if ($pillar === null) {
             return new JsonResponse(['ok' => false, 'error' => 'Unknown pillar.'], 422);
         }
-        if (!$this->access->check($pillar, 'update', $user)->isAllowed()) {
+        if (!$this->access->check($pillar, 'update', $this->accounts->principal($user))->isAllowed()) {
             return new JsonResponse(['ok' => false, 'error' => 'You do not have permission to edit the Identity Workspace.'], 403);
         }
 
-        $status = array_key_exists('status', $data) ? (string) $data['status'] : null;
-        $notes = array_key_exists('notes', $data) ? (string) $data['notes'] : null;
+        $status = array_key_exists('status', $data) ? Values::str($data['status']) : null;
+        $notes = array_key_exists('notes', $data) ? Values::str($data['notes']) : null;
 
-        $result = $this->pillars->update($pid, $status, $notes, Auth::label($user));
+        $result = $this->pillars->update($pid, $status, $notes, $this->accounts->label($user));
         if ($result === null) {
             return new JsonResponse(['ok' => false, 'error' => 'Unknown pillar or nothing to update.'], 422);
         }
@@ -158,11 +228,10 @@ final class IdentityController
             return new JsonResponse(['ok' => false, 'error' => 'Not signed in.'], 401);
         }
 
-        $decoded = json_decode((string) $request->getContent(), true);
-        $data = is_array($decoded) ? $decoded : [];
+        $data = Values::map(json_decode((string) $request->getContent(), true));
 
-        $pid = trim((string) ($data['pid'] ?? ''));
-        $langcode = trim((string) ($data['langcode'] ?? ''));
+        $pid = Values::trimmed($data['pid'] ?? null);
+        $langcode = Values::trimmed($data['langcode'] ?? null);
         if ($pid === '' || $langcode === '') {
             return new JsonResponse(['ok' => false, 'error' => 'Missing pillar id or language.'], 422);
         }
@@ -174,14 +243,14 @@ final class IdentityController
         if ($pillar === null) {
             return new JsonResponse(['ok' => false, 'error' => 'Unknown pillar.'], 422);
         }
-        if (!$this->access->check($pillar, 'update', $user)->isAllowed()) {
+        if (!$this->access->check($pillar, 'update', $this->accounts->principal($user))->isAllowed()) {
             return new JsonResponse(['ok' => false, 'error' => 'You do not have permission to edit the Identity Workspace.'], 403);
         }
 
-        $title = trim((string) ($data['title'] ?? ''));
-        $body = (string) ($data['body'] ?? '');
+        $title = Values::trimmed($data['title'] ?? null);
+        $body = Values::str($data['body'] ?? null);
 
-        $result = $this->pillars->saveTranslation($pid, $langcode, $title, $body, Auth::label($user));
+        $result = $this->pillars->saveTranslation($pid, $langcode, $title, $body, $this->accounts->label($user));
         if ($result === null) {
             return new JsonResponse(['ok' => false, 'error' => 'Could not save the translation.'], 422);
         }
@@ -233,6 +302,25 @@ final class IdentityController
             'last_edited_at' => $this->humanStamp($pillar->getUpdatedAt()),
             'translations' => $this->presentTranslations($pillar),
         ];
+    }
+
+    private function creationProbe(): Pillar
+    {
+        return new Pillar([], 'identity_pillar', [
+            'id' => 'id',
+            'uuid' => 'uuid',
+            'label' => 'title',
+            'revision' => 'revision_id',
+            'langcode' => 'langcode',
+            'default_langcode' => 'default_langcode',
+        ]);
+    }
+
+    private function slug(string $value): string
+    {
+        $slug = preg_replace('/[^a-z0-9]+/', '-', strtolower($value));
+
+        return trim(is_string($slug) ? $slug : '', '-');
     }
 
     /**

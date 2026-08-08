@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Anokii\Entity;
 
+use Anokii\Support\Values;
 use Waaseyaa\Entity\Attribute\ContentEntityKeys;
 use Waaseyaa\Entity\Attribute\ContentEntityType;
 use Waaseyaa\Entity\Attribute\Field;
 use Waaseyaa\Entity\ContentEntityBase;
 use Waaseyaa\Entity\Hydration\HydratableFromStorageInterface;
 use Waaseyaa\Entity\Hydration\HydrationContext;
+use Waaseyaa\Field\FieldDefinitionInterface;
 
 /**
  * A retrieval chunk: a heading-delimited passage extracted from one of the
@@ -29,35 +31,37 @@ use Waaseyaa\Entity\Hydration\HydrationContext;
  *
  * @api
  */
-#[ContentEntityType(id: 'doc_chunk', label: 'Doc chunk', description: 'A heading-delimited passage from a published page, used as RAG retrieval content.')]
+#[ContentEntityType(id: 'doc_chunk', label: 'Doc chunk', description: 'A heading-delimited passage from a published page, used as RAG retrieval content.', storageBackend: \Waaseyaa\Entity\Storage\PrimaryStorageBackend::SQL_COLUMN)]
 #[ContentEntityKeys(id: 'id', uuid: 'uuid', label: 'title')]
 final class DocChunk extends ContentEntityBase implements HydratableFromStorageInterface
 {
-    #[Field(label: 'Chunk key', description: 'Stable idempotency key: source_url + heading + part index.', required: true, settings: ['weight' => 0])]
+    use SovereignMetadataTrait;
+
+    #[Field(label: 'Chunk key', description: 'Stable idempotency key: source_url + heading + part index.', required: true, settings: ['weight' => 0], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $chunk_key = '';
 
-    #[Field(label: 'Source URL', description: 'The published page path this passage came from, e.g. /communities/sagamok.', required: true, settings: ['weight' => 1])]
+    #[Field(label: 'Source URL', description: 'The published page path this passage came from, e.g. /communities/sagamok.', required: true, settings: ['weight' => 1], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $source_url = '';
 
-    #[Field(label: 'Title', description: 'The source page title.', required: true, settings: ['weight' => 2])]
+    #[Field(label: 'Title', description: 'The source page title.', required: true, settings: ['weight' => 2], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $title = '';
 
-    #[Field(label: 'Heading', description: 'The section heading this passage sits under (empty for intro text).', required: false, settings: ['weight' => 3])]
+    #[Field(label: 'Heading', description: 'The section heading this passage sits under (empty for intro text).', required: false, settings: ['weight' => 3], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $heading = '';
 
-    #[Field(type: 'text', label: 'Text', description: 'The passage text, whitespace-normalized.', required: true, settings: ['weight' => 4])]
+    #[Field(type: 'text', label: 'Text', description: 'The passage text, whitespace-normalized.', required: true, settings: ['weight' => 4], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $text = '';
 
-    #[Field(label: 'Source entity type', description: 'Graph entity this chunk belongs to (e.g. service, project). Empty for general content.', required: false, settings: ['weight' => 5])]
+    #[Field(label: 'Source entity type', description: 'Graph entity this chunk belongs to (e.g. service, project). Empty for general content.', required: false, settings: ['weight' => 5], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $entity_type = '';
 
-    #[Field(label: 'Source entity id', description: 'Slug of the linked source entity (e.g. sagamok-housing, massey-solar).', required: false, settings: ['weight' => 6])]
+    #[Field(label: 'Source entity id', description: 'Slug of the linked source entity (e.g. sagamok-housing, massey-solar).', required: false, settings: ['weight' => 6], read: \Waaseyaa\Entity\FieldReadLevel::Public)]
     public string $entity_id = '';
 
     /**
      * @param array<string, mixed> $values
      * @param array<string, string> $entityKeys
-     * @param array<string, mixed> $fieldDefinitions
+     * @param array<string, FieldDefinitionInterface> $fieldDefinitions
      */
     public function __construct(
         array $values = [],
@@ -104,26 +108,26 @@ final class DocChunk extends ContentEntityBase implements HydratableFromStorageI
 
     public function getChunkKey(): string
     {
-        return (string) ($this->get('chunk_key') ?? '');
+        return Values::str($this->get('chunk_key'));
     }
 
     public function getSourceUrl(): string
     {
-        return (string) ($this->get('source_url') ?? '');
+        return Values::str($this->get('source_url'));
     }
 
     public function getTitle(): string
     {
-        return (string) ($this->get('title') ?? '');
+        return Values::str($this->get('title'));
     }
 
     public function getHeading(): string
     {
-        return (string) ($this->get('heading') ?? '');
+        return Values::str($this->get('heading'));
     }
 
     public function getText(): string
     {
-        return (string) ($this->get('text') ?? '');
+        return Values::str($this->get('text'));
     }
 }

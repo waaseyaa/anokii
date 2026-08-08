@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Anokii\Dashboard;
 
+use Anokii\Auth\LoginThrottle;
 use Anokii\Auth\SetupTokenRepository;
 use Anokii\Support\Auth;
+use Anokii\Support\Values;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -44,6 +46,7 @@ final class WorkspaceLoginController extends DashboardGate
         private readonly string $loginTemplate,
         private readonly string $setPasswordTemplate,
         UserInternalFieldReaderInterface $internalFieldReader,
+        private readonly LoginThrottle $loginThrottle,
         private readonly int $minPasswordLength = 10,
     ) {
         parent::__construct($entityTypeManager, $internalFieldReader);
@@ -66,14 +69,26 @@ final class WorkspaceLoginController extends DashboardGate
     public function loginSubmit(Request $request): Response
     {
         $data = $this->json($request);
-        $email = trim((string) ($data['email'] ?? ''));
-        $password = (string) ($data['password'] ?? '');
+        $email = Values::trimmed($data['email'] ?? null);
+        $password = Values::str($data['password'] ?? null);
+
+        if ($this->loginThrottle->isBlocked($request, $email)) {
+            return new JsonResponse(
+                ['ok' => false, 'error' => 'Too many sign-in attempts. Try again later.'],
+                429,
+                ['Retry-After' => '900'],
+            );
+        }
 
         \assert($this->internalFields !== null); // constructor requires it
         $user = Auth::login($this->entityTypeManager, $email, $password, $this->internalFields);
         if ($user === null) {
+            $this->loginThrottle->recordFailure($request, $email);
+
             return new JsonResponse(['ok' => false, 'error' => 'Wrong email or password.'], 401);
         }
+
+        $this->loginThrottle->recordSuccess($email);
 
         return new JsonResponse(['ok' => true, 'redirect' => $this->homePath]);
     }
@@ -101,8 +116,8 @@ final class WorkspaceLoginController extends DashboardGate
     public function setPasswordSubmit(Request $request): Response
     {
         $data = $this->json($request);
-        $token = (string) ($data['token'] ?? '');
-        $password = (string) ($data['password'] ?? '');
+        $token = Values::str($data['token'] ?? null);
+        $password = Values::str($data['password'] ?? null);
 
         if (strlen($password) < $this->minPasswordLength) {
             return new JsonResponse(['ok' => false, 'error' => sprintf('Password must be at least %d characters.', $this->minPasswordLength)], 422);
@@ -118,8 +133,14 @@ final class WorkspaceLoginController extends DashboardGate
             return new JsonResponse(['ok' => false, 'error' => 'No account found for this link.'], 404);
         }
 
+        // Reserve the one-time capability before mutating the account. The
+        // compare-and-set consume means concurrent submissions cannot both set
+        // a password. A storage failure may burn the token, which is safer than
+        // leaving a replayable credential; an operator can mint a replacement.
+        if ($this->tokens->consume($token) !== $email) {
+            return new JsonResponse(['ok' => false, 'error' => 'This link is invalid or has already been used.'], 410);
+        }
         $this->entityTypeManager?->getRepository('user')->save($user->setRawPassword($password));
-        $this->tokens->consume($token);
 
         return new JsonResponse(['ok' => true, 'redirect' => $this->loginPathValue]);
     }

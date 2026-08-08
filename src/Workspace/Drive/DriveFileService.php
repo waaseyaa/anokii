@@ -21,7 +21,14 @@ final class DriveFileService
 {
     public const string DEFAULT_FOLDER = 'General';
 
-    public function __construct(private readonly ?EntityTypeManager $entityTypeManager) {}
+    public function __construct(
+        private readonly ?EntityTypeManager $entityTypeManager,
+        private readonly string $communityId,
+    ) {
+        if (trim($communityId) === '') {
+            throw new \InvalidArgumentException('DriveFileService requires an active community id.');
+        }
+    }
 
     /** @return list<DriveFile> all files, newest upload first */
     public function listFiles(): array
@@ -73,10 +80,13 @@ final class DriveFileService
     ): DriveFile {
         $folder = trim($folder) !== '' ? trim($folder) : self::DEFAULT_FOLDER;
 
-        $file = new DriveFile();
         // Migration preserves the legacy uuid so existing links stay valid; a
         // fresh upload gets a new one.
-        $file->set('uuid', $uuid !== null && $uuid !== '' ? $uuid : Uuid::v4()->toRfc4122());
+        $file = new DriveFile([
+            'uuid' => $uuid !== null && $uuid !== '' ? $uuid : Uuid::v4()->toRfc4122(),
+            'community_id' => $this->communityId,
+            'classification_label' => 'nation-restricted',
+        ]);
         $file->fill(
             $name,
             $mimeType,

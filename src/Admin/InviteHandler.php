@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Anokii\Admin;
 
 use Anokii\Auth\SetupTokenRepository;
+use Anokii\Support\Values;
 use Waaseyaa\CLI\Command\SymfonyCommandIO;
 use Waaseyaa\Entity\EntityTypeManager;
 use Waaseyaa\User\User;
@@ -36,14 +37,14 @@ final class InviteHandler
 
     public function run(SymfonyCommandIO $io): int
     {
-        $email = strtolower(trim((string) $io->argument('email')));
+        $email = strtolower(Values::trimmed($io->argument('email')));
         if ($email === '' || !str_contains($email, '@')) {
             $io->error('Provide a valid email: anokii:invite <email> [--name=...] [--base-url=...]');
 
             return 1;
         }
-        $name = (string) ($io->option('name') ?? '');
-        $baseUrl = rtrim((string) ($io->option('base-url') ?? $this->defaultBaseUrl), '/');
+        $name = Values::str($io->option('name'));
+        $baseUrl = rtrim(Values::str($io->option('base-url'), $this->defaultBaseUrl), '/');
 
         try {
             $repository = $this->entityTypeManager->getRepository('user');

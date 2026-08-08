@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Anokii\Entity;
 
+use Anokii\Support\Values;
 use Waaseyaa\Entity\ContentEntityBase;
 use Waaseyaa\Entity\Hydration\HydratableFromStorageInterface;
 use Waaseyaa\Entity\Hydration\HydrationContext;
+use Waaseyaa\Field\FieldDefinitionInterface;
 
 /**
  * Shared storage-hydration plumbing for the Anokii relational-graph entities
@@ -26,10 +28,12 @@ use Waaseyaa\Entity\Hydration\HydrationContext;
  */
 abstract class GraphEntityBase extends ContentEntityBase implements HydratableFromStorageInterface
 {
+    use SovereignMetadataTrait;
+
     /**
      * @param array<string, mixed> $values
      * @param array<string, string> $entityKeys
-     * @param array<string, mixed> $fieldDefinitions
+     * @param array<string, FieldDefinitionInterface> $fieldDefinitions
      */
     public function __construct(
         array $values = [],
@@ -74,10 +78,10 @@ abstract class GraphEntityBase extends ContentEntityBase implements HydratableFr
         );
     }
 
-    /** Read a field as a trimmed string (null-safe). */
+    /** Read a field as a string; a missing or non-scalar value reads as ''. */
     protected function str(string $field): string
     {
-        return (string) ($this->get($field) ?? '');
+        return Values::str($this->get($field));
     }
 
     public function getSlug(): string

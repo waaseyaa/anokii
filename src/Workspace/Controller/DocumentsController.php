@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Anokii\Workspace\Controller;
 
+use Anokii\Access\AccountBoundary;
 use Anokii\Entity\Document;
 use Anokii\Entity\DocumentNote;
 use Anokii\Support\Auth;
+use Anokii\Support\Values;
 use Anokii\Workspace\Documents\DocumentService;
 use Anokii\Workspace\Documents\DocumentStorage;
 use Anokii\Workspace\WorkspaceShell;
@@ -19,6 +21,8 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Waaseyaa\Access\EntityAccessHandler;
 use Waaseyaa\Entity\EntityTypeManager;
+use Waaseyaa\Entity\Validation\EntityValidationException;
+use Waaseyaa\Foundation\Log\LoggerInterface;
 use Waaseyaa\SSR\SsrServiceProvider;
 
 /**
@@ -36,6 +40,8 @@ final class DocumentsController
         private readonly DocumentService $documents,
         private readonly DocumentStorage $storage,
         private readonly EntityAccessHandler $access,
+        private readonly AccountBoundary $accounts,
+        private readonly LoggerInterface $logger,
     ) {}
 
     public function index(Request $request): Response
@@ -54,7 +60,8 @@ final class DocumentsController
             $rows[] = $this->presentRow($doc);
         }
 
-        $context = WorkspaceShell::context($user, 'documents') + ['documents' => $rows];
+        $context = WorkspaceShell::context($this->accounts->identity($user), $user->id(), 'documents')
+            + ['documents' => $rows];
 
         return new Response($twig->render('anokii/documents.html.twig', $context), 200, ['Content-Type' => 'text/html; charset=UTF-8']);
     }
@@ -84,7 +91,7 @@ final class DocumentsController
             $notes[] = $this->presentNote($note);
         }
 
-        $context = WorkspaceShell::context($user, 'documents') + [
+        $context = WorkspaceShell::context($this->accounts->identity($user), $user->id(), 'documents') + [
             'doc' => $this->presentRow($doc),
             'versions' => $versions,
             'notes' => $notes,
@@ -105,7 +112,7 @@ final class DocumentsController
         if (!$uploaded instanceof UploadedFile || !$uploaded->isValid()) {
             return new JsonResponse(['ok' => false, 'error' => 'No valid file was uploaded.'], 422);
         }
-        if (!$this->access->checkCreateAccess('document', '', $user)->isAllowed()) {
+        if (!$this->access->checkCreateAccess('document', '', $this->accounts->principal($user))->isAllowed()) {
             return new JsonResponse(['ok' => false, 'error' => 'You do not have permission to create documents.'], 403);
         }
 
@@ -118,14 +125,15 @@ final class DocumentsController
                 title: $title,
                 folder: $folder,
                 ownerUid: $user->id(),
-                ownerLabel: Auth::label($user),
+                ownerLabel: $this->accounts->label($user),
                 sourcePath: $uploaded->getPathname(),
                 sourceFilename: $uploaded->getClientOriginalName(),
                 versionLabel: $label,
             );
         } catch (\InvalidArgumentException $e) {
             return new JsonResponse(['ok' => false, 'error' => $e->getMessage()], 422);
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            $this->logFailure('documents.create_failed', $e);
             return new JsonResponse(['ok' => false, 'error' => 'Could not create the document.'], 500);
         }
 
@@ -148,7 +156,7 @@ final class DocumentsController
         if ($doc === null) {
             return new JsonResponse(['ok' => false, 'error' => 'Unknown document.'], 404);
         }
-        if (!$this->access->check($doc, 'update', $user)->isAllowed()) {
+        if (!$this->access->check($doc, 'update', $this->accounts->principal($user))->isAllowed()) {
             return new JsonResponse(['ok' => false, 'error' => 'You do not have permission to edit documents.'], 403);
         }
 
@@ -161,11 +169,12 @@ final class DocumentsController
                 sourceFilename: $uploaded->getClientOriginalName(),
                 versionLabel: $label,
                 authorUid: $user->id(),
-                authorLabel: Auth::label($user),
+                authorLabel: $this->accounts->label($user),
             );
         } catch (\InvalidArgumentException $e) {
             return new JsonResponse(['ok' => false, 'error' => $e->getMessage()], 422);
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            $this->logFailure('documents.version_upload_failed', $e);
             return new JsonResponse(['ok' => false, 'error' => 'Could not add the version.'], 500);
         }
 
@@ -188,20 +197,19 @@ final class DocumentsController
         if ($user === null) {
             return new JsonResponse(['ok' => false, 'error' => 'Not signed in.'], 401);
         }
-        $decoded = json_decode((string) $request->getContent(), true);
-        $data = is_array($decoded) ? $decoded : [];
-        $body = trim((string) ($data['body'] ?? ''));
+        $data = Values::map(json_decode((string) $request->getContent(), true));
+        $body = Values::trimmed($data['body'] ?? null);
         if ($body === '') {
             return new JsonResponse(['ok' => false, 'error' => 'Write a note first.'], 422);
         }
         if ($this->documents->findByUuid($uuid) === null) {
             return new JsonResponse(['ok' => false, 'error' => 'Unknown document.'], 404);
         }
-        if (!$this->access->checkCreateAccess('document_note', '', $user)->isAllowed()) {
+        if (!$this->access->checkCreateAccess('document_note', '', $this->accounts->principal($user))->isAllowed()) {
             return new JsonResponse(['ok' => false, 'error' => 'You do not have permission to post notes.'], 403);
         }
 
-        $note = $this->documents->addNote($uuid, $user->id(), Auth::label($user), $body);
+        $note = $this->documents->addNote($uuid, $user->id(), $this->accounts->label($user), $body);
 
         return new JsonResponse(['ok' => true, 'note' => $this->presentNote($note)]);
     }
@@ -248,9 +256,8 @@ final class DocumentsController
         if ($user === null) {
             return new JsonResponse(['ok' => false, 'error' => 'Not signed in.'], 401);
         }
-        $decoded = json_decode((string) $request->getContent(), true);
-        $data = is_array($decoded) ? $decoded : [];
-        $vid = (int) ($data['vid'] ?? 0);
+        $data = Values::map(json_decode((string) $request->getContent(), true));
+        $vid = Values::int($data['vid'] ?? null);
         if ($vid <= 0) {
             return new JsonResponse(['ok' => false, 'error' => 'Missing version id.'], 422);
         }
@@ -259,7 +266,7 @@ final class DocumentsController
         if ($doc === null) {
             return new JsonResponse(['ok' => false, 'error' => 'Unknown document.'], 404);
         }
-        if (!$this->access->check($doc, 'update', $user)->isAllowed()) {
+        if (!$this->access->check($doc, 'update', $this->accounts->principal($user))->isAllowed()) {
             return new JsonResponse(['ok' => false, 'error' => 'You do not have permission to edit documents.'], 403);
         }
 
@@ -269,7 +276,8 @@ final class DocumentsController
                 : $this->documents->setCurrentVersion($uuid, $vid);
         } catch (\InvalidArgumentException $e) {
             return new JsonResponse(['ok' => false, 'error' => $e->getMessage()], 422);
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            $this->logFailure('documents.version_switch_failed', $e);
             return new JsonResponse(['ok' => false, 'error' => 'Could not switch version.'], 500);
         }
         if ($result === null) {
@@ -298,6 +306,15 @@ final class DocumentsController
             'preview_url' => '/admin/anokii/documents/' . $uuid . '/file/' . (int) $doc->getRevisionId() . '/preview',
             'source_url' => '/admin/anokii/documents/' . $uuid . '/file/' . (int) $doc->getRevisionId() . '/source?dl=1',
         ];
+    }
+
+    private function logFailure(string $event, \Throwable $error): void
+    {
+        $this->logger->error($event, [
+            'error' => $error->getMessage(),
+            'exception' => $error::class,
+            'violations' => $error instanceof EntityValidationException ? (string) $error->violations : null,
+        ]);
     }
 
     /** @return array<string,mixed> */
@@ -345,6 +362,6 @@ final class DocumentsController
 
     private function uuidOf(Document $doc): string
     {
-        return (string) ($doc->get('uuid') ?? '');
+        return Values::str($doc->get('uuid'));
     }
 }

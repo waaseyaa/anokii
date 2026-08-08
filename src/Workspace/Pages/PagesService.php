@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Anokii\Workspace\Pages;
 
 use Anokii\Entity\Page;
+use Anokii\Support\Values;
+use Symfony\Component\Uid\Uuid;
 use Waaseyaa\Entity\EntityTypeManager;
 use Waaseyaa\Entity\Repository\EntityRepositoryInterface;
 
@@ -31,7 +33,42 @@ final class PagesService
     public function __construct(
         private readonly ?EntityTypeManager $entityTypeManager,
         private readonly ?CachePurgerInterface $purger = null,
-    ) {}
+        private readonly string $communityId = '',
+    ) {
+        if (trim($communityId) === '') {
+            throw new \InvalidArgumentException('PagesService requires an active community id.');
+        }
+    }
+
+    public function createPage(string $path, string $title, string $editorLabel): Page
+    {
+        if ($this->findByPath($path) !== null) {
+            throw new \DomainException('A page already uses that path.');
+        }
+
+        $page = new Page([
+            'uuid' => Uuid::v4()->toRfc4122(),
+            'community_id' => $this->communityId,
+            'classification_label' => 'nation-restricted',
+        ]);
+        $page->setPath($path)->setTitle($title)->setStatus('draft')->setBlocks([]);
+        $page->recordEdit(($editorLabel !== '' ? $editorLabel : 'A workspace editor') . ' created the page draft');
+        $page->enforceIsNew();
+        $this->pages()->save($page);
+
+        return $page;
+    }
+
+    public function findByPath(string $path): ?Page
+    {
+        foreach ($this->pages()->findBy(['path' => $path]) as $entity) {
+            if ($entity instanceof Page) {
+                return $entity;
+            }
+        }
+
+        return null;
+    }
 
     /**
      * All pages with their publish status, ordered by path.
@@ -94,22 +131,23 @@ final class PagesService
         }
 
         if (array_key_exists('title', $fields)) {
-            $page->setTitle((string) $fields['title']);
+            $page->setTitle($fields['title']);
         }
         if (array_key_exists('meta_description', $fields)) {
-            $page->setMetaDescription($this->nullableString($fields['meta_description']));
+            $page->setMetaDescription(Values::nullableStr($fields['meta_description']));
         }
         if (array_key_exists('meta_robots', $fields)) {
-            $page->setMetaRobots($this->nullableString($fields['meta_robots']));
+            $page->setMetaRobots(Values::nullableStr($fields['meta_robots']));
         }
         if (array_key_exists('head_styles', $fields)) {
-            $page->setHeadStyles($this->nullableString($fields['head_styles']));
+            $page->setHeadStyles(Values::nullableStr($fields['head_styles']));
         }
-        if (array_key_exists('blocks', $fields) && is_array($fields['blocks'])) {
+        if (array_key_exists('blocks', $fields)) {
             $page->setBlocks($this->normalizeBlocks($fields['blocks']));
         }
 
         $label = $editorLabel !== '' ? $editorLabel : 'A workspace editor';
+        $page->setStatus('draft');
         $page->recordEdit($label . ' saved a draft of ' . ($page->getPath() ?: $page->getTitle()));
         $this->pages()->save($page);
 
@@ -126,8 +164,11 @@ final class PagesService
         if ($page === null) {
             return null;
         }
+        $page->setStatus('published');
+        $page->recordEdit('Published ' . ($page->getPath() ?: $page->getTitle()));
+        $this->pages()->save($page);
         $rev = (int) $page->getRevisionId();
-        $this->pages()->setPublishedRevision($id, $rev);
+        (void) $this->pages()->setPublishedRevision($id, $rev);
         $this->purgeEdgeCache();
 
         return $rev;
@@ -140,13 +181,18 @@ final class PagesService
      */
     public function rollbackPublished(string $id, int $revisionId): ?int
     {
-        if ($this->pages()->loadRevision($id, $revisionId) === null) {
+        $revision = $this->pages()->loadRevision($id, $revisionId);
+        if (!$revision instanceof Page) {
             return null;
         }
-        $this->pages()->setPublishedRevision($id, $revisionId);
+        $revision->setStatus('published');
+        $revision->recordEdit('Published rollback of revision ' . $revisionId);
+        $this->pages()->save($revision);
+        $publishedRevisionId = (int) $revision->getRevisionId();
+        (void) $this->pages()->setPublishedRevision($id, $publishedRevisionId);
         $this->purgeEdgeCache();
 
-        return $revisionId;
+        return $publishedRevisionId;
     }
 
     /**
@@ -182,7 +228,7 @@ final class PagesService
             $revId = (int) $rev->getRevisionId();
             $history[] = [
                 'rev' => $revId,
-                'log' => $rev->getRevisionLog(),
+                'log' => Values::str($rev->getRevisionLog()),
                 'when' => $rev->getRevisionCreatedAt(),
                 'is_published' => $revId === $publishedRev,
                 'is_draft' => $revId === (int) $draftRev,
@@ -205,30 +251,19 @@ final class PagesService
      * string `type`. Field values are passed through unchanged (the editor edits
      * scalar copy; nested fields are preserved verbatim).
      *
-     * @param array<int|string, mixed> $blocks
+     * @param list<array<string, mixed>> $blocks
      * @return list<array<string, mixed>>
      */
     private function normalizeBlocks(array $blocks): array
     {
         $out = [];
         foreach ($blocks as $block) {
-            if (is_array($block) && isset($block['type']) && is_string($block['type']) && $block['type'] !== '') {
-                /** @var array<string, mixed> $block */
+            if (isset($block['type']) && is_string($block['type']) && $block['type'] !== '') {
                 $out[] = $block;
             }
         }
 
         return $out;
-    }
-
-    private function nullableString(mixed $value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-        $value = (string) $value;
-
-        return $value === '' ? null : $value;
     }
 
     private function pages(): EntityRepositoryInterface

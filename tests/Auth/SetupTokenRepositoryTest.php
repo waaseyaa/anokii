@@ -20,12 +20,12 @@ use Waaseyaa\Database\DBALDatabase;
 #[CoversClass(SetupTokenSchema::class)]
 final class SetupTokenRepositoryTest extends TestCase
 {
-    private function repo(): SetupTokenRepository
+    private function repo(?\Closure $now = null): SetupTokenRepository
     {
         $db = DBALDatabase::createSqlite(':memory:');
         new SetupTokenSchema($db)->ensure();
 
-        return new SetupTokenRepository($db);
+        return new SetupTokenRepository($db, now: $now);
     }
 
     #[Test]
@@ -54,10 +54,56 @@ final class SetupTokenRepositoryTest extends TestCase
     }
 
     #[Test]
+    public function re_minting_invalidates_legacy_mixed_case_email_rows(): void
+    {
+        $db = DBALDatabase::createSqlite(':memory:');
+        new SetupTokenSchema($db)->ensure();
+        $legacy = 'legacy-token';
+        $db->insert(SetupTokenSchema::TABLE)->values([
+            'email' => 'Alice@Example.test',
+            'token_hash' => hash('sha256', $legacy),
+            'created_at' => gmdate('Y-m-d H:i:s'),
+            'used_at' => null,
+        ])->execute();
+        $repo = new SetupTokenRepository($db);
+
+        $repo->mint('alice@example.test');
+
+        self::assertNull($repo->emailForToken($legacy));
+    }
+
+    #[Test]
     public function unknown_and_empty_tokens_resolve_to_null(): void
     {
         $repo = $this->repo();
         self::assertNull($repo->emailForToken(''));
         self::assertNull($repo->emailForToken('not-a-real-token'));
+    }
+
+    #[Test]
+    public function token_expires_after_seventy_two_hours(): void
+    {
+        $issuedAt = new \DateTimeImmutable('2026-08-01 12:00:00', new \DateTimeZone('UTC'));
+        $current = $issuedAt;
+        $repo = $this->repo(static function () use (&$current): \DateTimeImmutable {
+            return $current;
+        });
+        $token = $repo->mint('admin@example.test');
+
+        $current = $issuedAt->modify('+72 hours +1 second');
+
+        self::assertNull($repo->emailForToken($token));
+        self::assertNull($repo->consume($token));
+    }
+
+    #[Test]
+    public function consumption_is_compare_and_set_single_use(): void
+    {
+        $now = new \DateTimeImmutable('2026-08-01 12:00:00', new \DateTimeZone('UTC'));
+        $repo = $this->repo(static fn(): \DateTimeImmutable => $now);
+        $token = $repo->mint('admin@example.test');
+
+        self::assertSame('admin@example.test', $repo->consume($token));
+        self::assertNull($repo->consume($token));
     }
 }

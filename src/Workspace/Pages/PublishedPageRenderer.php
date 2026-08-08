@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Anokii\Workspace\Pages;
 
 use Anokii\Entity\Page;
+use Anokii\Support\Values;
 use Twig\Environment;
 use Waaseyaa\Entity\Repository\EntityRepositoryInterface;
 
@@ -49,6 +50,9 @@ final class PublishedPageRenderer
 
         return $this->twig->render('page.html.twig', [
             'path' => $path,
+            // The framework fallback template consumes a root-level title;
+            // app-owned templates consume the richer page structure below.
+            'title' => $page->getTitle(),
             'page' => [
                 'title' => $page->getTitle(),
                 'meta_description' => $page->getMetaDescription(),
@@ -76,11 +80,15 @@ final class PublishedPageRenderer
             return $blocks;
         }
         foreach ($blocks as $bi => $block) {
-            if (($block['type'] ?? '') !== 'photo_strip' || !is_array($block['photos'] ?? null)) {
+            $photos = $block['photos'] ?? null;
+            if (($block['type'] ?? '') !== 'photo_strip' || !is_array($photos)) {
                 continue;
             }
-            foreach ($block['photos'] as $pi => $photo) {
-                $src = (string) ($photo['src'] ?? '');
+            foreach ($photos as $pi => $photo) {
+                if (!is_array($photo)) {
+                    continue;
+                }
+                $src = Values::str($photo['src'] ?? null);
                 if ($src === '' || !str_starts_with($src, '/')) {
                     continue;
                 }
@@ -92,9 +100,11 @@ final class PublishedPageRenderer
                 if ($size === false || $size[0] < 1 || $size[1] < 1) {
                     continue;
                 }
-                $blocks[$bi]['photos'][$pi]['_w'] = $size[0];
-                $blocks[$bi]['photos'][$pi]['_h'] = $size[1];
+                $photo['_w'] = $size[0];
+                $photo['_h'] = $size[1];
+                $photos[$pi] = $photo;
             }
+            $blocks[$bi]['photos'] = $photos;
         }
 
         return $blocks;
@@ -120,6 +130,6 @@ final class PublishedPageRenderer
 
         $published = $this->pages->loadPublishedRevision($entityId);
 
-        return $published instanceof Page ? $published : null;
+        return $published instanceof Page && $published->getStatus() === 'published' ? $published : null;
     }
 }

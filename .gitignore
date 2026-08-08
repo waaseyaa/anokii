@@ -14,6 +14,8 @@ composer.phar
 /var/
 /cache/
 /storage/
+/.waaseyaa/field-access-preflight.json
+/.waaseyaa/.field-access-preflight.*
 
 # Environment
 /.env
@@ -31,6 +33,7 @@ composer.phar
 /public/build/
 /.nuxt/
 /.output/
+/output/
 
 # Spec Kitty (machine-specific skill symlinks)
 /.kittify/skills/
@@ -69,6 +72,3 @@ Thumbs.db
 .kittify/missions/__pycache__/
 .kittify/runtime/
 .kittify/workspaces/
-
-# Library package: lock is not committed (resolved by consumers).
-composer.lock

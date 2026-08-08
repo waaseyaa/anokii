@@ -6,6 +6,32 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- A production-readiness gate that creates a fresh schema, writes the checksum-bound field-access preflight, and proves guarded production boot in CI. The reviewed schema-derived classifications live in `.waaseyaa/field-access-classification.json`; the generated preflight remains a build artifact.
+- CMS page creation, draft, publish, history, and rollback workflows, with public routes derived from published page entities and reserved `/admin` and `/api` paths rejected.
+- A permission-gated Identity pillar creation flow for fresh workspaces, with tenant/classification metadata, an initial revision, dynamic section rendering, status editing, and history.
+- Versioned migrations for support tables, privacy redaction, and classification seeds, plus complete automated coverage for authorization, privacy, routing, templates, storage, and production boundaries.
+
+### Changed
+
+- The Waaseyaa dependency floor is now alpha.290, including the framework-owned application secret and community isolation contracts; packaged-runtime coverage and operator setup now declare both requirements explicitly.
+- All Anokii-owned persistent entities now declare field-read classifications and, in sovereign mode, use the active community as their storage boundary. Graph content intended for public retrieval is explicitly Public; tenant and classification metadata is Protected.
+- Drive, Documents, Identity, Pages, Inbox, Analytics, settings, and the shared shell now use the framework's audited account/profile boundaries and canonical community context.
+- The workspace shell provides an accessible collapsed mobile navigation with accurate state, Escape handling, and focus return.
+
+### Fixed
+
+- Fail closed on cross-community writes and reads, missing active community configuration, invalid upload metadata, unsafe CMS paths, open redirects, login brute force, and silent persistence failures.
+- Preserve UUIDs at construction, initialize required tenancy/classification metadata, make Drive uploads and Documents versioning work on fresh storage, and render PDF sources inline without duplicating bytes.
+- Remove unconditional browser errors from Drive and Identity, allow failed same-file uploads to be retried, and provide complete password-form autocomplete semantics.
+- Keep provider boot free of schema writes, move support schema ownership to migrations, make fresh database initialization idempotent, and restore production field-read activation.
+
+### Security
+
+- Public chat no longer stores raw questions; analytics stores only daily rotating pseudonymous visitor hashes and rejects oversized, malformed, bot, or rate-limited beacons.
+- Workspace authorization uses immutable principals and entity policies, sensitive contact data is Protected, uploads are content-sniffed and size-bounded, and operational failures are logged without exposing validation internals to users.
+
 ## [0.1.0-alpha.13] - 2026-07-27
 
 Framework ≥ alpha.269 sealed User `roles`/`permissions`/`pass`/`mail` as Internal

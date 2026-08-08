@@ -1,0 +1,15 @@
+parameters:
+    bootstrapFiles:
+        - vendor/deployer/deployer/src/functions.php
+    scanDirectories:
+        - vendor/deployer/deployer/src
+    level: max
+    paths:
+        - src
+        - tests
+        - public
+        - config/waaseyaa.php
+        - deploy.php
+    tmpDir: .phpstan
+    reportUnmatchedIgnoredErrors: true
+    treatPhpDocTypesAsCertain: true

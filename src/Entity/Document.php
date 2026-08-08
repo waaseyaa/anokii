@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Anokii\Entity;
 
+use Anokii\Support\Values;
 use Waaseyaa\Entity\Attribute\ContentEntityKeys;
 use Waaseyaa\Entity\Attribute\ContentEntityType;
+use Waaseyaa\Entity\Attribute\Field;
 use Waaseyaa\Entity\ContentEntityBase;
+use Waaseyaa\Entity\FieldReadLevel;
 use Waaseyaa\Entity\RevisionableInterface;
 
 /**
@@ -42,9 +45,26 @@ use Waaseyaa\Entity\RevisionableInterface;
 #[ContentEntityKeys(id: 'id', uuid: 'uuid', label: 'title', revision: 'revision_id')]
 final class Document extends ContentEntityBase implements RevisionableInterface
 {
+    use SovereignMetadataTrait;
+
+    #[Field(read: FieldReadLevel::Public)] public string $title = '';
+    #[Field(read: FieldReadLevel::Public)] public string $folder = '';
+    #[Field(read: FieldReadLevel::Public)] public int $owner_uid = 0;
+    #[Field(read: FieldReadLevel::Public)] public string $owner_label = '';
+    #[Field(read: FieldReadLevel::Public)] public string $source_uri = '';
+    #[Field(read: FieldReadLevel::Public)] public string $source_filename = '';
+    #[Field(read: FieldReadLevel::Public)] public string $mime_type = '';
+    #[Field(read: FieldReadLevel::Public)] public int $size_bytes = 0;
+    #[Field(required: false, read: FieldReadLevel::Public)] public string $preview_uri = '';
+    #[Field(read: FieldReadLevel::Public)] public string $version_label = '';
+    #[Field(read: FieldReadLevel::Public)] public int $version_author_uid = 0;
+    #[Field(read: FieldReadLevel::Public)] public string $version_author_label = '';
+    #[Field(read: FieldReadLevel::Public)] public string $updated_at = '';
+    #[Field(read: FieldReadLevel::Public)] public string $revision_log = '';
+
     public function getTitle(): string
     {
-        return (string) ($this->get('title') ?? '');
+        return Values::str($this->get('title'));
     }
 
     public function setTitle(string $title): static
@@ -56,7 +76,7 @@ final class Document extends ContentEntityBase implements RevisionableInterface
 
     public function getFolder(): string
     {
-        return (string) ($this->get('folder') ?? '');
+        return Values::str($this->get('folder'));
     }
 
     public function setFolder(string $folder): static
@@ -68,12 +88,12 @@ final class Document extends ContentEntityBase implements RevisionableInterface
 
     public function getOwnerUid(): int
     {
-        return (int) ($this->get('owner_uid') ?? 0);
+        return Values::int($this->get('owner_uid'));
     }
 
     public function getOwnerLabel(): string
     {
-        return (string) ($this->get('owner_label') ?? '');
+        return Values::str($this->get('owner_label'));
     }
 
     public function setOwner(int $uid, string $label): static
@@ -86,47 +106,47 @@ final class Document extends ContentEntityBase implements RevisionableInterface
 
     public function getSourceUri(): string
     {
-        return (string) ($this->get('source_uri') ?? '');
+        return Values::str($this->get('source_uri'));
     }
 
     public function getSourceFilename(): string
     {
-        return (string) ($this->get('source_filename') ?? '');
+        return Values::str($this->get('source_filename'));
     }
 
     public function getMimeType(): string
     {
-        return (string) ($this->get('mime_type') ?? '');
+        return Values::str($this->get('mime_type'));
     }
 
     public function getSizeBytes(): int
     {
-        return (int) ($this->get('size_bytes') ?? 0);
+        return Values::int($this->get('size_bytes'));
     }
 
     public function getPreviewUri(): string
     {
-        return (string) ($this->get('preview_uri') ?? '');
+        return Values::str($this->get('preview_uri'));
     }
 
     public function getVersionLabel(): string
     {
-        return (string) ($this->get('version_label') ?? '');
+        return Values::str($this->get('version_label'));
     }
 
     public function getVersionAuthorUid(): int
     {
-        return (int) ($this->get('version_author_uid') ?? 0);
+        return Values::int($this->get('version_author_uid'));
     }
 
     public function getVersionAuthorLabel(): string
     {
-        return (string) ($this->get('version_author_label') ?? '');
+        return Values::str($this->get('version_author_label'));
     }
 
     public function getUpdatedAt(): string
     {
-        return (string) ($this->get('updated_at') ?? '');
+        return Values::str($this->get('updated_at'));
     }
 
     /** When this revision (version) was created, from the revision metadata. */

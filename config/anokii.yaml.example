@@ -10,7 +10,8 @@
 # ABOVE the framework's per-entity tenancy primitive (EntityType tenancy:
 # ['scope' => 'community'] + CommunityScope storage driver, framework mission
 # #1257). The framework isolates entities; this switch decides the posture the
-# whole install runs in and which surfaces are wired.
+# whole install intends to run in and which surfaces are wired. This file alone
+# does not add community scope or classification fields to an entity type.
 #
 # Safe-by-default: every value here is the most sovereign-protective reading.
 # A missing or unknown value resolves to the most restrictive option, never
@@ -35,8 +36,9 @@
 #                   Forbidden across tenants via FieldAccessPolicyInterface.
 #                   This is the tier for an OIATC-style multi-community install.
 #
-# Both tiers inherit the framework's CommunityScope isolation. The difference
-# is posture and default classification, not a weakening of access control.
+# RELEASE BLOCKER: do not use shared-graph for restricted/community data until
+# packaged-form tests prove every relevant entity is community-scoped and
+# classification-labelled. The current public graph is public-source data only.
 tenancy_mode: sovereign
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,48 @@
+name: Quality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      ANOKII_COMMUNITY_ID: ci-community
+      WAASEYAA_DB: /tmp/anokii-ci.sqlite
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+          extensions: fileinfo, zip
+      - uses: ramsey/composer-install@v3
+      - run: composer validate --strict
+      - run: composer audit --locked --no-interaction
+      - name: Build production field-access preflight
+        run: |
+          export ANOKII_PRIVACY_SECRET="$(php -r 'echo str_repeat("p", 32);')"
+          export WAASEYAA_JWT_SECRET="$(php -r 'echo str_repeat("j", 32);')"
+          export WAASEYAA_APP_SECRET="base64:$(php -r 'echo base64_encode(str_repeat("a", 32));')"
+          APP_ENV=local php vendor/bin/waaseyaa db:init --sync-schema
+          APP_ENV=production composer readiness:field-access
+          APP_ENV=production php vendor/bin/waaseyaa list >/dev/null
+      - run: composer test
+
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+          extensions: fileinfo, zip
+      - uses: ramsey/composer-install@v3
+      - run: composer analyse
+      - run: composer style
