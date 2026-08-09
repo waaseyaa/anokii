@@ -13,6 +13,7 @@ use Anokii\CoIntelligence\TopicVocabulary;
 use Anokii\Config\DistributionConfig;
 use Anokii\Config\TenancyMode;
 use Anokii\Controller\PublicChatController;
+use Anokii\Core\Support\Values;
 use Anokii\Entity\Community;
 use Anokii\Entity\DocChunk;
 use Anokii\Entity\Organization;
@@ -20,7 +21,6 @@ use Anokii\Entity\Place;
 use Anokii\Entity\Project;
 use Anokii\Entity\Service;
 use Anokii\Entity\Topic;
-use Anokii\Support\Values;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Yaml\Yaml;
 use Waaseyaa\AI\Agent\Provider\AnthropicProvider;
@@ -114,7 +114,6 @@ final class CoIntelligenceServiceProvider extends ServiceProvider
         }
 
         $config = $this->distributionConfig();
-
         // The public graph-chat surface is opt-in per instance via the
         // `public-graph-chat` module. The sovereign/shared-graph tenancy-tier split
         // is retired; surfaces are module-driven. The login-gated workspace is

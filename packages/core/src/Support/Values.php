@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Anokii\Support;
+namespace Anokii\Core\Support;
 
 /**
  * Pure normalization of untyped values into the shapes the distribution

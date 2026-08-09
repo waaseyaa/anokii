@@ -15,7 +15,7 @@ use Anokii\Entity\Document;
 use Anokii\Entity\DocumentNote;
 use Anokii\Entity\DriveFile;
 use Anokii\Entity\Page;
-use Anokii\Entity\Pillar;
+use Anokii\Identity\PillarService;
 use Anokii\Workspace\Analytics\AnalyticsCollector;
 use Anokii\Workspace\Analytics\AnalyticsEndpoint;
 use Anokii\Workspace\Analytics\AnalyticsReport;
@@ -31,7 +31,6 @@ use Anokii\Workspace\Documents\DocumentStorage;
 use Anokii\Workspace\Documents\GotenbergClient;
 use Anokii\Workspace\Drive\DriveFileService;
 use Anokii\Workspace\Drive\DriveStorage;
-use Anokii\Workspace\Identity\PillarService;
 use Anokii\Workspace\Pages\PagesService;
 use Anokii\Workspace\Pages\PublishedPageRenderer;
 use Symfony\Component\HttpFoundation\Request;
@@ -83,7 +82,6 @@ final class WorkspaceServiceProvider extends ServiceProvider implements Provides
         // from an app's src/, so register them explicitly. db:init --sync-schema
         // then materializes their tables on the instance's database.
         $tenancy = ['scope' => EntityType::TENANCY_SCOPE_COMMUNITY];
-        $this->entityType(EntityType::fromClass(Pillar::class, revisionable: true, revisionDefault: true, translatable: true, tenancy: $tenancy));
         $this->entityType(EntityType::fromClass(Document::class, revisionable: true, revisionDefault: true, tenancy: $tenancy));
         $this->entityType(EntityType::fromClass(DriveFile::class, revisionable: true, revisionDefault: true, tenancy: $tenancy));
         $this->entityType(EntityType::fromClass(Page::class, revisionable: true, revisionDefault: true, tenancy: $tenancy));
@@ -376,4 +374,5 @@ final class WorkspaceServiceProvider extends ServiceProvider implements Provides
             return false;
         }
     }
+
 }

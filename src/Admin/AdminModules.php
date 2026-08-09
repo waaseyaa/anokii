@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Anokii\Admin;
 
-use Anokii\Support\Values;
+use Anokii\Core\Support\Values;
 
 /**
  * The canonical Anokii admin module catalog, shared by every install so the

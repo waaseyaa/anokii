@@ -26,9 +26,10 @@ jobs:
       - run: composer audit --locked --no-interaction
       - name: Build production field-access preflight
         run: |
-          export ANOKII_PRIVACY_SECRET="$(php -r 'echo str_repeat("p", 32);')"
-          export WAASEYAA_JWT_SECRET="$(php -r 'echo str_repeat("j", 32);')"
-          export WAASEYAA_APP_SECRET="base64:$(php -r 'echo base64_encode(str_repeat("a", 32));')"
+          ANOKII_PRIVACY_SECRET="$(php -r 'echo str_repeat("p", 32);')"
+          WAASEYAA_JWT_SECRET="$(php -r 'echo str_repeat("j", 32);')"
+          WAASEYAA_APP_SECRET="base64:$(php -r 'echo base64_encode(str_repeat("a", 32));')"
+          export ANOKII_PRIVACY_SECRET WAASEYAA_JWT_SECRET WAASEYAA_APP_SECRET
           APP_ENV=local php vendor/bin/waaseyaa db:init --sync-schema
           APP_ENV=production composer readiness:field-access
           APP_ENV=production php vendor/bin/waaseyaa list >/dev/null
@@ -46,3 +47,68 @@ jobs:
       - uses: ramsey/composer-install@v3
       - run: composer analyse
       - run: composer style
+
+  package-boundaries:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+      - run: composer validate --working-dir=packages/core --strict --no-check-lock
+      - run: composer validate --working-dir=packages/identity --strict --no-check-lock
+      - name: Install Identity as a minimal external consumer
+        env:
+          CORE_PATH: ${{ github.workspace }}/packages/core
+          IDENTITY_PATH: ${{ github.workspace }}/packages/identity
+        run: |
+          mkdir -p /tmp/anokii-identity-consumer
+          # PHP source below intentionally uses single quotes.
+          # shellcheck disable=SC2016
+          php -r '
+            file_put_contents("/tmp/anokii-identity-consumer/composer.json", json_encode([
+              "name" => "waaseyaa/anokii-identity-consumer-smoke",
+              "type" => "project",
+              "require" => [
+                "php" => "^8.5",
+                "waaseyaa/anokii-core" => "dev-main",
+                "waaseyaa/anokii-identity" => "dev-main",
+              ],
+              "repositories" => [
+                ["type" => "path", "url" => getenv("CORE_PATH"), "options" => [
+                  "symlink" => false,
+                  "versions" => ["waaseyaa/anokii-core" => "dev-main"],
+                ]],
+                ["type" => "path", "url" => getenv("IDENTITY_PATH"), "options" => [
+                  "symlink" => false,
+                  "versions" => ["waaseyaa/anokii-identity" => "dev-main"],
+                ]],
+              ],
+              "minimum-stability" => "alpha",
+              "prefer-stable" => true,
+              "config" => ["sort-packages" => true],
+            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL);
+          '
+          composer update --working-dir=/tmp/anokii-identity-consumer --no-interaction
+          for forbidden in waaseyaa/full waaseyaa/ai-agent waaseyaa/deployer waaseyaa/anokii; do
+            if composer show --working-dir=/tmp/anokii-identity-consumer "$forbidden" >/dev/null 2>&1; then
+              echo "Forbidden distribution dependency installed: $forbidden" >&2
+              exit 1
+            fi
+          done
+          # shellcheck disable=SC2016
+          php -r '
+            require "/tmp/anokii-identity-consumer/vendor/autoload.php";
+            foreach ([
+              Anokii\Core\Access\AbstractEntityAccessPolicy::class,
+              Anokii\Identity\Entity\Pillar::class,
+              Anokii\Identity\Access\IdentityPillarAccessPolicy::class,
+              Anokii\Identity\IdentityServiceProvider::class,
+            ] as $class) {
+              if (!class_exists($class)) { throw new RuntimeException("Missing " . $class); }
+            }
+          '
+          composer dump-autoload --working-dir=/tmp/anokii-identity-consumer --optimize --no-interaction
+          # shellcheck disable=SC2016
+          php -r 'require "/tmp/anokii-identity-consumer/vendor/autoload.php"; if (!class_exists(Anokii\Identity\Entity\Pillar::class)) { exit(1); }'

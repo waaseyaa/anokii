@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Anokii\Workspace\Controller;
 
 use Anokii\Access\AccountBoundary;
+use Anokii\Core\Support\Values;
 use Anokii\Dashboard\DashboardGate;
-use Anokii\Support\Values;
 use Anokii\Workspace\WorkspaceShell;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;

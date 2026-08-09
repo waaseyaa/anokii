@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Anokii\Admin;
 
 use Anokii\CoIntelligence\SqliteChatQueryLog;
-use Anokii\Support\Values;
+use Anokii\Core\Support\Values;
 use Waaseyaa\Database\DatabaseInterface;
 
 /**
