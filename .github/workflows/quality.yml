@@ -76,8 +76,14 @@ jobs:
                 "waaseyaa/anokii-identity" => "dev-main",
               ],
               "repositories" => [
-                ["type" => "path", "url" => getenv("CORE_PATH"), "options" => ["symlink" => false]],
-                ["type" => "path", "url" => getenv("IDENTITY_PATH"), "options" => ["symlink" => false]],
+                ["type" => "path", "url" => getenv("CORE_PATH"), "options" => [
+                  "symlink" => false,
+                  "versions" => ["waaseyaa/anokii-core" => "dev-main"],
+                ]],
+                ["type" => "path", "url" => getenv("IDENTITY_PATH"), "options" => [
+                  "symlink" => false,
+                  "versions" => ["waaseyaa/anokii-identity" => "dev-main"],
+                ]],
               ],
               "minimum-stability" => "alpha",
               "prefer-stable" => true,

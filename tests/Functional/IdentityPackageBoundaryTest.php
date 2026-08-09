@@ -70,6 +70,14 @@ final class IdentityPackageBoundaryTest extends TestCase
         self::assertIsArray($providers);
 
         self::assertSame('dev-main', $rootRequire['waaseyaa/anokii-identity'] ?? null);
+        self::assertSame(
+            'dev-main',
+            $composer['repositories'][0]['options']['versions']['waaseyaa/anokii-core'] ?? null,
+        );
+        self::assertSame(
+            'dev-main',
+            $composer['repositories'][1]['options']['versions']['waaseyaa/anokii-identity'] ?? null,
+        );
         self::assertContains(IdentityServiceProvider::class, $providers);
         self::assertSame('migrations', $waaseyaa['migrations'] ?? null);
         self::assertFileDoesNotExist($root . '/src/Entity/Pillar.php');

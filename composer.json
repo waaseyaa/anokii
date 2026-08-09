@@ -17,14 +17,20 @@
             "type": "path",
             "url": "packages/core",
             "options": {
-                "symlink": true
+                "symlink": true,
+                "versions": {
+                    "waaseyaa/anokii-core": "dev-main"
+                }
             }
         },
         {
             "type": "path",
             "url": "packages/identity",
             "options": {
-                "symlink": true
+                "symlink": true,
+                "versions": {
+                    "waaseyaa/anokii-identity": "dev-main"
+                }
             }
         }
     ],
