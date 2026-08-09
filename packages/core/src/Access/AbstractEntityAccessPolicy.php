@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Anokii\Access;
+namespace Anokii\Core\Access;
 
 use Waaseyaa\Access\AccessPolicyInterface;
 use Waaseyaa\Access\AccessResult;

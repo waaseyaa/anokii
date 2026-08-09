@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Anokii\Workspace\Controller;
 
 use Anokii\Access\AccountBoundary;
+use Anokii\Core\Support\Values;
 use Anokii\Support\Auth;
-use Anokii\Support\Values;
 use Anokii\Workspace\Pages\PagesService;
 use Anokii\Workspace\WorkspaceShell;
 use Symfony\Component\HttpFoundation\JsonResponse;

@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Anokii\Workspace\Controller;
 
 use Anokii\Access\AccountBoundary;
-use Anokii\Entity\Pillar;
+use Anokii\Core\Support\Values;
+use Anokii\Identity\Entity\Pillar;
+use Anokii\Identity\PillarService;
 use Anokii\Support\Auth;
-use Anokii\Support\Values;
-use Anokii\Workspace\Identity\PillarService;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;

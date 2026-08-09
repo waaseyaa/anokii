@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Anokii\Entity;
+namespace Anokii\Core\Entity;
 
-use Anokii\Support\Values;
+use Anokii\Core\Support\Values;
 use Waaseyaa\Entity\Attribute\Field;
 
 /** Shared persisted sovereignty metadata for Anokii-owned content. */

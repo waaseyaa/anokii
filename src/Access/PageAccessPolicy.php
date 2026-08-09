@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Anokii\Access;
 
+use Anokii\Core\Access\AbstractEntityAccessPolicy;
 use Waaseyaa\Access\AccessResult;
 use Waaseyaa\Access\AccountInterface;
 use Waaseyaa\Access\Gate\PolicyAttribute;

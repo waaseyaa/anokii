@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Anokii\Workspace\Analytics;
 
-use Anokii\Support\Values;
+use Anokii\Core\Support\Values;
 use Waaseyaa\Database\DatabaseInterface;
 
 /**

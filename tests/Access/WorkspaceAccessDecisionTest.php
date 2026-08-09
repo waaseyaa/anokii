@@ -38,7 +38,7 @@ use Waaseyaa\User\User;
  */
 #[CoversClass(AccountBoundary::class)]
 #[CoversClass(PageAccessPolicy::class)]
-#[CoversClass(\Anokii\Access\AbstractEntityAccessPolicy::class)]
+#[CoversClass(\Anokii\Core\Access\AbstractEntityAccessPolicy::class)]
 final class WorkspaceAccessDecisionTest extends TestCase
 {
     private AuditedIdentityRuntime $audited;

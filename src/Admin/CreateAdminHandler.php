@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Anokii\Admin;
 
 use Anokii\Access\AbstractWorkspaceRoles;
-use Anokii\Support\Values;
+use Anokii\Core\Support\Values;
 use Waaseyaa\CLI\Command\SymfonyCommandIO;
 use Waaseyaa\Entity\EntityTypeManager;
 use Waaseyaa\User\User;

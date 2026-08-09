@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Anokii\Dashboard;
 
 use Anokii\Access\WorkspacePermissions;
+use Anokii\Core\Support\Values;
 use Anokii\Support\Auth;
-use Anokii\Support\Values;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;

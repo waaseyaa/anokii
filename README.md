@@ -44,6 +44,25 @@ Anokii is a **distribution** — it consumes Waaseyaa via Packagist and adds:
 
 Waaseyaa is the substrate — entity system, storage, access control, API, AI pipeline, SSR, MCP endpoint. Anokii **never** modifies Waaseyaa from inside this repo. Generally useful improvements are upstreamed as framework-targeted missions filed against the Waaseyaa repo.
 
+### Composable capabilities
+
+This repository is also the source monorepo for narrowly installable Anokii capabilities:
+
+- `waaseyaa/anokii-core` contains shared sovereignty metadata, safe value normalization, and the immutable-principal-aware access-policy base.
+- `waaseyaa/anokii-identity` contains the one canonical revisionable/translatable Identity Pillar entity, its policy and service, provider metadata, migration inventory, and an opt-in authenticated read-only host surface.
+
+The create-project distribution requires both packages and uses that same code for its full standalone workspace. Existing Waaseyaa applications can require only the capabilities they adopt; they do not need `waaseyaa/anokii`, `waaseyaa/full`, `waaseyaa/ai-agent`, or `waaseyaa/deployer`. Before the first coordinated capability release, consumers pin the split repositories' merged `main` branches; no machine-relative path repository is a deployment contract.
+
+The host surface is enabled in the framework application's `config/waaseyaa.php`:
+
+```php
+'anokii' => [
+    'identity' => ['host_surface' => 'read_only'],
+],
+```
+
+Package installation alone registers the Identity entity and policy. It does not replace a host's login, public routes, admin shell, MCP surface, deployment model, or other content types. See [`docs/architecture/composable-packages.md`](docs/architecture/composable-packages.md).
+
 **Framework charter:** [waaseyaa/.kittify/charter/charter.md](https://github.com/waaseyaa/framework/blob/main/.kittify/charter/charter.md)
 
 **Anokii charter:** `.kittify/charter/charter.md` in this repo (added in Wave 1 scaffold).

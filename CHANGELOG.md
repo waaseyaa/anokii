@@ -8,6 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- `waaseyaa/anokii-core` and `waaseyaa/anokii-identity` source packages, plus an explicit read-only Identity host surface for existing Waaseyaa applications. The surface uses framework route authentication, immutable request principals, entity access checks, community-scoped storage, and package discovery without mounting Anokii's standalone login, public pages, or other workspace tools (#8).
 - A production-readiness gate that creates a fresh schema, writes the checksum-bound field-access preflight, and proves guarded production boot in CI. The reviewed schema-derived classifications live in `.waaseyaa/field-access-classification.json`; the generated preflight remains a build artifact.
 - CMS page creation, draft, publish, history, and rollback workflows, with public routes derived from published page entities and reserved `/admin` and `/api` paths rejected.
 - A permission-gated Identity pillar creation flow for fresh workspaces, with tenant/classification metadata, an initial revision, dynamic section rendering, status editing, and history.
@@ -15,6 +16,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- Root Anokii now consumes the same canonical Pillar entity, policy, and service shipped by `anokii-identity`; the duplicate embedded entity/policy experiment and the separate installation-mode axis were removed (#8).
 - The Waaseyaa dependency floor is now alpha.290, including the framework-owned application secret and community isolation contracts; packaged-runtime coverage and operator setup now declare both requirements explicitly.
 - All Anokii-owned persistent entities now declare field-read classifications and, in sovereign mode, use the active community as their storage boundary. Graph content intended for public retrieval is explicitly Public; tenant and classification metadata is Protected.
 - Drive, Documents, Identity, Pages, Inbox, Analytics, settings, and the shared shell now use the framework's audited account/profile boundaries and canonical community context.

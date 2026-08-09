@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Anokii\Tests\Support;
 
-use Anokii\Support\Values;
+use Anokii\Core\Support\Values;
 use Waaseyaa\Entity\EntityInterface;
 
 /**

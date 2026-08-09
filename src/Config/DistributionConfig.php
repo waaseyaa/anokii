@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Anokii\Config;
 
-use Anokii\Support\Values;
+use Anokii\Core\Support\Values;
 use Symfony\Component\Yaml\Yaml;
 
 /**

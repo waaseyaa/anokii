@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Anokii\Workspace\Controller;
 
 use Anokii\Access\AccountBoundary;
+use Anokii\Core\Support\Values;
 use Anokii\Entity\Document;
 use Anokii\Entity\DocumentNote;
 use Anokii\Support\Auth;
-use Anokii\Support\Values;
 use Anokii\Workspace\Documents\DocumentService;
 use Anokii\Workspace\Documents\DocumentStorage;
 use Anokii\Workspace\WorkspaceShell;

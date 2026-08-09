@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Anokii\Workspace\Identity;
+namespace Anokii\Identity;
 
-use Anokii\Entity\Pillar;
+use Anokii\Identity\Entity\Pillar;
 use Symfony\Component\Uid\Uuid;
 use Waaseyaa\Entity\EntityTypeManager;
 use Waaseyaa\Entity\Repository\EntityRepositoryInterface;

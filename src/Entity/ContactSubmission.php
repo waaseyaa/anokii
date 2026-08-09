@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Anokii\Entity;
 
-use Anokii\Support\Values;
+use Anokii\Core\Entity\SovereignMetadataTrait;
+use Anokii\Core\Support\Values;
 use Waaseyaa\Entity\Attribute\ContentEntityKeys;
 use Waaseyaa\Entity\Attribute\ContentEntityType;
 use Waaseyaa\Entity\Attribute\Field;

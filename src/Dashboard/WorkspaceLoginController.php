@@ -6,8 +6,8 @@ namespace Anokii\Dashboard;
 
 use Anokii\Auth\LoginThrottle;
 use Anokii\Auth\SetupTokenRepository;
+use Anokii\Core\Support\Values;
 use Anokii\Support\Auth;
-use Anokii\Support\Values;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;

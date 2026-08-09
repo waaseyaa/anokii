@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Anokii\Workspace\Pages;
 
+use Anokii\Core\Support\Values;
 use Anokii\Entity\Page;
-use Anokii\Support\Values;
 use Twig\Environment;
 use Waaseyaa\Entity\Repository\EntityRepositoryInterface;
 

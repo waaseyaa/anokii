@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Anokii\Access;
 
+use Anokii\Identity\Access\IdentityPillarAccessPolicy;
+use Anokii\Identity\IdentityPermissions;
 use Waaseyaa\Access\EntityAccessHandler;
 
 /**
@@ -37,8 +39,8 @@ class WorkspaceRoles extends AbstractWorkspaceRoles
 
     // Permissions, one edit + one administer per entity-native tool, plus the
     // Pages publish op and the Inbox manage op.
-    public const string EDIT_IDENTITY = 'edit identity';
-    public const string ADMINISTER_IDENTITY = 'administer identity';
+    public const string EDIT_IDENTITY = IdentityPermissions::EDIT;
+    public const string ADMINISTER_IDENTITY = IdentityPermissions::ADMINISTER;
     public const string EDIT_DOCUMENTS = 'edit documents';
     public const string ADMINISTER_DOCUMENTS = 'administer documents';
     public const string EDIT_DRIVE = 'edit drive';

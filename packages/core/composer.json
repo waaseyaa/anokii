@@ -1,0 +1,23 @@
+{
+    "name": "waaseyaa/anokii-core",
+    "description": "Shared sovereignty, normalization, and access primitives for composable Anokii capabilities.",
+    "type": "library",
+    "license": "GPL-2.0-or-later",
+    "require": {
+        "php": "^8.5",
+        "waaseyaa/access": "^0.1.0-alpha.293",
+        "waaseyaa/entity": "^0.1.0-alpha.293"
+    },
+    "autoload": {
+        "psr-4": {
+            "Anokii\\Core\\": "src/"
+        }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "0.1.x-dev"
+        }
+    },
+    "minimum-stability": "alpha",
+    "prefer-stable": true
+}
