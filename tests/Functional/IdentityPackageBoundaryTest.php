@@ -70,13 +70,27 @@ final class IdentityPackageBoundaryTest extends TestCase
         self::assertIsArray($providers);
 
         self::assertSame('dev-main', $rootRequire['waaseyaa/anokii-identity'] ?? null);
+        $repositories = $composer['repositories'] ?? null;
+        self::assertIsArray($repositories);
+        $coreRepository = $repositories[0] ?? null;
+        $identityRepository = $repositories[1] ?? null;
+        self::assertIsArray($coreRepository);
+        self::assertIsArray($identityRepository);
+        $coreOptions = $coreRepository['options'] ?? null;
+        $identityOptions = $identityRepository['options'] ?? null;
+        self::assertIsArray($coreOptions);
+        self::assertIsArray($identityOptions);
+        $coreVersions = $coreOptions['versions'] ?? null;
+        $identityVersions = $identityOptions['versions'] ?? null;
+        self::assertIsArray($coreVersions);
+        self::assertIsArray($identityVersions);
         self::assertSame(
             'dev-main',
-            $composer['repositories'][0]['options']['versions']['waaseyaa/anokii-core'] ?? null,
+            $coreVersions['waaseyaa/anokii-core'] ?? null,
         );
         self::assertSame(
             'dev-main',
-            $composer['repositories'][1]['options']['versions']['waaseyaa/anokii-identity'] ?? null,
+            $identityVersions['waaseyaa/anokii-identity'] ?? null,
         );
         self::assertContains(IdentityServiceProvider::class, $providers);
         self::assertSame('migrations', $waaseyaa['migrations'] ?? null);
