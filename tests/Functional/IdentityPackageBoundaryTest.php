@@ -10,6 +10,7 @@ use Anokii\Identity\Entity\Pillar;
 use Anokii\Identity\IdentityServiceProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
+use Waaseyaa\Access\AccountInterface;
 use Waaseyaa\Access\AuthorizationPrincipal;
 use Waaseyaa\Access\EntityAccessHandler;
 use Waaseyaa\Access\Gate\EntityAccessGate;
@@ -165,6 +166,38 @@ final class IdentityPackageBoundaryTest extends TestCase
         self::assertStringContainsString('private', (string) $response->headers->get('Cache-Control'));
         self::assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
         self::assertSame('noindex, nofollow', $response->headers->get('X-Robots-Tag'));
+    }
+
+    public function testHostControllerUsesTheAuditedPrincipalFromTheRealMiddlewareShape(): void
+    {
+        $request = Request::create('/admin/anokii/identity');
+        $request->attributes->set('_account', new class implements AccountInterface {
+            public function id(): int
+            {
+                return 7;
+            }
+
+            public function hasPermission(string $permission): bool
+            {
+                return false;
+            }
+
+            public function getRoles(): array
+            {
+                return [];
+            }
+
+            public function isAuthenticated(): bool
+            {
+                return true;
+            }
+        });
+        $request->attributes->set('_authorization_principal', $this->principal('community-a'));
+
+        $response = $this->hostController([])->index($request);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('Active community: community-a', (string) $response->getContent());
     }
 
     public function testHostControllerReturnsNoCrossCommunityContent(): void
