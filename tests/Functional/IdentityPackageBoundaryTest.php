@@ -12,7 +12,9 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Waaseyaa\Access\AuthorizationPrincipal;
 use Waaseyaa\Access\EntityAccessHandler;
+use Waaseyaa\Entity\Attribute\Field;
 use Waaseyaa\Entity\EntityTypeManager;
+use Waaseyaa\Entity\FieldReadLevel;
 use Waaseyaa\Entity\Repository\EntityRepositoryInterface;
 use Waaseyaa\Foundation\Community\CommunityContext;
 use Waaseyaa\Routing\WaaseyaaRouter;
@@ -29,6 +31,15 @@ final class IdentityPackageBoundaryTest extends TestCase
             static fn($type): string => $type->id(),
             $provider->getEntityTypes(),
         ));
+    }
+
+    public function testRevisionLogMatchesTheDocumentedInternalHostClassification(): void
+    {
+        $property = new \ReflectionProperty(Pillar::class, 'revision_log');
+        $attributes = $property->getAttributes(Field::class);
+
+        self::assertCount(1, $attributes);
+        self::assertSame(FieldReadLevel::Internal, $attributes[0]->newInstance()->read);
     }
 
     public function testReadOnlyHostSurfaceIsExplicitAndAuthenticated(): void
