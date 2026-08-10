@@ -24,6 +24,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Align Identity pillar revision logs with the package's documented internal
+  field-access contract so host activation preflight is conflict-free (#10).
 - Fail closed on cross-community writes and reads, missing active community configuration, invalid upload metadata, unsafe CMS paths, open redirects, login brute force, and silent persistence failures.
 - Preserve UUIDs at construction, initialize required tenancy/classification metadata, make Drive uploads and Documents versioning work on fresh storage, and render PDF sources inline without duplicating bytes.
 - Remove unconditional browser errors from Drive and Identity, allow failed same-file uploads to be retried, and provide complete password-form autocomplete semantics.
