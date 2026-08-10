@@ -26,7 +26,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - Resolve the read-only Identity host controller through Waaseyaa's supported
   HTTP `GateInterface` authorization seam instead of requiring an unbound
-  lower-level access-handler service (#12).
+  lower-level access-handler service, and consume the audited immutable
+  principal emitted by the real HTTP middleware boundary (#12).
 - Align Identity pillar revision logs with the package's documented internal
   field-access contract so host activation preflight is conflict-free (#10).
 - Fail closed on cross-community writes and reads, missing active community configuration, invalid upload metadata, unsafe CMS paths, open redirects, login brute force, and silent persistence failures.
