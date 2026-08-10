@@ -12,6 +12,8 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Waaseyaa\Access\AuthorizationPrincipal;
 use Waaseyaa\Access\EntityAccessHandler;
+use Waaseyaa\Access\Gate\EntityAccessGate;
+use Waaseyaa\Access\Gate\GateInterface;
 use Waaseyaa\Entity\Attribute\Field;
 use Waaseyaa\Entity\EntityTypeManager;
 use Waaseyaa\Entity\FieldReadLevel;
@@ -40,6 +42,17 @@ final class IdentityPackageBoundaryTest extends TestCase
 
         self::assertCount(1, $attributes);
         self::assertSame(FieldReadLevel::Internal, $attributes[0]->newInstance()->read);
+    }
+
+    public function testHostControllerUsesTheSupportedHttpAuthorizationSeam(): void
+    {
+        $constructor = new \ReflectionClass(HostIdentityController::class)->getConstructor();
+        self::assertNotNull($constructor);
+        $access = $constructor->getParameters()[1] ?? null;
+        self::assertInstanceOf(\ReflectionParameter::class, $access);
+        $type = $access->getType();
+        self::assertInstanceOf(\ReflectionNamedType::class, $type);
+        self::assertSame(GateInterface::class, $type->getName());
     }
 
     public function testReadOnlyHostSurfaceIsExplicitAndAuthenticated(): void
@@ -219,7 +232,7 @@ final class IdentityPackageBoundaryTest extends TestCase
 
         return new HostIdentityController(
             $entities,
-            new EntityAccessHandler([new IdentityPillarAccessPolicy()]),
+            new EntityAccessGate(new EntityAccessHandler([new IdentityPillarAccessPolicy()])),
             $community,
         );
     }
