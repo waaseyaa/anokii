@@ -32,6 +32,16 @@
                     "waaseyaa/anokii-identity": "dev-main"
                 }
             }
+        },
+        {
+            "type": "path",
+            "url": "packages/operator",
+            "options": {
+                "symlink": true,
+                "versions": {
+                    "waaseyaa/anokii-operator": "dev-main"
+                }
+            }
         }
     ],
     "require": {
@@ -46,6 +56,7 @@
         "waaseyaa/ai-agent": "^0.1.0-alpha.290",
         "waaseyaa/anokii-core": "dev-main",
         "waaseyaa/anokii-identity": "dev-main",
+        "waaseyaa/anokii-operator": "dev-main",
         "waaseyaa/deployer": "^0.1.0-alpha.290",
         "waaseyaa/full": "^0.1.0-alpha.290"
     },
