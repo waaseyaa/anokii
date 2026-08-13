@@ -108,5 +108,6 @@ final class OperatorModuleCatalogTest extends TestCase
         self::assertStringContainsString('/assets/sfn-operator.css', $html);
         self::assertStringContainsString('/admin/anokii/website', $html);
         self::assertStringContainsString('Open workspace navigation', $html);
+        self::assertStringContainsString('grid-template-rows:auto minmax(0,1fr)', $html);
     }
 }
