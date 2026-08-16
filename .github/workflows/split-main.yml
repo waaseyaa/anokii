@@ -10,7 +10,7 @@ on:
       packages:
         description: Comma-separated reviewed package names
         required: true
-        default: core,identity
+        default: core,identity,operator
         type: string
       reason:
         description: Downstream verification reason or issue URL

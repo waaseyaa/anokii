@@ -10,13 +10,14 @@ final class SplitMainWorkflowTest extends TestCase
 {
     public function testResolverAllowsOnlyCanonicalPackageNames(): void
     {
-        [$exit, $stdout] = $this->runResolver('core,identity,core');
+        [$exit, $stdout] = $this->runResolver('core,identity,operator,core');
 
         self::assertSame(0, $exit, $stdout);
         self::assertSame([
             'include' => [
                 ['local' => 'packages/core', 'remote' => 'anokii-core'],
                 ['local' => 'packages/identity', 'remote' => 'anokii-identity'],
+                ['local' => 'packages/operator', 'remote' => 'anokii-operator'],
             ],
         ], json_decode($stdout, true, flags: JSON_THROW_ON_ERROR));
 
