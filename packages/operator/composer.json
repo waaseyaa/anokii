@@ -1,0 +1,25 @@
+{
+  "name": "waaseyaa/anokii-operator",
+  "description": "Composable Anokii operator workspace contracts and shell primitives for existing Waaseyaa applications.",
+  "type": "library",
+  "license": "GPL-2.0-or-later",
+  "require": {
+    "ext-mbstring": "*",
+    "php": "^8.5",
+    "symfony/http-foundation": "^7.0",
+    "twig/twig": "^3.0",
+    "waaseyaa/access": "^0.1.0-alpha.293"
+  },
+  "autoload": {
+    "psr-4": {
+      "Anokii\\Operator\\": "src/"
+    }
+  },
+  "extra": {
+    "branch-alias": {
+      "dev-main": "0.1.x-dev"
+    }
+  },
+  "minimum-stability": "alpha",
+  "prefer-stable": true
+}

@@ -7,6 +7,9 @@ parameters:
     paths:
         - src
         - tests
+        - packages/operator/src
+        - packages/operator/tests
+        - packages/operator/examples
         - public
         - config/waaseyaa.php
         - deploy.php

@@ -56,8 +56,10 @@ jobs:
         with:
           php-version: '8.5'
           coverage: none
+          extensions: mbstring
       - run: composer validate --working-dir=packages/core --strict --no-check-lock
       - run: composer validate --working-dir=packages/identity --strict --no-check-lock
+      - run: composer validate --working-dir=packages/operator --strict --no-check-lock
       - name: Install Identity as a minimal external consumer
         env:
           CORE_PATH: ${{ github.workspace }}/packages/core
@@ -112,3 +114,46 @@ jobs:
           composer dump-autoload --working-dir=/tmp/anokii-identity-consumer --optimize --no-interaction
           # shellcheck disable=SC2016
           php -r 'require "/tmp/anokii-identity-consumer/vendor/autoload.php"; if (!class_exists(Anokii\Identity\Entity\Pillar::class)) { exit(1); }'
+      - name: Install Operator as a minimal external consumer
+        env:
+          OPERATOR_PATH: ${{ github.workspace }}/packages/operator
+        run: |
+          mkdir -p /tmp/anokii-operator-consumer
+          # PHP source below intentionally uses single quotes.
+          # shellcheck disable=SC2016
+          php -r '
+            file_put_contents("/tmp/anokii-operator-consumer/composer.json", json_encode([
+              "name" => "waaseyaa/anokii-operator-consumer-smoke",
+              "type" => "project",
+              "require" => [
+                "php" => "^8.5",
+                "waaseyaa/anokii-operator" => "dev-main",
+              ],
+              "repositories" => [["type" => "path", "url" => getenv("OPERATOR_PATH"), "options" => [
+                "symlink" => false,
+                "versions" => ["waaseyaa/anokii-operator" => "dev-main"],
+              ]]],
+              "minimum-stability" => "alpha",
+              "prefer-stable" => true,
+              "config" => ["sort-packages" => true],
+            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL);
+          '
+          composer update --working-dir=/tmp/anokii-operator-consumer --no-interaction
+          for forbidden in waaseyaa/full waaseyaa/ai-agent waaseyaa/deployer waaseyaa/anokii; do
+            if composer show --working-dir=/tmp/anokii-operator-consumer "$forbidden" >/dev/null 2>&1; then
+              echo "Forbidden distribution dependency installed: $forbidden" >&2
+              exit 1
+            fi
+          done
+          # shellcheck disable=SC2016
+          php -r '
+            require "/tmp/anokii-operator-consumer/vendor/autoload.php";
+            foreach ([
+              Anokii\Operator\Http\OperatorResponsePolicy::class,
+              Anokii\Operator\Module\OperatorModuleCatalog::class,
+              Anokii\Operator\Shell\OperatorShell::class,
+              Anokii\Operator\Template\OperatorTemplates::class,
+            ] as $class) {
+              if (!class_exists($class)) { throw new RuntimeException("Missing " . $class); }
+            }
+          '

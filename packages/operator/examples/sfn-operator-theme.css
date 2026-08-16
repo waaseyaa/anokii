@@ -1,0 +1,16 @@
+:root{
+  --anokii-shell-font:'Inter','Segoe UI',system-ui,sans-serif;
+  --anokii-shell-ink:#22303c;
+  --anokii-shell-bg:#fbf7f0;
+  --anokii-shell-card:#fff;
+  --anokii-shell-line:#e7ddca;
+  --anokii-shell-muted:#54626f;
+  --anokii-shell-side-bg:#17345f;
+  --anokii-shell-side-line:rgba(255,255,255,.15);
+  --anokii-shell-side-muted:#cad9ec;
+  --anokii-shell-accent:#f2b12e;
+  --anokii-shell-accent-ink:#22303c;
+  --sfn-display:'Fraunces',Georgia,serif;
+  --sfn-soft:#e5edf9;
+}
+.anokii-brandcopy b{font-family:var(--sfn-display);font-size:15px;max-width:145px}.anokii-brandcopy small{color:#dbe6f3}.anokii-navlink.on{font-weight:750}.anokii-main:before{content:'';display:block;height:5px;background:linear-gradient(90deg,#f2b12e 0 25%,#cd4631 25% 50%,#2a6fb5 50% 75%,#3f8a43 75%)}.ahero h1,.module-head h1{font-family:var(--sfn-display)}

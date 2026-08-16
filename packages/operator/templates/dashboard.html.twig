@@ -1,0 +1,22 @@
+{% extends '@anokii_operator/shell.html.twig' %}
+
+{% block title %}{{ page_title }} | {{ brand_title }}{% endblock %}
+
+{% block shell_styles %}
+  .ahero{background:var(--anokii-shell-side-bg);border-radius:16px;margin-bottom:22px;overflow:hidden}
+  .ahero .inner{position:relative;padding:30px 32px}
+  .ahero h1{color:#fff;font-size:30px;letter-spacing:.01em;margin:0 0 6px;max-width:none}
+  .ahero .mean{color:var(--anokii-shell-side-muted);font-size:13px;font-style:italic;margin:0 0 10px}
+  .ahero p{margin:0;color:var(--anokii-shell-side-muted);max-width:640px;font-size:15.5px;line-height:1.6}
+{% endblock %}
+
+{% block content %}
+<section class="ahero">
+  <div class="inner">
+    <h1>Welcome, {{ user_label }}</h1>
+    <div class="mean">{{ brand_tag }}</div>
+    <p>{{ page_intro }}</p>
+  </div>
+</section>
+{% include '@anokii_operator/_dashboard_grid.html.twig' with { cards: tiles } %}
+{% endblock %}

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f0d1346f52f86c5cbf18adeff583c5ab",
+    "content-hash": "40acee5f1933174af23a70a9b2b6138c",
     "packages": [
         {
             "name": "deployer/deployer",
@@ -3508,6 +3508,41 @@
                 "GPL-2.0-or-later"
             ],
             "description": "Canonical, community-scoped Anokii Identity capability for Waaseyaa applications.",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
+        },
+        {
+            "name": "waaseyaa/anokii-operator",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "packages/operator",
+                "reference": "2a533c424359b09b6f5e919233bf5521c4d49f2a"
+            },
+            "require": {
+                "ext-mbstring": "*",
+                "php": "^8.5",
+                "symfony/http-foundation": "^7.0",
+                "twig/twig": "^3.0",
+                "waaseyaa/access": "^0.1.0-alpha.293"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-main": "0.1.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Anokii\\Operator\\": "src/"
+                }
+            },
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "description": "Composable Anokii operator workspace contracts and shell primitives for existing Waaseyaa applications.",
             "transport-options": {
                 "symlink": true,
                 "relative": true
@@ -9536,6 +9571,7 @@
         "waaseyaa/ai-agent": 15,
         "waaseyaa/anokii-core": 20,
         "waaseyaa/anokii-identity": 20,
+        "waaseyaa/anokii-operator": 20,
         "waaseyaa/deployer": 15,
         "waaseyaa/full": 15
     },
@@ -9546,6 +9582,6 @@
         "ext-zip": "*",
         "php": "^8.5"
     },
-    "platform-dev": {},
+    "platform-dev": [],
     "plugin-api-version": "2.6.0"
 }

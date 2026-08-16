@@ -8,12 +8,14 @@
     <testsuites>
         <testsuite name="Anokii">
             <directory>tests</directory>
+            <directory>packages/operator/tests</directory>
         </testsuite>
     </testsuites>
 
     <source>
         <include>
             <directory>src</directory>
+            <directory>packages/operator/src</directory>
         </include>
     </source>
 </phpunit>

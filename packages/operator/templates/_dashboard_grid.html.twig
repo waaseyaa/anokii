@@ -1,0 +1,39 @@
+{#
+  Anokii dashboard tool/module grid.
+
+  A responsive card grid for the dashboard home: one card per tool, each linking
+  into that tool with a title, blurb, and optional icon/badge. Token-driven like
+  _shell.html.twig, so an instance rebrands via CSS variables, not a fork.
+
+  Include it from a page that extends the shell:
+
+    {% block content %}
+      {% include 'anokii/_dashboard_grid.html.twig' with { cards: tools } %}
+    {% endblock %}
+
+  Each entry in `cards` is { label, href, desc?, icon?, badge? }. `icon` is raw
+  inner SVG. No brand colours, fonts, or tool names live here.
+#}
+<style>
+  .anokii-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:18px; }
+  .anokii-grid-card{ display:flex; flex-direction:column; gap:10px; padding:18px; background:var(--anokii-shell-card, #fff); border:1px solid var(--anokii-shell-line, #e3e1db); border-radius:14px; transition:border-color .12s, transform .12s; }
+  .anokii-grid-card:hover{ border-color:var(--anokii-shell-accent, #0f766e); transform:translateY(-1px); }
+  .anokii-grid-icon{ width:38px; height:38px; border-radius:10px; background:var(--anokii-shell-accent, #0f766e); color:var(--anokii-shell-accent-ink, #fff); display:grid; place-items:center; }
+  .anokii-grid-icon svg{ width:20px; height:20px; }
+  .anokii-grid-head{ display:flex; align-items:center; gap:10px; }
+  .anokii-grid-card b{ font-size:16px; }
+  .anokii-grid-card p{ color:var(--anokii-shell-muted, #6b7076); font-size:14px; margin:0; }
+  .anokii-grid-badge{ margin-left:auto; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; border-radius:20px; padding:2px 8px; background:var(--anokii-shell-line, #e3e1db); color:var(--anokii-shell-muted, #6b7076); }
+</style>
+<div class="anokii-grid">
+  {% for card in cards|default([]) %}
+    <a class="anokii-grid-card" href="{{ card.href }}">
+      <div class="anokii-grid-head">
+        {% if card.icon is defined %}<span class="anokii-grid-icon"><svg viewBox="0 0 24 24" fill="none">{{ card.icon|raw }}</svg></span>{% endif %}
+        <b>{{ card.label }}</b>
+        {% if card.badge is defined and card.badge %}<span class="anokii-grid-badge">{{ card.badge }}</span>{% endif %}
+      </div>
+      {% if card.desc is defined and card.desc %}<p>{{ card.desc }}</p>{% endif %}
+    </a>
+  {% endfor %}
+</div>
