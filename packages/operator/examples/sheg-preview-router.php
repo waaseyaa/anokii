@@ -10,8 +10,8 @@ use Twig\Loader\FilesystemLoader;
 
 $autoloadCandidates = array_filter([
     getenv('ANOKII_PREVIEW_AUTOLOAD') ?: null,
-    dirname(__DIR__, 3).'/vendor/autoload.php',
-    dirname(__DIR__, 4).'/anokii/vendor/autoload.php',
+    dirname(__DIR__, 3) . '/vendor/autoload.php',
+    dirname(__DIR__, 4) . '/anokii/vendor/autoload.php',
 ]);
 $vendor = null;
 foreach ($autoloadCandidates as $candidate) {
@@ -26,21 +26,27 @@ if ($vendor === null) {
     return;
 }
 require $vendor;
-require_once dirname(__DIR__).'/src/Module/OperatorModule.php';
-require_once dirname(__DIR__).'/src/Shell/OperatorShell.php';
-require_once dirname(__DIR__).'/src/Template/OperatorTemplates.php';
+require_once dirname(__DIR__) . '/src/Module/OperatorModule.php';
+require_once dirname(__DIR__) . '/src/Shell/OperatorShell.php';
+require_once dirname(__DIR__) . '/src/Template/OperatorTemplates.php';
 
-$path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+$requestUri = $_SERVER['REQUEST_URI'] ?? '/';
+if (!is_string($requestUri)) {
+    http_response_code(400);
+    echo 'Preview request URI is invalid.';
+    return;
+}
+$path = parse_url($requestUri, PHP_URL_PATH) ?: '/';
 if ($path === '/theme.css') {
     header('Content-Type: text/css; charset=UTF-8');
-    readfile(__DIR__.'/sfn-operator-theme.css');
+    readfile(__DIR__ . '/sfn-operator-theme.css');
     return;
 }
 if ($path === '/logo.png') {
     $logoCandidates = array_filter([
         getenv('SHEG_PREVIEW_LOGO') ?: null,
-        dirname(__DIR__, 4).'/sheg-staging-readiness-20260812/public/media/2024/02/Sheg-FN-logo-vector.png',
-        dirname(__DIR__, 4).'/sheg-waaseyaa-pass1/public/media/2024/02/Sheg-FN-logo-vector.png',
+        dirname(__DIR__, 4) . '/sheg-staging-readiness-20260812/public/media/2024/02/Sheg-FN-logo-vector.png',
+        dirname(__DIR__, 4) . '/sheg-waaseyaa-pass1/public/media/2024/02/Sheg-FN-logo-vector.png',
     ]);
     $logo = null;
     foreach ($logoCandidates as $candidate) {
@@ -58,7 +64,7 @@ if ($path === '/logo.png') {
     return;
 }
 
-$icon = static fn(string $path): string => '<path d="'.$path.'" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
+$icon = static fn(string $path): string => '<path d="' . $path . '" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
 $modules = [
     new OperatorModule('website', 'Website', 'Daily work', '/admin/anokii/website', 'Create, review, and publish pages, updates, events, jobs, and announcements.', $icon('M4 5h16v14H4zM4 9h16M8 13h8M8 16h5')),
     new OperatorModule('media', 'Media', 'Daily work', '/admin/anokii/media', 'Upload and organize images and documents used on the website.', $icon('M4 7h6l2 2h8v10H4z')),

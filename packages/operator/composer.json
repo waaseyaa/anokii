@@ -4,6 +4,7 @@
   "type": "library",
   "license": "GPL-2.0-or-later",
   "require": {
+    "ext-mbstring": "*",
     "php": "^8.5",
     "symfony/http-foundation": "^7.0",
     "twig/twig": "^3.0",

@@ -3,7 +3,15 @@
 declare(strict_types=1);
 
 $finder = PhpCsFixer\Finder::create()
-    ->in([__DIR__.'/src', __DIR__.'/tests', __DIR__.'/public', __DIR__.'/config'])
+    ->in([
+        __DIR__.'/src',
+        __DIR__.'/tests',
+        __DIR__.'/public',
+        __DIR__.'/config',
+        __DIR__.'/packages/operator/src',
+        __DIR__.'/packages/operator/tests',
+        __DIR__.'/packages/operator/examples',
+    ])
     ->append([__DIR__.'/deploy.php'])
     ->name('*.php')
     ->ignoreDotFiles(true)

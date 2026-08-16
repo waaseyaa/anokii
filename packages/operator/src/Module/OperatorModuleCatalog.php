@@ -18,9 +18,7 @@ final readonly class OperatorModuleCatalog
         $modules = [];
         foreach ($this->providers as $provider) {
             foreach ($provider->modules($principal) as $module) {
-                if (!$module instanceof OperatorModule) {
-                    throw new \LogicException('Operator module providers may return only OperatorModule values.');
-                }
+                $module = self::requireModule($module);
                 if (isset($modules[$module->id])) {
                     throw new \LogicException("Duplicate Anokii operator module id: {$module->id}");
                 }
@@ -40,5 +38,14 @@ final readonly class OperatorModuleCatalog
         }
 
         return null;
+    }
+
+    private static function requireModule(mixed $module): OperatorModule
+    {
+        if (!$module instanceof OperatorModule) {
+            throw new \LogicException('Operator module providers may return only OperatorModule values.');
+        }
+
+        return $module;
     }
 }

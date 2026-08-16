@@ -70,6 +70,6 @@ final class OperatorShell
         $first = mb_substr($parts[0], 0, 1);
         $last = count($parts) > 1 ? mb_substr($parts[array_key_last($parts)], 0, 1) : '';
 
-        return mb_strtoupper($first.$last);
+        return mb_strtoupper($first . $last);
     }
 }

@@ -18,15 +18,30 @@ use Twig\Loader\FilesystemLoader;
 use Waaseyaa\Access\AuthorizationPrincipal;
 use Waaseyaa\Access\AuthorizationPrincipalInterface;
 
-require_once __DIR__.'/../src/Module/OperatorModule.php';
-require_once __DIR__.'/../src/Module/OperatorModuleProviderInterface.php';
-require_once __DIR__.'/../src/Module/OperatorModuleCatalog.php';
-require_once __DIR__.'/../src/Http/OperatorResponsePolicy.php';
-require_once __DIR__.'/../src/Shell/OperatorShell.php';
-require_once __DIR__.'/../src/Template/OperatorTemplates.php';
+require_once __DIR__ . '/../src/Module/OperatorModule.php';
+require_once __DIR__ . '/../src/Module/OperatorModuleProviderInterface.php';
+require_once __DIR__ . '/../src/Module/OperatorModuleCatalog.php';
+require_once __DIR__ . '/../src/Http/OperatorResponsePolicy.php';
+require_once __DIR__ . '/../src/Shell/OperatorShell.php';
+require_once __DIR__ . '/../src/Template/OperatorTemplates.php';
 
 final class OperatorModuleCatalogTest extends TestCase
 {
+    #[Test]
+    public function packageDeclaresTheMultibyteRuntimeUsedByOperatorInitials(): void
+    {
+        $composer = json_decode(
+            (string) file_get_contents(__DIR__ . '/../composer.json'),
+            true,
+            flags: JSON_THROW_ON_ERROR,
+        );
+
+        self::assertIsArray($composer);
+        $requirements = $composer['require'] ?? null;
+        self::assertIsArray($requirements);
+        self::assertSame('*', $requirements['ext-mbstring'] ?? null);
+    }
+
     #[Test]
     public function hostModulesAreResolvedForTheExactPrincipalInProviderOrder(): void
     {
@@ -43,7 +58,7 @@ final class OperatorModuleCatalogTest extends TestCase
             }
         };
 
-        $modules = (new OperatorModuleCatalog([$provider]))->forPrincipal($principal);
+        $modules = new OperatorModuleCatalog([$provider])->forPrincipal($principal);
 
         self::assertSame(['website'], array_map(static fn(OperatorModule $module): string => $module->id, $modules));
     }
@@ -61,7 +76,7 @@ final class OperatorModuleCatalogTest extends TestCase
         };
 
         $this->expectException(\LogicException::class);
-        (new OperatorModuleCatalog([$provider]))->forPrincipal($principal);
+        new OperatorModuleCatalog([$provider])->forPrincipal($principal);
     }
 
     #[Test]
@@ -96,9 +111,13 @@ final class OperatorModuleCatalogTest extends TestCase
             'tiles' => [],
         ]);
 
+        /** @var list<array{id: string}> $nav */
+        $nav = $context['nav'];
+        /** @var list<array{id: string}> $tiles */
+        $tiles = $context['tiles'];
         self::assertSame('Sheguiandah First Nation', $context['brand_title']);
-        self::assertSame(['website'], array_column($context['nav'], 'id'));
-        self::assertSame(['website'], array_column($context['tiles'], 'id'));
+        self::assertSame(['website'], array_column($nav, 'id'));
+        self::assertSame(['website'], array_column($tiles, 'id'));
 
         $twig = new Environment(new FilesystemLoader());
         OperatorTemplates::register($twig);
@@ -109,5 +128,13 @@ final class OperatorModuleCatalogTest extends TestCase
         self::assertStringContainsString('/admin/anokii/website', $html);
         self::assertStringContainsString('Open workspace navigation', $html);
         self::assertStringContainsString('grid-template-rows:auto minmax(0,1fr)', $html);
+    }
+
+    #[Test]
+    public function operatorInitialsPreserveMultibyteNames(): void
+    {
+        $context = OperatorShell::context([], '', 'Élodie Métis', 'Operator');
+
+        self::assertSame('ÉM', $context['user_initials']);
     }
 }

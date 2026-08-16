@@ -13,7 +13,7 @@ final class OperatorTemplates
 {
     public static function path(): string
     {
-        return dirname(__DIR__, 2).'/templates';
+        return dirname(__DIR__, 2) . '/templates';
     }
 
     public static function register(Environment $twig): void

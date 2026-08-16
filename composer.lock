@@ -3519,9 +3519,10 @@
             "dist": {
                 "type": "path",
                 "url": "packages/operator",
-                "reference": "cc967158a302739ea3394a221967bfa80f882f36"
+                "reference": "2a533c424359b09b6f5e919233bf5521c4d49f2a"
             },
             "require": {
+                "ext-mbstring": "*",
                 "php": "^8.5",
                 "symfony/http-foundation": "^7.0",
                 "twig/twig": "^3.0",
