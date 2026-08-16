@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- Govern `anokii-operator` as a development-main split projection and document
+  the manual, exact-main alpha release procedure without granting automated tag
+  or Packagist authority.
+
 ### Added
 
 - `waaseyaa/anokii-core` and `waaseyaa/anokii-identity` source packages, plus an explicit read-only Identity host surface for existing Waaseyaa applications. The surface uses framework route authentication, immutable request principals, entity access checks, community-scoped storage, and package discovery without mounting Anokii's standalone login, public pages, or other workspace tools (#8).

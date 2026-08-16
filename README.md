@@ -50,8 +50,9 @@ This repository is also the source monorepo for narrowly installable Anokii capa
 
 - `waaseyaa/anokii-core` contains shared sovereignty metadata, safe value normalization, and the immutable-principal-aware access-policy base.
 - `waaseyaa/anokii-identity` contains the one canonical revisionable/translatable Identity Pillar entity, its policy and service, provider metadata, migration inventory, and an opt-in authenticated read-only host surface.
+- `waaseyaa/anokii-operator` contains the composable, brandable operator workspace shell and module contract without pulling in the Anokii distribution.
 
-The create-project distribution requires both packages and uses that same code for its full standalone workspace. Existing Waaseyaa applications can require only the capabilities they adopt; they do not need `waaseyaa/anokii`, `waaseyaa/full`, `waaseyaa/ai-agent`, or `waaseyaa/deployer`. Before the first coordinated capability release, consumers pin the split repositories' merged `main` branches; no machine-relative path repository is a deployment contract.
+The create-project distribution requires all three packages and uses that same code for its full standalone workspace. Existing Waaseyaa applications can require only the capabilities they adopt; they do not need `waaseyaa/anokii`, `waaseyaa/full`, `waaseyaa/ai-agent`, or `waaseyaa/deployer`. Before the first coordinated capability release, consumers pin the split repositories' merged `main` branches; no machine-relative path repository is a deployment contract.
 
 The host surface is enabled in the framework application's `config/waaseyaa.php`:
 
@@ -94,6 +95,10 @@ composer create-project waaseyaa/anokii my-anokii-site
 ```
 
 In the meantime, clone this repo directly and run `composer install`.
+
+Release tags are deliberately manual and separately authorized. See
+[`docs/releasing.md`](docs/releasing.md) for the exact validation, tagging, and
+split-publication boundaries.
 
 Copy `.env.example` to `.env` and replace its placeholders. In particular,
 `WAASEYAA_APP_SECRET` must be `base64:` followed by canonical base64 for exactly

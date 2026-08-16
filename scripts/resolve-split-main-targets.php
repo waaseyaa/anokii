@@ -6,6 +6,7 @@ declare(strict_types=1);
 $allowlist = [
     'core' => ['local' => 'packages/core', 'remote' => 'anokii-core'],
     'identity' => ['local' => 'packages/identity', 'remote' => 'anokii-identity'],
+    'operator' => ['local' => 'packages/operator', 'remote' => 'anokii-operator'],
 ];
 
 $selected = [];
