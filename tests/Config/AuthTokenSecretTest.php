@@ -43,6 +43,15 @@ final class AuthTokenSecretTest extends TestCase
     }
 
     #[Test]
+    public function short_secret_is_rejected(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('at least 32 bytes');
+
+        AuthTokenSecret::fromRaw('too-short');
+    }
+
+    #[Test]
     public function valid_secret_is_copied_into_auth_config(): void
     {
         $raw = str_repeat('a', 64);

@@ -37,6 +37,12 @@ final class AuthTokenSecret
             );
         }
 
+        if (strlen($secret) < 32) {
+            throw new \RuntimeException(
+                'AUTH_TOKEN_SECRET must contain at least 32 bytes of operator-owned secret material.',
+            );
+        }
+
         return $secret;
     }
 

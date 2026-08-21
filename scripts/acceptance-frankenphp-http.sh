@@ -24,6 +24,8 @@ if ss -ltn 2>/dev/null | grep -qE ":${PORT}[[:space:]]"; then
   exit 1
 fi
 
+RUNTIME_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/anokii-frankenphp-acceptance.XXXXXX")"
+
 export APP_ENV=production
 export ANOKII_COMMUNITY_ID="${ANOKII_COMMUNITY_ID:-acceptance-community}"
 export ANOKII_PRIVACY_SECRET="${ANOKII_PRIVACY_SECRET:-$(php -r 'echo str_repeat("p", 32);')}"
@@ -49,7 +51,7 @@ print("preflight ready", p["schema_fingerprint"])
 PY
 APP_ENV=production "$FRANKENPHP" php-cli "$ROOT/vendor/bin/waaseyaa" list >/dev/null
 
-CADDYFILE="${TMPDIR:-/tmp}/anokii-accept-$$.Caddyfile"
+CADDYFILE="$RUNTIME_ROOT/Caddyfile"
 cat >"$CADDYFILE" <<EOF
 {
 	admin off
@@ -66,18 +68,29 @@ EOF
 
 WORKER_PID=""
 cleanup() {
+  exit_code=$?
+  trap - EXIT
   if [[ -n "${WORKER_PID}" ]]; then
-    kill "${WORKER_PID}" 2>/dev/null || true
-    wait "${WORKER_PID}" 2>/dev/null || true
+    if ! kill "${WORKER_PID}" 2>/dev/null; then
+      echo "FrankenPHP worker ${WORKER_PID} was not running during cleanup." >&2
+      [[ "$exit_code" -ne 0 ]] || exit_code=1
+    fi
+    if ! wait "${WORKER_PID}"; then
+      echo "FrankenPHP worker ${WORKER_PID} did not shut down cleanly." >&2
+      [[ "$exit_code" -ne 0 ]] || exit_code=1
+    fi
   fi
-  rm -f "$CADDYFILE"
-  if pgrep -af "frankenphp.*${PORT}" >/dev/null; then
-    pgrep -af "frankenphp.*${PORT}" || true
+  if ss -ltn 2>/dev/null | grep -qE ":${PORT}[[:space:]]"; then
+    echo "Port ${PORT} is still listening after FrankenPHP shutdown." >&2
+    [[ "$exit_code" -ne 0 ]] || exit_code=1
   fi
+  rm -rf -- "$RUNTIME_ROOT"
+  exit "$exit_code"
 }
 trap cleanup EXIT
 
-"$FRANKENPHP" run --config "$CADDYFILE" --adapter caddyfile &
+XDG_CONFIG_HOME="$RUNTIME_ROOT/config" XDG_DATA_HOME="$RUNTIME_ROOT/data" \
+  "$FRANKENPHP" run --config "$CADDYFILE" --adapter caddyfile &
 WORKER_PID=$!
 ready=0
 for _ in $(seq 1 50); do
@@ -92,13 +105,14 @@ if [[ "$ready" -ne 1 ]]; then
   exit 1
 fi
 
-status_file="$(mktemp)"
+status_file="$RUNTIME_ROOT/serial-status.txt"
 for _ in $(seq 1 20); do
   curl -sS -o /dev/null -w '%{http_code}\n' "http://127.0.0.1:${PORT}/admin/anokii/login" >>"$status_file"
 done
-concurrent_file="$(mktemp)"
+concurrent_file="$RUNTIME_ROOT/concurrent-status.txt"
 seq 20 | xargs -P 20 -I{} curl -sS -o /dev/null -w '%{http_code}\n' "http://127.0.0.1:${PORT}/admin/anokii/login" >"$concurrent_file"
-login_post="$(curl -sS -o /tmp/anokii-login-post.json -w '%{http_code}' -H 'Content-Type: application/json' -H 'Accept: application/json' -X POST --data '{}' "http://127.0.0.1:${PORT}/admin/anokii/login")"
+login_post_file="$RUNTIME_ROOT/login-post.json"
+login_post="$(curl -sS -o "$login_post_file" -w '%{http_code}' -H 'Content-Type: application/json' -H 'Accept: application/json' -X POST --data '{}' "http://127.0.0.1:${PORT}/admin/anokii/login")"
 redirect_code="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:${PORT}/admin/anokii")"
 redirect_url="$(curl -sS -o /dev/null -w '%{redirect_url}' "http://127.0.0.1:${PORT}/admin/anokii")"
 
@@ -111,9 +125,8 @@ assert Counter(concurrent) == Counter({"200": 20}), concurrent
 print("repeated login", Counter(serial))
 print("concurrent login", Counter(concurrent))
 assert "${login_post}" == "401", "${login_post}"
-print("json login POST", open("/tmp/anokii-login-post.json").read().strip())
+print("json login POST", open("$login_post_file").read().strip())
 assert "${redirect_code}" == "302", "${redirect_code}"
 assert "${redirect_url}".endswith("/admin/anokii/login"), "${redirect_url}"
 print("workspace redirect", "${redirect_code}", "${redirect_url}")
 PY
-rm -f "$status_file" "$concurrent_file"

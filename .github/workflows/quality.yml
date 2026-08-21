@@ -52,11 +52,9 @@ jobs:
       - name: Install FrankenPHP 1.12.4
         run: |
           curl -fsSL -o /tmp/frankenphp "https://github.com/php/frankenphp/releases/download/v1.12.4/frankenphp-linux-x86_64"
+          echo "b39c7511483c99faf0d857cc0789b39cc23023038260b31d4b40dd4ae18795dc  /tmp/frankenphp" | sha256sum -c -
           chmod +x /tmp/frankenphp
           /tmp/frankenphp version
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
       - name: Production FrankenPHP worker gate
         env:
           FRANKENPHP_BINARY: /tmp/frankenphp
