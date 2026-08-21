@@ -2,9 +2,15 @@
 
 declare(strict_types=1);
 
+use Anokii\Config\AuthTokenSecret;
+
+$environment = getenv('APP_ENV') ?: 'production';
+$tokenSecret = AuthTokenSecret::fromRaw(getenv('AUTH_TOKEN_SECRET'));
+AuthTokenSecret::assertConfiguredForEnvironment($tokenSecret, $environment);
+
 return [
     'debug' => filter_var(getenv('APP_DEBUG') ?: false, FILTER_VALIDATE_BOOLEAN),
-    'environment' => getenv('APP_ENV') ?: 'production',
+    'environment' => $environment,
     'log_level' => getenv('LOG_LEVEL') ?: 'warning',
     'database' => null,
     'community_id' => getenv('ANOKII_COMMUNITY_ID') ?: null,
@@ -13,13 +19,12 @@ return [
     'jwt_secret' => getenv('WAASEYAA_JWT_SECRET') ?: '',
     'api_keys' => [],
     'api' => ['entity_type_allowlist' => []],
-    'auth' => [
+    'auth' => AuthTokenSecret::withAuthConfig([
         'dev_fallback_account' => filter_var(
             getenv('WAASEYAA_DEV_FALLBACK_ACCOUNT') ?: false,
             FILTER_VALIDATE_BOOLEAN,
         ),
-        'token_secret' => getenv('AUTH_TOKEN_SECRET') ?: '',
-    ],
+    ], $tokenSecret),
     // Empty is the safe direct-connection default. Behind a proxy, set the
     // TRUSTED_PROXIES environment variable to operator-owned IPs/CIDRs.
     'trusted_proxies' => [],

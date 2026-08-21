@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use Symfony\Component\HttpFoundation\Response;
+use Waaseyaa\Foundation\Kernel\HttpKernel;
+
 if (PHP_SAPI === 'cli-server') {
     $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
     $requestPath = parse_url(is_string($requestUri) ? $requestUri : '/', PHP_URL_PATH);
@@ -10,15 +13,15 @@ if (PHP_SAPI === 'cli-server') {
     }
 }
 
-require dirname(__DIR__) . '/vendor/autoload.php';
-
 $projectRoot = dirname(__DIR__);
+require $projectRoot . '/vendor/autoload.php';
+
 if (getenv('WAASEYAA_SKIP_DOTENV') !== 'true' && is_file($projectRoot . '/.env')) {
     try {
-        new \Symfony\Component\Dotenv\Dotenv()
+        new Symfony\Component\Dotenv\Dotenv()
             ->usePutenv()
             ->loadEnv($projectRoot . '/.env', 'APP_ENV', 'production');
-    } catch (\Symfony\Component\Dotenv\Exception\FormatException|\Symfony\Component\Dotenv\Exception\PathException $exception) {
+    } catch (Symfony\Component\Dotenv\Exception\FormatException|Symfony\Component\Dotenv\Exception\PathException $exception) {
         http_response_code(500);
         error_log('Anokii configuration error: ' . $exception->getMessage());
         echo 'Application configuration error. Check server logs.';
@@ -27,21 +30,38 @@ if (getenv('WAASEYAA_SKIP_DOTENV') !== 'true' && is_file($projectRoot . '/.env')
 }
 
 $handle = static function () use ($projectRoot): void {
-    $response = new \Waaseyaa\Foundation\Kernel\HttpKernel($projectRoot)->handle();
+    try {
+        $response = new HttpKernel($projectRoot)->handle();
+    } catch (\Throwable $exception) {
+        $response = new Response('Application error. Check server logs.', 500, ['Content-Type' => 'text/plain; charset=UTF-8']);
+        error_log('Anokii HTTP error: ' . $exception->getMessage());
+    }
+
     $response->send();
 };
 
-if (!function_exists('frankenphp_handle_request')) {
-    $handle();
+if (function_exists('frankenphp_handle_request')) {
+    ignore_user_abort(true);
 
-    return;
-}
+    $maxRequestsRaw = getenv('FRANKENPHP_WORKER_MAX_REQUESTS');
+    $maxRequests = $maxRequestsRaw === false ? 0 : (int) $maxRequestsRaw;
 
-ignore_user_abort(true);
-$maxRequests = max(0, (int) (getenv('FRANKENPHP_WORKER_MAX_REQUESTS') ?: 0));
-for ($handled = 0; $maxRequests === 0 || $handled < $maxRequests; ++$handled) {
-    if (!\frankenphp_handle_request($handle)) {
-        break;
+    $handled = 0;
+    try {
+        for (; $maxRequests === 0 || $handled < $maxRequests; ++$handled) {
+            $keepRunning = frankenphp_handle_request($handle);
+            gc_collect_cycles();
+            if (!$keepRunning) {
+                break;
+            }
+        }
+
+        return;
+    } catch (\Throwable $e) {
+        if ($handled > 0) {
+            throw $e;
+        }
     }
-    gc_collect_cycles();
 }
+
+$handle();

@@ -81,6 +81,7 @@
         "sort-packages": true
     },
     "scripts": {
+        "acceptance:frankenphp": "bash scripts/acceptance-frankenphp-http.sh",
         "analyse": "phpstan analyse --configuration=phpstan.neon --no-progress --memory-limit=1G",
         "check": [
             "@validate-project",
