@@ -6,6 +6,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Security
+
+- Require and document a separate `AUTH_TOKEN_SECRET` for production HTTP boot.
+  An empty `auth.token_secret` no longer bypasses Framework's `app_secret`
+  fallback, placeholders are rejected, and production readiness fails closed
+  when the secret is missing (#17).
+
+### Fixed
+
+- Teach `public/index.php` the Framework classic-FrankenPHP fallback so
+  `frankenphp_handle_request()` existing outside worker mode cannot 500 every
+  request, pin the CLI/HTTP entity-type and provider roster used by field-access
+  fingerprints, and add a FrankenPHP worker gate that regenerates the preflight
+  on a fully `db:init --sync-schema` database (waaseyaa/framework#2478).
+
 ### Changed
 
 - Govern `anokii-operator` as a development-main split projection and document
