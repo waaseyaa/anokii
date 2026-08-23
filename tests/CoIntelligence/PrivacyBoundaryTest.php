@@ -7,6 +7,7 @@ namespace Anokii\Tests\CoIntelligence;
 use Anokii\CoIntelligence\ChatQueryLogSchema;
 use Anokii\CoIntelligence\SqliteChatQueryLog;
 use Anokii\CoIntelligence\SqliteRateLimiter;
+use Anokii\Tests\Support\AuthRuntimeSchema;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Waaseyaa\Database\DBALDatabase;
@@ -45,7 +46,9 @@ final class PrivacyBoundaryTest extends TestCase
     #[Test]
     public function chat_rate_limit_uses_the_framework_atomic_persistent_bucket(): void
     {
-        $limiter = new SqliteRateLimiter(DBALDatabase::createSqlite(':memory:'), maxRequests: 2, windowSeconds: 60);
+        $database = DBALDatabase::createSqlite(':memory:');
+        AuthRuntimeSchema::install($database);
+        $limiter = new SqliteRateLimiter($database, maxRequests: 2, windowSeconds: 60);
 
         self::assertNull($limiter->retryAfter('192.0.2.1'));
         self::assertNull($limiter->retryAfter('192.0.2.1'));

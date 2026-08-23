@@ -35,7 +35,7 @@ final class ProductionHttpServingPathTest extends TestCase
         putenv('WAASEYAA_SKIP_DOTENV=true');
 
         try {
-            $this->runCli($root, ['db:init', '--sync-schema']);
+            $this->runCli($root, ['install:init']);
             putenv('APP_ENV=production');
             $this->runCli($root, ['field-access:preflight', '--format=json', '--write-artifact']);
             $written = (string) file_get_contents($artifact);
@@ -98,7 +98,7 @@ final class ProductionHttpServingPathTest extends TestCase
         putenv('WAASEYAA_SKIP_DOTENV=true');
 
         try {
-            $this->runCli($root, ['db:init', '--sync-schema']);
+            $this->runCli($root, ['install:init']);
             putenv('APP_ENV=production');
             $this->primeLoginRequest($root);
             $response = new HttpKernel($root)->handle();

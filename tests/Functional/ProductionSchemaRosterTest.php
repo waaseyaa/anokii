@@ -31,7 +31,7 @@ final class ProductionSchemaRosterTest extends TestCase
         putenv('WAASEYAA_APP_SECRET=base64:' . base64_encode(str_repeat('a', 32)));
         putenv('WAASEYAA_SKIP_DOTENV=true');
 
-        $_SERVER['argv'] = ['waaseyaa', 'db:init', '--sync-schema'];
+        $_SERVER['argv'] = ['waaseyaa', 'install:init'];
         try {
             self::assertSame(0, new ConsoleKernel($root)->handle());
 

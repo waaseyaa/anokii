@@ -127,8 +127,9 @@ Copy `.env.example` to `.env` and replace its placeholders. In particular,
 `ANOKII_COMMUNITY_ID` must identify this installation's community,
 `ANOKII_PRIVACY_SECRET` must be at least 32 random bytes or the analytics ingest
 endpoint stays unavailable, `AUTH_TOKEN_SECRET` must be a separate non-empty
-secret in production (not `change-me`, and not an empty string that would bypass
-Framework's `app_secret` fallback), and `TRUSTED_PROXIES` must name only proxies you
+secret in production (not `change-me`, not a shipped placeholder, and not omitted
+so Framework would derive a purpose-specific key from `WAASEYAA_APP_SECRET`),
+and `TRUSTED_PROXIES` must name only proxies you
 operate so Waaseyaa/Symfony can resolve client addresses without trusting forged
 forwarding headers.
 
@@ -136,7 +137,7 @@ Before a production-equivalent boot, build the database and its checksum-bound
 field-access artifact against the exact installed lock:
 
 ```bash
-APP_ENV=local php vendor/bin/waaseyaa db:init --sync-schema
+APP_ENV=local php vendor/bin/waaseyaa install:init
 APP_ENV=production composer readiness:field-access
 APP_ENV=production php vendor/bin/waaseyaa list >/dev/null
 ```

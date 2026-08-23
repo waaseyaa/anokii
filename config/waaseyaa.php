@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Anokii\Config\AuthTokenSecret;
 
 $environment = getenv('APP_ENV') ?: 'production';
-$tokenSecret = AuthTokenSecret::fromRaw(getenv('AUTH_TOKEN_SECRET'));
+$tokenSecret = AuthTokenSecret::fromRaw(getenv('AUTH_TOKEN_SECRET'), $environment);
 AuthTokenSecret::assertConfiguredForEnvironment($tokenSecret, $environment);
 
 return [

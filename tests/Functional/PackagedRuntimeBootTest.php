@@ -6,6 +6,7 @@ namespace Anokii\Tests\Functional;
 
 use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\TestCase;
+use Waaseyaa\Foundation\Kernel\ConsoleKernel;
 use Waaseyaa\Foundation\Kernel\HttpKernel;
 
 final class PackagedRuntimeBootTest extends TestCase
@@ -21,25 +22,30 @@ final class PackagedRuntimeBootTest extends TestCase
         putenv('ANOKII_COMMUNITY_ID=packaged-runtime-test');
         putenv('ANOKII_PRIVACY_SECRET=0123456789abcdef0123456789abcdef');
         putenv('WAASEYAA_JWT_SECRET=abcdef0123456789abcdef0123456789');
-
-        $_GET = [];
-        $_POST = [];
-        $_COOKIE = [];
-        $_SERVER = [
-            'REQUEST_METHOD' => 'GET',
-            'REQUEST_URI' => '/admin/anokii/login',
-            'SCRIPT_NAME' => '/index.php',
-            'SCRIPT_FILENAME' => $root . '/public/index.php',
-            'HTTP_HOST' => 'localhost',
-            'SERVER_NAME' => 'localhost',
-            'SERVER_PORT' => '80',
-            'REMOTE_ADDR' => '127.0.0.1',
-            'REQUEST_TIME_FLOAT' => microtime(true),
-            'HTTP_ACCEPT' => 'text/html,application/xhtml+xml',
-            'HTTP_USER_AGENT' => 'Anokii packaged-runtime test',
-        ];
+        putenv('WAASEYAA_APP_SECRET=base64:' . base64_encode(str_repeat('a', 32)));
+        putenv('WAASEYAA_SKIP_DOTENV=true');
 
         try {
+            $_SERVER['argv'] = ['waaseyaa', 'install:init'];
+            self::assertSame(0, new ConsoleKernel($root)->handle());
+
+            $_GET = [];
+            $_POST = [];
+            $_COOKIE = [];
+            $_SERVER = [
+                'REQUEST_METHOD' => 'GET',
+                'REQUEST_URI' => '/admin/anokii/login',
+                'SCRIPT_NAME' => '/index.php',
+                'SCRIPT_FILENAME' => $root . '/public/index.php',
+                'HTTP_HOST' => 'localhost',
+                'SERVER_NAME' => 'localhost',
+                'SERVER_PORT' => '80',
+                'REMOTE_ADDR' => '127.0.0.1',
+                'REQUEST_TIME_FLOAT' => microtime(true),
+                'HTTP_ACCEPT' => 'text/html,application/xhtml+xml',
+                'HTTP_USER_AGENT' => 'Anokii packaged-runtime test',
+            ];
+
             $response = new HttpKernel($root)->handle();
             $content = (string) $response->getContent();
 

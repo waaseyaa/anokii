@@ -31,7 +31,7 @@ jobs:
           WAASEYAA_APP_SECRET="base64:$(php -r 'echo base64_encode(str_repeat("a", 32));')"
           AUTH_TOKEN_SECRET="$(php -r 'echo bin2hex(random_bytes(32));')"
           export ANOKII_PRIVACY_SECRET WAASEYAA_JWT_SECRET WAASEYAA_APP_SECRET AUTH_TOKEN_SECRET
-          APP_ENV=local php vendor/bin/waaseyaa db:init --sync-schema
+          APP_ENV=local php vendor/bin/waaseyaa install:init
           APP_ENV=production composer readiness:field-access
           APP_ENV=production php vendor/bin/waaseyaa list >/dev/null
       - run: composer test

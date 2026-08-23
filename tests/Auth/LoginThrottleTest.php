@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Anokii\Tests\Auth;
 
 use Anokii\Auth\LoginThrottle;
+use Anokii\Tests\Support\AuthRuntimeSchema;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
@@ -16,7 +17,9 @@ final class LoginThrottleTest extends TestCase
     #[Test]
     public function repeated_failures_block_and_success_clears_only_the_email_bucket(): void
     {
-        $throttle = new LoginThrottle(new DatabaseRateLimiter(DBALDatabase::createSqlite(':memory:')), maxAttempts: 2);
+        $database = DBALDatabase::createSqlite(':memory:');
+        AuthRuntimeSchema::install($database);
+        $throttle = new LoginThrottle(new DatabaseRateLimiter($database), maxAttempts: 2);
         $request = Request::create('/login', 'POST', server: ['REMOTE_ADDR' => '192.0.2.10']);
 
         self::assertFalse($throttle->isBlocked($request, 'Member@Example.test'));
@@ -32,7 +35,9 @@ final class LoginThrottleTest extends TestCase
     #[Test]
     public function untrusted_forwarding_headers_do_not_rotate_the_client_bucket(): void
     {
-        $throttle = new LoginThrottle(new DatabaseRateLimiter(DBALDatabase::createSqlite(':memory:')), maxAttempts: 1);
+        $database = DBALDatabase::createSqlite(':memory:');
+        AuthRuntimeSchema::install($database);
+        $throttle = new LoginThrottle(new DatabaseRateLimiter($database), maxAttempts: 1);
         $first = Request::create('/login', 'POST', server: [
             'REMOTE_ADDR' => '192.0.2.10',
             'HTTP_X_FORWARDED_FOR' => '198.51.100.1',
