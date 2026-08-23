@@ -4,29 +4,32 @@ declare(strict_types=1);
 
 namespace Anokii\Config;
 
+use Waaseyaa\Auth\Security\AuthTokenSecret as FrameworkAuthTokenSecret;
+
 /**
- * Classifies AUTH_TOKEN_SECRET for Anokii's independent-custody policy.
+ * Applies Anokii's independent-custody policy on top of Framework classification.
  *
- * Unset, empty, and whitespace-only values omit `auth.token_secret` so
- * Framework can apply its own absent-key behavior. Current Framework
- * derives a purpose-specific HMAC key from application-secret custody;
- * it does not use the application-master bytes as the token key. Anokii
- * still requires a valid explicit secret in production, staging, and
- * unknown environments and never copies WAASEYAA_APP_SECRET into config.
+ * Framework {@see FrameworkAuthTokenSecret} validates explicit secrets and
+ * classifies absent/empty/whitespace configuration as derived custody.
+ * Current Framework derives a purpose-specific HMAC key in that mode; it
+ * does not use the application-master bytes as the token key.
  *
- * Invalid explicit input — short values, case variants of change-me, and
- * every placeholder Anokii ships or documents — fails in every
- * environment. It never becomes an ephemeral or derived key.
+ * Anokii-specific policy:
+ * - production, staging, and unknown environments require valid explicit
+ *   custody and refuse derived custody from WAASEYAA_APP_SECRET;
+ * - every placeholder Anokii ships or documents is rejected even when it
+ *   would pass Framework's generic strength checks.
+ *
+ * Invalid explicit input fails in every environment and never becomes an
+ * ephemeral or derived key.
  *
  * @api
  */
 final class AuthTokenSecret
 {
-    public const int MINIMUM_EXPLICIT_LENGTH = 32;
-
     /**
      * Documented Anokii placeholders that are long enough to pass generic
-     * strength checks. Framework does not reject these strings.
+     * Framework strength checks.
      *
      * @var list<string>
      */
@@ -41,18 +44,16 @@ final class AuthTokenSecret
     /**
      * @param false|string $value `getenv('AUTH_TOKEN_SECRET')` — false when unset
      */
-    public static function fromRaw(false|string $value): ?string
+    public static function fromRaw(false|string $value, string $environment = 'unspecified'): ?string
     {
-        if ($value === false) {
+        $configured = $value === false ? null : $value;
+
+        if (FrameworkAuthTokenSecret::usesDerivedCustody($configured, $environment)) {
             return null;
         }
 
-        $secret = trim($value);
-        if ($secret === '') {
-            return null;
-        }
-
-        self::assertStrongExplicit($secret);
+        $secret = FrameworkAuthTokenSecret::resolve($configured, null, $environment);
+        self::assertNotAnokiiPlaceholder($secret);
 
         return $secret;
     }
@@ -92,31 +93,12 @@ final class AuthTokenSecret
         return !in_array(strtolower($environment), ['local', 'dev', 'development', 'testing'], true);
     }
 
-    private static function assertStrongExplicit(#[\SensitiveParameter] string $secret): void
+    private static function assertNotAnokiiPlaceholder(#[\SensitiveParameter] string $secret): void
     {
-        $folded = strtolower(str_replace(['-', '_', ' '], '', $secret));
-        if ($folded === 'changeme') {
-            throw self::invalidExplicitException();
-        }
-
-        if (strlen($secret) < self::MINIMUM_EXPLICIT_LENGTH) {
-            throw self::invalidExplicitException();
-        }
-
         if (in_array(strtolower($secret), self::ANOKII_PLACEHOLDERS, true)) {
             throw new \RuntimeException(
                 'AUTH_TOKEN_SECRET is a shipped or documented Anokii placeholder and cannot be used as an HMAC key.',
             );
         }
-    }
-
-    private static function invalidExplicitException(): \RuntimeException
-    {
-        return new \RuntimeException(
-            'AUTH_TOKEN_SECRET is invalid and is refused in every environment. '
-            . 'Provide a trimmed operator-owned secret of at least '
-            . self::MINIMUM_EXPLICIT_LENGTH
-            . ' characters that is not a published placeholder.',
-        );
     }
 }

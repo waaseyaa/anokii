@@ -197,6 +197,17 @@ final class AuthTokenSecretTest extends TestCase
     }
 
     #[Test]
+    public function generic_validation_is_delegated_to_framework_auth_token_secret(): void
+    {
+        $source = (string) file_get_contents(dirname(__DIR__, 2) . '/src/Config/AuthTokenSecret.php');
+
+        self::assertStringContainsString('Waaseyaa\\Auth\\Security\\AuthTokenSecret', $source);
+        self::assertStringContainsString('usesDerivedCustody', $source);
+        self::assertStringContainsString('FrameworkAuthTokenSecret::resolve', $source);
+        self::assertStringNotContainsString('MINIMUM_EXPLICIT_LENGTH', $source);
+    }
+
+    #[Test]
     public function env_example_leaves_auth_token_secret_empty(): void
     {
         $example = (string) file_get_contents(dirname(__DIR__, 2) . '/.env.example');

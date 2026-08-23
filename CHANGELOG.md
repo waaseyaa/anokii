@@ -12,7 +12,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   empty, and require an independently owned secret in production, staging, and
   unknown environments. Invalid configured input never becomes a derived or
   ephemeral key, and Framework derived-custody from `WAASEYAA_APP_SECRET` is
-  refused for production-like serving (#20).
+  refused for production-like serving (#20). Generic validation and custody
+  classification consume `Waaseyaa\Auth\Security\AuthTokenSecret` from Framework
+  main `c54ddc99fa2b6d1f2756f6efdaac56a4481473e3` (unpublished until alpha.297).
 
 - Require and document a separate `AUTH_TOKEN_SECRET` for production HTTP boot.
   An empty `auth.token_secret` no longer bypasses Framework's `app_secret`
