@@ -12,6 +12,7 @@ Waaseyaa\AI\Observability\ObservabilityServiceProvider
 Waaseyaa\AI\Pipeline\AIPipelineServiceProvider
 Waaseyaa\AI\Tools\AiToolsServiceProvider
 Waaseyaa\AI\Vector\AiVectorServiceProvider
+Waaseyaa\AdminSurface\AdminSurfaceServiceProvider
 Waaseyaa\Api\ApiServiceProvider
 Waaseyaa\Attachment\AttachmentServiceProvider
 Waaseyaa\Audit\AuditServiceProvider
@@ -40,14 +41,18 @@ Waaseyaa\CLI\Provider\OptimizeServiceProvider
 Waaseyaa\CLI\Provider\OtherScaffoldsServiceProvider
 Waaseyaa\CLI\Provider\QueueServiceProvider
 Waaseyaa\CLI\Provider\SchedulePerfServiceProvider
+Waaseyaa\CLI\Provider\SiteServiceProvider
 Waaseyaa\CLI\Provider\UserPermissionServiceProvider
 Waaseyaa\CLI\Provider\WorkflowsServiceProvider
-Waaseyaa\Config\ConfigServiceProvider
+Waaseyaa\Cache\CacheServiceProvider
+Waaseyaa\Config\Authority\ConfigurationAuthorityServiceProvider
 Waaseyaa\EntityStorage\Backend\FrameworkFieldStorageBackendProvider
+Waaseyaa\EntityStorage\Config\ConfigurationStorageServiceProvider
 Waaseyaa\Field\FieldServiceProvider
 Waaseyaa\Foundation\FoundationServiceProvider
 Waaseyaa\Foundation\MercureMonitorServiceProvider
 Waaseyaa\Groups\GroupsServiceProvider
+Waaseyaa\Listing\ServiceProvider
 Waaseyaa\Mail\MailServiceProvider
 Waaseyaa\Media\MediaServiceProvider
 Waaseyaa\Menu\MenuServiceProvider
@@ -55,6 +60,7 @@ Waaseyaa\Migration\ServiceProvider
 Waaseyaa\Node\NodeServiceProvider
 Waaseyaa\Notification\NotificationServiceProvider
 Waaseyaa\Path\PathServiceProvider
+Waaseyaa\Publishing\PublishingServiceProvider
 Waaseyaa\Queue\QueueServiceProvider
 Waaseyaa\Relationship\RelationshipServiceProvider
 Waaseyaa\Routing\AuthOidcRouteServiceProvider

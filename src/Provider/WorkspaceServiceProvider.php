@@ -79,8 +79,8 @@ final class WorkspaceServiceProvider extends ServiceProvider implements Provides
     public function register(): void
     {
         // The workspace entities. A package's entities are not auto-discovered
-        // from an app's src/, so register them explicitly. db:init --sync-schema
-        // then materializes their tables on the instance's database.
+        // from an app's src/, so register them explicitly. install:init then
+        // materializes their tables and binds CFG-02 genesis on a fresh site.
         $tenancy = ['scope' => EntityType::TENANCY_SCOPE_COMMUNITY];
         $this->entityType(EntityType::fromClass(Document::class, revisionable: true, revisionDefault: true, tenancy: $tenancy));
         $this->entityType(EntityType::fromClass(DriveFile::class, revisionable: true, revisionDefault: true, tenancy: $tenancy));

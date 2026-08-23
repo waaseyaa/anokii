@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Anokii\Tests\Support;
 
+use Waaseyaa\Entity\Concurrency\EntityMutationToken;
 use Waaseyaa\Entity\EntityInterface;
 use Waaseyaa\Entity\Repository\EntityRepositoryInterface;
 use Waaseyaa\Entity\Storage\EntityQueryInterface;
@@ -87,8 +88,11 @@ final class InMemoryUserRepository implements EntityRepositoryInterface
         throw $this->unsupported(__FUNCTION__);
     }
 
-    public function rollback(string $entityId, int $targetRevisionId): EntityInterface
-    {
+    public function rollback(
+        string $entityId,
+        int $targetRevisionId,
+        ?EntityMutationToken $expected = null,
+    ): EntityInterface {
         throw $this->unsupported(__FUNCTION__);
     }
 
@@ -97,8 +101,11 @@ final class InMemoryUserRepository implements EntityRepositoryInterface
         throw $this->unsupported(__FUNCTION__);
     }
 
-    public function setCurrentRevision(string $entityId, int $revisionId): EntityInterface
-    {
+    public function setCurrentRevision(
+        string $entityId,
+        int $revisionId,
+        ?EntityMutationToken $expected = null,
+    ): EntityInterface {
         throw $this->unsupported(__FUNCTION__);
     }
 
@@ -107,8 +114,11 @@ final class InMemoryUserRepository implements EntityRepositoryInterface
         throw $this->unsupported(__FUNCTION__);
     }
 
-    public function setPublishedRevision(string $entityId, int $revisionId): EntityInterface
-    {
+    public function setPublishedRevision(
+        string $entityId,
+        int $revisionId,
+        ?EntityMutationToken $expected = null,
+    ): EntityInterface {
         throw $this->unsupported(__FUNCTION__);
     }
 
@@ -132,8 +142,13 @@ final class InMemoryUserRepository implements EntityRepositoryInterface
         throw $this->unsupported(__FUNCTION__);
     }
 
-    public function saveTranslation(string $entityId, string $langcode, array $values, ?string $log = null): int
-    {
+    public function saveTranslation(
+        string $entityId,
+        string $langcode,
+        array $values,
+        ?string $log = null,
+        ?EntityMutationToken $expected = null,
+    ): int {
         throw $this->unsupported(__FUNCTION__);
     }
 

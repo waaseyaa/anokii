@@ -137,7 +137,7 @@ Before a production-equivalent boot, build the database and its checksum-bound
 field-access artifact against the exact installed lock:
 
 ```bash
-APP_ENV=local php vendor/bin/waaseyaa db:init --sync-schema
+APP_ENV=local php vendor/bin/waaseyaa install:init
 APP_ENV=production composer readiness:field-access
 APP_ENV=production php vendor/bin/waaseyaa list >/dev/null
 ```

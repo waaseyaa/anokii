@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Anokii\Tests\Workspace;
 
+use Anokii\Tests\Support\AuthRuntimeSchema;
 use Anokii\Workspace\Analytics\AnalyticsCollector;
 use Anokii\Workspace\Analytics\AnalyticsEndpoint;
 use Anokii\Workspace\Analytics\AnalyticsSchema;
@@ -36,6 +37,7 @@ final class AnalyticsPrivacyTest extends TestCase
     {
         $db = DBALDatabase::createSqlite(':memory:');
         new AnalyticsSchema($db)->ensure();
+        AuthRuntimeSchema::install($db);
         $endpoint = new AnalyticsEndpoint(
             new AnalyticsCollector($db, str_repeat('s', 32)),
             new DatabaseRateLimiter($db),
@@ -60,6 +62,7 @@ final class AnalyticsPrivacyTest extends TestCase
     {
         $db = DBALDatabase::createSqlite(':memory:');
         new AnalyticsSchema($db)->ensure();
+        AuthRuntimeSchema::install($db);
         $endpoint = new AnalyticsEndpoint(
             new AnalyticsCollector($db, str_repeat('s', 32)),
             new DatabaseRateLimiter($db),

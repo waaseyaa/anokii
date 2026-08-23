@@ -39,7 +39,7 @@ mkdir -p "$ROOT/storage" "$ROOT/.waaseyaa"
 rm -f "$WAASEYAA_DB" "$WAASEYAA_DB-shm" "$WAASEYAA_DB-wal" \
   "$ROOT/.waaseyaa/field-access-preflight.json"
 
-APP_ENV=local "$FRANKENPHP" php-cli "$ROOT/vendor/bin/waaseyaa" db:init --sync-schema
+APP_ENV=local "$FRANKENPHP" php-cli "$ROOT/vendor/bin/waaseyaa" install:init
 APP_ENV=production "$FRANKENPHP" php-cli "$ROOT/vendor/bin/waaseyaa" field-access:preflight --format=json --write-artifact >/tmp/anokii-acceptance-preflight.json
 python3 - <<'PY'
 import json

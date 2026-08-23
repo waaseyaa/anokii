@@ -13,8 +13,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   unknown environments. Invalid configured input never becomes a derived or
   ephemeral key, and Framework derived-custody from `WAASEYAA_APP_SECRET` is
   refused for production-like serving (#20). Generic validation and custody
-  classification consume `Waaseyaa\Auth\Security\AuthTokenSecret` from Framework
-  main `c54ddc99fa2b6d1f2756f6efdaac56a4481473e3` (unpublished until alpha.297).
+  classification consume `Waaseyaa\Auth\Security\AuthTokenSecret` from published
+  Framework `v0.1.0-alpha.297` (tag commit
+  `e30775e12b2a45b0d915873e241dc04b0da34bca`; packaged
+  `AuthTokenSecret.php` sha256
+  `09ba22faeb54afded5aba8beeb2692feac3fada57ed829712a787725916374d8`).
+  Fresh installs use `install:init` so CFG-02 genesis is bound before
+  production preflight.
 
 - Require and document a separate `AUTH_TOKEN_SECRET` for production HTTP boot.
   An empty `auth.token_secret` no longer bypasses Framework's `app_secret`
