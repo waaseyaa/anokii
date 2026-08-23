@@ -82,6 +82,26 @@ Wave 1 scope: repo scaffold + composer.json + Anokii charter + deployer recipe b
 
 **Alpha — active local hardening.** Product code exists, but no release or production deployment should be made from an unverified branch. The local release gate is PHPUnit, PHPStan at max level, PHP-CS-Fixer, locked dependency audit, packaged-form provider boot, and browser/accessibility verification.
 
+### Test memory policy
+
+Run the test suite with `composer test`, or run focused tests directly with
+`vendor/bin/phpunit`. Both commands load `phpunit.xml.dist`, which owns a finite
+`memory_limit=1G` ceiling so test discovery does not inherit a developer or CI
+machine's lower PHP CLI default. The hosted Quality workflow uses the same
+`composer test` entrypoint. Do not add ad-hoc `php -d memory_limit=...` folklore
+to individual test commands; any future subprocess that launches PHPUnit must
+either load the canonical configuration or explicitly preserve the same 1G
+ceiling.
+
+This setting applies only to PHPUnit processes. It does not change production,
+FrankenPHP, queue, web, or application CLI memory limits.
+
+The representative full suite on PHP 8.5.9 (137 tests, 425 assertions) used
+30 MiB as reported by PHPUnit and 92,556 KiB maximum resident set size for the
+Composer invocation. The 1G ceiling matches the first-party Framework test
+policy and leaves bounded headroom for discovery and coverage-enabled runs; it
+is not an unlimited-memory waiver.
+
 Brand palette: Deep Teal (`#0d4f4f → #0f766e → #14b8a6`) — differentiated from Drupal blue, Laravel red, Django/Nuxt green, Strapi purple. Visible once the admin overlay lands.
 
 ---

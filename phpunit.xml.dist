@@ -5,6 +5,10 @@
          colors="true"
          cacheDirectory=".phpunit.cache"
 >
+    <php>
+        <ini name="memory_limit" value="1G"/>
+    </php>
+
     <testsuites>
         <testsuite name="Anokii">
             <directory>tests</directory>

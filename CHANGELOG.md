@@ -15,6 +15,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Make the canonical PHPUnit configuration own a finite 1G test-process memory
+  ceiling, so direct discovery, focused tests, Composer, and hosted Quality no
+  longer inherit a host PHP CLI default such as 128M. Production and FrankenPHP
+  runtime limits are unchanged (#19).
+
 - Teach `public/index.php` the Framework classic-FrankenPHP fallback so
   `frankenphp_handle_request()` existing outside worker mode cannot 500 every
   request, pin the CLI/HTTP entity-type and provider roster used by field-access
