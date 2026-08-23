@@ -8,6 +8,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Security
 
+- Reject Anokii's shipped `AUTH_TOKEN_SECRET` placeholder, leave `.env.example`
+  empty, and require an independently owned secret in production, staging, and
+  unknown environments. Invalid configured input never becomes a derived or
+  ephemeral key, and Framework derived-custody from `WAASEYAA_APP_SECRET` is
+  refused for production-like serving (#20).
+
 - Require and document a separate `AUTH_TOKEN_SECRET` for production HTTP boot.
   An empty `auth.token_secret` no longer bypasses Framework's `app_secret`
   fallback, placeholders are rejected, and production readiness fails closed

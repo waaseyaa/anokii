@@ -5,18 +5,39 @@ declare(strict_types=1);
 namespace Anokii\Config;
 
 /**
- * Resolves the Framework auth token HMAC secret without defeating its fallback.
+ * Classifies AUTH_TOKEN_SECRET for Anokii's independent-custody policy.
  *
- * Framework {@see \Waaseyaa\Auth\AuthServiceProvider} uses
- * `auth.token_secret ?? app_secret`. An empty string is a present value, so
- * Anokii must omit the key when AUTH_TOKEN_SECRET is unset. Production still
- * requires an operator-owned secret: Anokii does not copy WAASEYAA_APP_SECRET
- * into config (key-custody rule).
+ * Unset, empty, and whitespace-only values omit `auth.token_secret` so
+ * Framework can apply its own absent-key behavior. Current Framework
+ * derives a purpose-specific HMAC key from application-secret custody;
+ * it does not use the application-master bytes as the token key. Anokii
+ * still requires a valid explicit secret in production, staging, and
+ * unknown environments and never copies WAASEYAA_APP_SECRET into config.
+ *
+ * Invalid explicit input — short values, case variants of change-me, and
+ * every placeholder Anokii ships or documents — fails in every
+ * environment. It never becomes an ephemeral or derived key.
  *
  * @api
  */
 final class AuthTokenSecret
 {
+    public const int MINIMUM_EXPLICIT_LENGTH = 32;
+
+    /**
+     * Documented Anokii placeholders that are long enough to pass generic
+     * strength checks. Framework does not reject these strings.
+     *
+     * @var list<string>
+     */
+    private const array ANOKII_PLACEHOLDERS = [
+        'replace-with-at-least-32-random-bytes',
+        'replace-with-a-separate-32-byte-random-secret',
+        'replace-with-canonical-base64-of-32-random-bytes',
+        'base64:replace-with-canonical-base64-of-32-random-bytes',
+        'replace-with-the-instance-community-slug',
+    ];
+
     /**
      * @param false|string $value `getenv('AUTH_TOKEN_SECRET')` — false when unset
      */
@@ -31,17 +52,7 @@ final class AuthTokenSecret
             return null;
         }
 
-        if (strtolower($secret) === 'change-me') {
-            throw new \RuntimeException(
-                'AUTH_TOKEN_SECRET must be a real operator-owned secret; the placeholder "change-me" is rejected.',
-            );
-        }
-
-        if (strlen($secret) < 32) {
-            throw new \RuntimeException(
-                'AUTH_TOKEN_SECRET must contain at least 32 bytes of operator-owned secret material.',
-            );
-        }
+        self::assertStrongExplicit($secret);
 
         return $secret;
     }
@@ -70,14 +81,42 @@ final class AuthTokenSecret
         }
 
         throw new \RuntimeException(
-            'AUTH_TOKEN_SECRET must be set to a non-empty secret in production-equivalent environments. '
-            . 'Do not reuse WAASEYAA_APP_SECRET in config; omit auth.token_secret only when the Framework '
-            . 'config app_secret fallback is intentionally in use.',
+            'AUTH_TOKEN_SECRET must be an independent operator-owned secret in production-equivalent environments. '
+            . 'Anokii does not copy WAASEYAA_APP_SECRET into config and refuses Framework derived-custody mode '
+            . 'when serving production, staging, or unknown environments.',
         );
     }
 
     public static function requiresConfiguredSecret(string $environment): bool
     {
         return !in_array(strtolower($environment), ['local', 'dev', 'development', 'testing'], true);
+    }
+
+    private static function assertStrongExplicit(#[\SensitiveParameter] string $secret): void
+    {
+        $folded = strtolower(str_replace(['-', '_', ' '], '', $secret));
+        if ($folded === 'changeme') {
+            throw self::invalidExplicitException();
+        }
+
+        if (strlen($secret) < self::MINIMUM_EXPLICIT_LENGTH) {
+            throw self::invalidExplicitException();
+        }
+
+        if (in_array(strtolower($secret), self::ANOKII_PLACEHOLDERS, true)) {
+            throw new \RuntimeException(
+                'AUTH_TOKEN_SECRET is a shipped or documented Anokii placeholder and cannot be used as an HMAC key.',
+            );
+        }
+    }
+
+    private static function invalidExplicitException(): \RuntimeException
+    {
+        return new \RuntimeException(
+            'AUTH_TOKEN_SECRET is invalid and is refused in every environment. '
+            . 'Provide a trimmed operator-owned secret of at least '
+            . self::MINIMUM_EXPLICIT_LENGTH
+            . ' characters that is not a published placeholder.',
+        );
     }
 }
