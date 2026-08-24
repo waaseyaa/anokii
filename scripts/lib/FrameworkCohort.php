@@ -414,26 +414,14 @@ final class FrameworkCohort
 
             self::assertAnokiiIdentitiesPreserved($original, $resolved);
 
-            // A candidate proof isolates the Framework code change. If resolving
-            // it also moves, adds, or drops a non-Framework package, the tested
-            // tree is no longer just the candidate and the lane fails closed.
-            $originalExternal = self::externalIdentities($original, $plan['packages']);
+            // A Framework commit may legitimately add or remove transitive
+            // dependencies through its own package manifests. Record those
+            // candidate-caused graph changes, but refuse identity movement for
+            // an external package present on both sides: that is an unrelated
+            // repin, not a dependency newly required or retired by Framework.
             $resolvedExternal = self::externalIdentities($resolved, $plan['packages']);
-            if ($originalExternal !== $resolvedExternal) {
-                $classification = self::classify($original, $resolved);
-                $drift = [];
-                foreach (['added', 'removed', 'changed'] as $movement) {
-                    foreach ($classification['external'][$movement] as $entry) {
-                        $drift[] = $movement . ' ' . $entry['name'];
-                    }
-                }
-                throw new RuntimeException(
-                    'Candidate resolution changed the non-Framework dependency graph: ' . implode('; ', $drift)
-                    . '. This commit needs a dependency change Anokii has not adopted, so it cannot be proven '
-                    . 'as an isolated Framework candidate. Land that dependency change through a published '
-                    . 'release and the release-adoption lane first.',
-                );
-            }
+            $classification = self::classify($original, $resolved);
+            $externalDependencyChanges = self::candidateExternalDependencyChanges($classification);
 
             $evidence = [
                 'schema' => self::CANDIDATE_SCHEMA,
@@ -458,6 +446,7 @@ final class FrameworkCohort
                 ),
                 'anokii_dev_main_packages' => self::anokiiIdentities($resolved),
                 'external_package_count' => count($resolvedExternal),
+                'external_dependency_changes' => $externalDependencyChanges,
             ];
             $directory = $consumerRoot . '/var/framework-candidate';
             self::makeDirectory($directory);
@@ -836,6 +825,42 @@ final class FrameworkCohort
         }
 
         return $classification;
+    }
+
+    /**
+     * Candidate commits may add or remove external transitive dependencies,
+     * but must not repin an external package already present in both locks.
+     *
+     * @param array<string, array{added: list<array{name: string, to: string}>, removed: list<array{name: string, from: string}>, changed: list<array{name: string, from: string, to: string}>, unchanged: list<string>}> $classification
+     * @return array{added: list<array{name: string, to: string}>, removed: list<array{name: string, from: string}>, changed: array{}}
+     */
+    public static function candidateExternalDependencyChanges(array $classification): array
+    {
+        $external = $classification['external'] ?? null;
+        if (!is_array($external)
+            || !is_array($external['added'] ?? null)
+            || !is_array($external['removed'] ?? null)
+            || !is_array($external['changed'] ?? null)) {
+            throw new RuntimeException('External dependency classification is malformed.');
+        }
+
+        if ($external['changed'] !== []) {
+            $drift = [];
+            foreach ($external['changed'] as $entry) {
+                $drift[] = $entry['name'] . ' (' . $entry['from'] . ' -> ' . $entry['to'] . ')';
+            }
+            throw new RuntimeException(
+                'Candidate resolution repinned existing non-Framework dependencies: ' . implode('; ', $drift)
+                . '. Added or removed transitive dependencies are candidate evidence, but an existing package '
+                . 'identity must stay pinned until the released adoption path changes it explicitly.',
+            );
+        }
+
+        return [
+            'added' => $external['added'],
+            'removed' => $external['removed'],
+            'changed' => [],
+        ];
     }
 
     public static function classOf(string $name): string

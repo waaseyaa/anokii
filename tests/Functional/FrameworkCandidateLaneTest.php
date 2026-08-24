@@ -299,6 +299,46 @@ final class FrameworkCandidateLaneTest extends TestCase
         );
     }
 
+    public function testCandidateRecordsExternalAddsAndRemovalsButRefusesRepins(): void
+    {
+        $before = self::anokiiLockEntries() + [
+            'waaseyaa/entity' => ['name' => 'waaseyaa/entity', 'version' => 'v0.1.0-alpha.297'],
+            'symfony/uid' => ['name' => 'symfony/uid', 'version' => 'v7.4.0'],
+            'symfony/old-transitive' => ['name' => 'symfony/old-transitive', 'version' => 'v1.0.0'],
+        ];
+        $after = self::anokiiLockEntries() + [
+            'waaseyaa/entity' => ['name' => 'waaseyaa/entity', 'version' => 'v0.1.0-alpha.999999+candidate.abc'],
+            'symfony/uid' => ['name' => 'symfony/uid', 'version' => 'v7.4.0'],
+            'symfony/new-transitive' => ['name' => 'symfony/new-transitive', 'version' => 'v2.0.0'],
+        ];
+
+        self::assertSame(
+            [
+                'added' => [['name' => 'symfony/new-transitive', 'to' => 'v2.0.0']],
+                'removed' => [['name' => 'symfony/old-transitive', 'from' => 'v1.0.0']],
+                'changed' => [],
+            ],
+            FrameworkCohort::candidateExternalDependencyChanges(FrameworkCohort::classify($before, $after)),
+        );
+
+        $repinned = $after;
+        $repinned['symfony/uid']['version'] = 'v7.4.1';
+        $this->assertRefused(
+            static fn() => FrameworkCohort::candidateExternalDependencyChanges(
+                FrameworkCohort::classify($before, $repinned),
+            ),
+            'repinned existing non-Framework dependencies',
+        );
+    }
+
+    public function testCandidateCustodyPublishesTheExternalDependencyDelta(): void
+    {
+        $source = self::source(self::CANDIDATE);
+
+        self::assertStringContainsString('.external_dependency_changes.changed | length', $source);
+        self::assertStringContainsString("jq '.external_dependency_changes'", $source);
+    }
+
     public function testOnlyAnokiiOwnPathRepositoriesAreAccepted(): void
     {
         $canonical = self::rootComposerManifest();

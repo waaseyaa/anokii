@@ -189,6 +189,8 @@ jobs:
           test "$(sha256sum "$CUSTODY_ROOT/manifest.json" | awk '{print $1}')" = "$HASH"
           test "$(jq -r '.released_compatibility' "$CUSTODY_ROOT/manifest.json")" = 'false'
           test "$(jq -r '.schema' "$CUSTODY_ROOT/manifest.json")" = 'anokii.framework-candidate.v1'
+          test "$(jq -r '.external_dependency_changes.changed | length' "$CUSTODY_ROOT/manifest.json")" = '0'
+          jq '.external_dependency_changes' "$CUSTODY_ROOT/manifest.json"
           echo "manifest_sha256=$HASH" >> "$GITHUB_OUTPUT"
           cat "$CUSTODY_ROOT/manifest.json"
 
