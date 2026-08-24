@@ -3,6 +3,8 @@ parameters:
         - vendor/deployer/deployer/src/functions.php
     scanDirectories:
         - vendor/deployer/deployer/src
+    scanFiles:
+        - scripts/lib/FrameworkCohort.php
     level: max
     paths:
         - src
