@@ -1,0 +1,318 @@
+name: Framework release adoption
+
+# Manual, governed proof that Anokii can move to a PUBLISHED waaseyaa/framework
+# release, producing a classified Composer update with no unrelated movement.
+#
+# What this lane updates: only the released Framework cohort reachable from the
+# root waaseyaa/* requirements. What it preserves exactly: waaseyaa/anokii-core,
+# waaseyaa/anokii-identity, and waaseyaa/anokii-operator, which are this
+# repository's own dev-main split packages resolved from packages/core,
+# packages/identity, and packages/operator. Repinning them
+# would be the exact failure waaseyaa/anokii#23 tells this lane to refuse, so
+# scripts/lib/FrameworkCohort.php asserts their locked identity byte for byte
+# and fails closed on any drift.
+#
+# This lane deliberately does NOT commit, push, tag, or open a pull request, so
+# it needs no write permission of any kind. It emits the adopted composer.json,
+# composer.lock, and the classified movement report as a sealed artifact; a
+# human commits that on a branch through the ordinary quality.yml review path.
+#
+# Refs waaseyaa/anokii#23, parent contract waaseyaa/framework#2521.
+
+on:
+  workflow_dispatch:
+    inputs:
+      framework_version:
+        description: Published waaseyaa/framework release to adopt, for example v0.1.0-alpha.297
+        required: true
+        type: string
+      reason:
+        description: Adoption reason or issue URL, recorded in the run log
+        required: true
+        type: string
+
+# Read-only. This lane never merges, releases, deploys, publishes a split, or
+# changes repository settings.
+permissions:
+  contents: read
+
+concurrency:
+  group: framework-release-adoption-${{ github.ref }}-${{ inputs.framework_version }}
+  cancel-in-progress: true
+
+jobs:
+  adopt:
+    name: Adopt ${{ inputs.framework_version }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up PHP 8.5
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.5'
+          coverage: none
+          extensions: fileinfo, zip
+
+      # Same isolation rules as the candidate lane: no cache action, no
+      # composer-install action, nothing written outside RUNNER_TEMP.
+      - name: Isolate Composer state on this runner only
+        run: |
+          set -euo pipefail
+          echo "COMPOSER_CACHE_DIR=${RUNNER_TEMP}/ephemeral-composer-cache" >> "$GITHUB_ENV"
+          echo "COMPOSER_HOME=${RUNNER_TEMP}/ephemeral-composer-home" >> "$GITHUB_ENV"
+          mkdir -p "${RUNNER_TEMP}/ephemeral-composer-cache" "${RUNNER_TEMP}/ephemeral-composer-home"
+
+      - name: Refuse persisted credentials and cross-run cache
+        run: |
+          set -euo pipefail
+          test -z "${GITHUB_TOKEN:-}"
+          test -z "${GH_TOKEN:-}"
+          if git -C "$GITHUB_WORKSPACE" config --get-regexp '^http\..*\.extraheader$'; then
+            echo "Checkout persisted a credential header; refusing to continue." >&2
+            exit 2
+          fi
+          case "${COMPOSER_CACHE_DIR}" in
+            "${RUNNER_TEMP}"/*) ;;
+            *) echo "Composer cache escaped RUNNER_TEMP: ${COMPOSER_CACHE_DIR}" >&2; exit 2 ;;
+          esac
+          case "${COMPOSER_HOME}" in
+            "${RUNNER_TEMP}"/*) ;;
+            *) echo "Composer home escaped RUNNER_TEMP: ${COMPOSER_HOME}" >&2; exit 2 ;;
+          esac
+
+      - name: Require an actually published release tag
+        env:
+          FRAMEWORK_VERSION: ${{ inputs.framework_version }}
+          REASON: ${{ inputs.reason }}
+        run: |
+          set -euo pipefail
+          # Validate before the value reaches any command. A candidate SHA, a
+          # branch name, a dev constraint, or a synthetic build version is
+          # refused here and again inside adopt-framework-release.php.
+          if [[ ! "$FRAMEWORK_VERSION" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)\.[0-9]+)?$ ]]; then
+            echo "framework_version must be a published release such as v0.1.0-alpha.297" >&2
+            exit 2
+          fi
+          tag="v${FRAMEWORK_VERSION#v}"
+          # Anonymous HTTPS against the public repository. No token, no secret.
+          if [ -z "$(git ls-remote --tags https://github.com/waaseyaa/framework.git "refs/tags/${tag}")" ]; then
+            echo "waaseyaa/framework has no published tag ${tag}; candidate evidence is not released compatibility." >&2
+            exit 2
+          fi
+          echo "Adopting published waaseyaa/framework ${tag}. Reason: ${REASON}"
+
+      - name: Create a disposable Anokii work clone
+        env:
+          WORK_ROOT: ${{ runner.temp }}/anokii-framework-adoption
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git clone --no-local --no-hardlinks "$GITHUB_WORKSPACE" "$WORK_ROOT"
+          test "$(git -C "$WORK_ROOT" rev-parse HEAD)" = "$SOURCE_SHA"
+          test -z "$(git -C "$WORK_ROOT" status --porcelain)"
+
+      - name: Update only the released Framework cohort and classify every movement
+        env:
+          WORK_ROOT: ${{ runner.temp }}/anokii-framework-adoption
+          FRAMEWORK_VERSION: ${{ inputs.framework_version }}
+        run: |
+          php scripts/adopt-framework-release.php \
+            --work-root="$WORK_ROOT" \
+            --framework-version="$FRAMEWORK_VERSION"
+
+      - name: Confirm only composer.json and composer.lock moved
+        env:
+          WORK_ROOT: ${{ runner.temp }}/anokii-framework-adoption
+        run: |
+          set -euo pipefail
+          changed="$(git -C "$WORK_ROOT" diff --name-only | sort | tr '\n' ' ')"
+          if [ "$changed" != "composer.json composer.lock " ]; then
+            echo "Adoption touched unexpected tracked files: ${changed}" >&2
+            git -C "$WORK_ROOT" status --porcelain >&2
+            exit 2
+          fi
+          # The canonical checkout is proof, not workspace.
+          git -C "$GITHUB_WORKSPACE" diff --exit-code -- composer.json composer.lock
+
+      # Custody is sealed here, BEFORE any test runs, so the identity of the
+      # tested tree is recorded independently of whether the tests pass.
+      - name: Seal adoption evidence
+        id: custody
+        env:
+          WORK_ROOT: ${{ runner.temp }}/anokii-framework-adoption
+          CUSTODY_ROOT: ${{ runner.temp }}/framework-adoption-custody
+        run: |
+          set -euo pipefail
+          mkdir -p "$CUSTODY_ROOT"
+          install -m 0444 "$WORK_ROOT/var/framework-adoption/manifest.json" "$CUSTODY_ROOT/manifest.json"
+          install -m 0444 "$WORK_ROOT/var/framework-adoption/manifest.json.sha256" "$CUSTODY_ROOT/manifest.json.sha256"
+          install -m 0444 "$WORK_ROOT/var/framework-adoption/composer.json" "$CUSTODY_ROOT/composer.json"
+          install -m 0444 "$WORK_ROOT/var/framework-adoption/composer.lock" "$CUSTODY_ROOT/composer.lock"
+          HASH="$(tr -d '[:space:]' < "$CUSTODY_ROOT/manifest.json.sha256")"
+          test "$(sha256sum "$CUSTODY_ROOT/manifest.json" | awk '{print $1}')" = "$HASH"
+          test "$(jq -r '.schema' "$CUSTODY_ROOT/manifest.json")" = 'anokii.framework-release-adoption.v1'
+          test "$(jq -r '.released_compatibility' "$CUSTODY_ROOT/manifest.json")" = 'true'
+          # Anokii's own split packages must still be dev-main path packages.
+          test "$(jq -r '.anokii_dev_main_packages["waaseyaa/anokii-core"].version' "$CUSTODY_ROOT/manifest.json")" = 'dev-main'
+          test "$(jq -r '.anokii_dev_main_packages["waaseyaa/anokii-identity"].version' "$CUSTODY_ROOT/manifest.json")" = 'dev-main'
+          test "$(jq -r '.anokii_dev_main_packages["waaseyaa/anokii-operator"].version' "$CUSTODY_ROOT/manifest.json")" = 'dev-main'
+          test "$(jq -r '.classification.anokii.changed | length' "$CUSTODY_ROOT/manifest.json")" = '0'
+          test "$(jq -r '.classification.external.changed | length' "$CUSTODY_ROOT/manifest.json")" = '0'
+          echo "manifest_sha256=$HASH" >> "$GITHUB_OUTPUT"
+          jq '.classification' "$CUSTODY_ROOT/manifest.json"
+
+      - name: Upload the sealed classified update
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: framework-release-adoption-${{ github.sha }}-${{ inputs.framework_version }}
+          path: ${{ runner.temp }}/framework-adoption-custody/
+          if-no-files-found: error
+          retention-days: 30
+
+      # ------------------------------------------------------------------
+      # Acceptance gates, run against the adopted lock. These are the same real
+      # gates quality.yml runs, including the real FrankenPHP worker acceptance
+      # from scripts/acceptance-frankenphp-http.sh, plus the package-boundary
+      # consumer proofs that keep Anokii's own splits externally installable.
+      # ------------------------------------------------------------------
+
+      - name: Validate and install the adopted Composer inputs
+        env:
+          WORK_ROOT: ${{ runner.temp }}/anokii-framework-adoption
+        run: |
+          set -euo pipefail
+          composer --working-dir="$WORK_ROOT" validate --strict
+          composer --working-dir="$WORK_ROOT" install --no-interaction --no-progress
+          composer --working-dir="$WORK_ROOT" audit --locked --no-interaction
+
+      - name: Production field-access preflight and CLI boot on the adopted cohort
+        env:
+          WORK_ROOT: ${{ runner.temp }}/anokii-framework-adoption
+          ANOKII_COMMUNITY_ID: ci-community
+        run: |
+          set -euo pipefail
+          cd "$WORK_ROOT"
+          ANOKII_PRIVACY_SECRET="$(php -r 'echo str_repeat("p", 32);')"
+          WAASEYAA_JWT_SECRET="$(php -r 'echo str_repeat("j", 32);')"
+          WAASEYAA_APP_SECRET="base64:$(php -r 'echo base64_encode(str_repeat("a", 32));')"
+          AUTH_TOKEN_SECRET="$(php -r 'echo bin2hex(random_bytes(32));')"
+          WAASEYAA_DB="${RUNNER_TEMP}/anokii-adoption.sqlite"
+          export ANOKII_PRIVACY_SECRET WAASEYAA_JWT_SECRET WAASEYAA_APP_SECRET AUTH_TOKEN_SECRET WAASEYAA_DB
+          APP_ENV=local php vendor/bin/waaseyaa install:init
+          APP_ENV=production composer readiness:field-access
+          APP_ENV=production php vendor/bin/waaseyaa list >/dev/null
+
+      - name: Run the Anokii test suite on the adopted cohort
+        env:
+          WORK_ROOT: ${{ runner.temp }}/anokii-framework-adoption
+          ANOKII_COMMUNITY_ID: ci-community
+          WAASEYAA_DB: ${{ runner.temp }}/anokii-adoption.sqlite
+        run: composer --working-dir="$WORK_ROOT" test
+
+      - name: Run static analysis on the adopted cohort
+        env:
+          WORK_ROOT: ${{ runner.temp }}/anokii-framework-adoption
+        run: composer --working-dir="$WORK_ROOT" analyse
+
+      - name: Run the style gate on the adopted cohort
+        env:
+          WORK_ROOT: ${{ runner.temp }}/anokii-framework-adoption
+        run: composer --working-dir="$WORK_ROOT" style
+
+      - name: Install checksum-pinned FrankenPHP 1.12.4
+        run: |
+          set -euo pipefail
+          curl -fsSL -o "${RUNNER_TEMP}/frankenphp" \
+            "https://github.com/php/frankenphp/releases/download/v1.12.4/frankenphp-linux-x86_64"
+          echo "b39c7511483c99faf0d857cc0789b39cc23023038260b31d4b40dd4ae18795dc  ${RUNNER_TEMP}/frankenphp" | sha256sum -c -
+          chmod +x "${RUNNER_TEMP}/frankenphp"
+          "${RUNNER_TEMP}/frankenphp" version
+
+      - name: Run the real FrankenPHP worker acceptance on the adopted cohort
+        env:
+          WORK_ROOT: ${{ runner.temp }}/anokii-framework-adoption
+          FRANKENPHP_BINARY: ${{ runner.temp }}/frankenphp
+          ANOKII_COMMUNITY_ID: ci-community
+          ANOKII_ACCEPTANCE_PORT: '3057'
+        # The working directory must be the work clone: the preflight step
+        # inside the script writes .waaseyaa/field-access-preflight.json
+        # relative to the current directory, and the worker then reads it.
+        run: |
+          set -euo pipefail
+          cd "$WORK_ROOT"
+          bash scripts/acceptance-frankenphp-http.sh
+
+      - name: Prove the adoption worker released its port and left no process
+        if: always()
+        env:
+          FRANKENPHP_BINARY: ${{ runner.temp }}/frankenphp
+        run: |
+          set -euo pipefail
+          if [ ! -e "$FRANKENPHP_BINARY" ]; then
+            echo "FrankenPHP was never installed; nothing to dispose."
+            exit 0
+          fi
+          binary="$(readlink -f "$FRANKENPHP_BINARY")"
+          leftovers="$(for process in /proc/[0-9]*; do
+            [ "$(readlink -f "$process/exe" 2>/dev/null || true)" = "$binary" ] && basename "$process"
+          done; true)"
+          if [ -n "$leftovers" ]; then
+            echo "FrankenPHP processes survived adoption acceptance: ${leftovers}" >&2
+            # shellcheck disable=SC2086
+            kill $leftovers
+            exit 1
+          fi
+          if ss -ltn | grep -qE ':3057[[:space:]]'; then
+            echo "The adoption acceptance port is still listening." >&2
+            ss -ltn
+            exit 1
+          fi
+          rm -f -- "$binary"
+
+      - name: Prove Anokii splits still install as minimal external consumers
+        env:
+          WORK_ROOT: ${{ runner.temp }}/anokii-framework-adoption
+        run: |
+          set -euo pipefail
+          composer --working-dir="$WORK_ROOT/packages/core" validate --strict --no-check-lock
+          composer --working-dir="$WORK_ROOT/packages/identity" validate --strict --no-check-lock
+          composer --working-dir="$WORK_ROOT/packages/operator" validate --strict --no-check-lock
+
+      - name: Confirm sealed adoption evidence did not drift
+        env:
+          CUSTODY_ROOT: ${{ runner.temp }}/framework-adoption-custody
+          WORK_ROOT: ${{ runner.temp }}/anokii-framework-adoption
+          EXPECTED_MANIFEST_SHA256: ${{ steps.custody.outputs.manifest_sha256 }}
+        run: |
+          set -euo pipefail
+          test "$(sha256sum "$CUSTODY_ROOT/manifest.json" | awk '{print $1}')" = "$EXPECTED_MANIFEST_SHA256"
+          test "$(tr -d '[:space:]' < "$CUSTODY_ROOT/manifest.json.sha256")" = "$EXPECTED_MANIFEST_SHA256"
+          test "$(jq -r '.adopted_lock_sha256' "$CUSTODY_ROOT/manifest.json")" = "$(sha256sum "$WORK_ROOT/composer.lock" | awk '{print $1}')"
+          test "$(jq -r '.adopted_composer_sha256' "$CUSTODY_ROOT/manifest.json")" = "$(sha256sum "$WORK_ROOT/composer.json" | awk '{print $1}')"
+          git -C "$GITHUB_WORKSPACE" diff --exit-code -- composer.json composer.lock
+
+      - name: Report how to land the adoption
+        run: |
+          echo "The adopted composer.json and composer.lock are in the sealed artifact."
+          echo "This lane has no write authority: a human lands them on a branch"
+          echo "and the ordinary quality.yml lane reviews them."
+
+      - name: Dispose of the adoption tree
+        if: always()
+        env:
+          WORK_ROOT: ${{ runner.temp }}/anokii-framework-adoption
+        run: |
+          set -euo pipefail
+          chmod -R u+w "$WORK_ROOT" 2>/dev/null || true
+          rm -rf -- "$WORK_ROOT"
+          rm -rf -- "${COMPOSER_CACHE_DIR:-${RUNNER_TEMP}/ephemeral-composer-cache}"
+          test ! -e "$WORK_ROOT"

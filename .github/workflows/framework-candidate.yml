@@ -1,0 +1,336 @@
+name: Framework candidate
+
+# Manual, governed proof that a specific waaseyaa/framework commit still
+# satisfies Anokii, run WITHOUT mutating composer.json or composer.lock.
+#
+# Anokii is itself a Framework-side package repository. waaseyaa/anokii-core,
+# waaseyaa/anokii-identity, and waaseyaa/anokii-operator are local dev-main path
+# packages and are never part of a Framework candidate;
+# scripts/lib/FrameworkCohort.php refuses any lane that would repin them.
+#
+# The ordinary released-lock lane is quality.yml and this workflow does not
+# change, disable, or feed it. Candidate evidence is explicitly stamped
+# released_compatibility: false so it can never be presented as proof that a
+# published release is adopted.
+#
+# Refs waaseyaa/anokii#23, parent contract waaseyaa/framework#2521.
+
+on:
+  workflow_dispatch:
+    inputs:
+      framework_sha:
+        description: Exact waaseyaa/framework commit SHA to prove, 40 lowercase hex characters
+        required: true
+        type: string
+      trust_mode:
+        description: >
+          merged-main requires the SHA to be an ancestor of fetched
+          waaseyaa/framework origin/main. review-candidate treats that exact
+          public commit as untrusted third-party code that the trusted
+          dispatcher is explicitly authorizing to execute on this runner.
+        required: true
+        type: choice
+        options:
+          - merged-main
+          - review-candidate
+        default: merged-main
+
+# Read-only. This lane never merges, releases, deploys, publishes a split, or
+# changes repository settings, so no job is granted anything beyond contents.
+permissions:
+  contents: read
+
+concurrency:
+  group: framework-candidate-${{ github.ref }}-${{ inputs.framework_sha }}-${{ inputs.trust_mode }}
+  cancel-in-progress: true
+
+jobs:
+  candidate:
+    name: Prove ${{ inputs.framework_sha }} (${{ inputs.trust_mode }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      # Candidate splits are mirrored into vendor rather than symlinked, so the
+      # verification step reflects real files out of the installed tree.
+      COMPOSER_MIRROR_PATH_REPOS: '1'
+
+    steps:
+      # persist-credentials: false is load-bearing. In review-candidate mode the
+      # fetched Framework commit is untrusted code, and it must never find a
+      # usable credential on this runner.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up PHP 8.5
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.5'
+          coverage: none
+          extensions: fileinfo, zip
+
+      # No cache action and no composer-install action anywhere in this
+      # workflow: an untrusted candidate must not be able to write anything a
+      # later run of any workflow would read back.
+      - name: Isolate Composer state on this runner only
+        run: |
+          set -euo pipefail
+          echo "COMPOSER_CACHE_DIR=${RUNNER_TEMP}/ephemeral-composer-cache" >> "$GITHUB_ENV"
+          echo "COMPOSER_HOME=${RUNNER_TEMP}/ephemeral-composer-home" >> "$GITHUB_ENV"
+          mkdir -p "${RUNNER_TEMP}/ephemeral-composer-cache" "${RUNNER_TEMP}/ephemeral-composer-home"
+
+      - name: Refuse persisted credentials and cross-run cache
+        run: |
+          set -euo pipefail
+          test -z "${GITHUB_TOKEN:-}"
+          test -z "${GH_TOKEN:-}"
+          if git -C "$GITHUB_WORKSPACE" config --get-regexp '^http\..*\.extraheader$'; then
+            echo "Checkout persisted a credential header; refusing to execute a candidate." >&2
+            exit 2
+          fi
+          case "${COMPOSER_CACHE_DIR}" in
+            "${RUNNER_TEMP}"/*) ;;
+            *) echo "Composer cache escaped RUNNER_TEMP: ${COMPOSER_CACHE_DIR}" >&2; exit 2 ;;
+          esac
+          case "${COMPOSER_HOME}" in
+            "${RUNNER_TEMP}"/*) ;;
+            *) echo "Composer home escaped RUNNER_TEMP: ${COMPOSER_HOME}" >&2; exit 2 ;;
+          esac
+          test "$(composer config --global --absolute home)" = "${COMPOSER_HOME}"
+
+      - name: Fetch the exact Framework candidate from the public repository
+        env:
+          FRAMEWORK_SHA: ${{ inputs.framework_sha }}
+          FRAMEWORK_ROOT: ${{ runner.temp }}/framework-candidate
+          TRUST_MODE: ${{ inputs.trust_mode }}
+        run: |
+          set -euo pipefail
+          # Validate before the value reaches any command.
+          if [[ ! "$FRAMEWORK_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "framework_sha must be exactly 40 lowercase hexadecimal characters" >&2
+            exit 2
+          fi
+          if [[ "$TRUST_MODE" != "merged-main" && "$TRUST_MODE" != "review-candidate" ]]; then
+            echo "trust_mode must be merged-main or review-candidate" >&2
+            exit 2
+          fi
+          git init "$FRAMEWORK_ROOT"
+          # Anonymous HTTPS against the public repository. No token, no secret.
+          git -C "$FRAMEWORK_ROOT" remote add origin https://github.com/waaseyaa/framework.git
+          git -C "$FRAMEWORK_ROOT" fetch --filter=blob:none --no-tags origin "$FRAMEWORK_SHA"
+          test "$(git -C "$FRAMEWORK_ROOT" rev-parse FETCH_HEAD)" = "$FRAMEWORK_SHA"
+          if [[ "$TRUST_MODE" == "merged-main" ]]; then
+            git -C "$FRAMEWORK_ROOT" fetch --filter=blob:none --no-tags origin +refs/heads/main:refs/remotes/origin/main
+            if ! git -C "$FRAMEWORK_ROOT" merge-base --is-ancestor "$FRAMEWORK_SHA" refs/remotes/origin/main; then
+              echo "merged-main refuses $FRAMEWORK_SHA because it is not an ancestor of waaseyaa/framework origin/main" >&2
+              exit 2
+            fi
+          else
+            echo "::warning::review-candidate: the dispatcher is authorizing execution of untrusted public commit ${FRAMEWORK_SHA} on this ephemeral runner."
+          fi
+          git -C "$FRAMEWORK_ROOT" checkout --detach "$FRAMEWORK_SHA"
+          test -z "$(git -C "$FRAMEWORK_ROOT" status --porcelain)"
+
+      - name: Create a disposable Anokii consumer
+        env:
+          CONSUMER_ROOT: ${{ runner.temp }}/anokii-framework-candidate
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git clone --no-local --no-hardlinks "$GITHUB_WORKSPACE" "$CONSUMER_ROOT"
+          test "$(git -C "$CONSUMER_ROOT" rev-parse HEAD)" = "$SOURCE_SHA"
+          test -z "$(git -C "$CONSUMER_ROOT" status --porcelain)"
+
+      - name: Resolve every locked Framework split from the candidate
+        env:
+          CONSUMER_ROOT: ${{ runner.temp }}/anokii-framework-candidate
+          FRAMEWORK_ROOT: ${{ runner.temp }}/framework-candidate
+          FRAMEWORK_SHA: ${{ inputs.framework_sha }}
+          TRUST_MODE: ${{ inputs.trust_mode }}
+        run: |
+          php scripts/prepare-framework-candidate.php \
+            --consumer-root="$CONSUMER_ROOT" \
+            --framework-root="$FRAMEWORK_ROOT" \
+            --framework-sha="$FRAMEWORK_SHA" \
+            --trust-mode="$TRUST_MODE"
+
+      - name: Verify custody, reflected code paths, and preserved dev-main identities
+        env:
+          CONSUMER_ROOT: ${{ runner.temp }}/anokii-framework-candidate
+          FRAMEWORK_ROOT: ${{ runner.temp }}/framework-candidate
+          FRAMEWORK_SHA: ${{ inputs.framework_sha }}
+        run: |
+          set -euo pipefail
+          php scripts/verify-framework-candidate.php \
+            --consumer-root="$CONSUMER_ROOT" \
+            --framework-root="$FRAMEWORK_ROOT" \
+            --framework-sha="$FRAMEWORK_SHA"
+          # The canonical checkout is proof, not workspace: nothing may have moved.
+          git -C "$GITHUB_WORKSPACE" diff --exit-code -- composer.json composer.lock
+          git -C "$CONSUMER_ROOT" diff --exit-code -- composer.json composer.lock
+
+      # Custody is sealed here, BEFORE any test runs, so the identity of the
+      # tested tree is recorded independently of whether the tests pass.
+      - name: Seal custody evidence
+        id: custody
+        env:
+          CONSUMER_ROOT: ${{ runner.temp }}/anokii-framework-candidate
+          CUSTODY_ROOT: ${{ runner.temp }}/framework-candidate-custody
+        run: |
+          set -euo pipefail
+          mkdir -p "$CUSTODY_ROOT"
+          install -m 0444 "$CONSUMER_ROOT/var/framework-candidate/manifest.json" "$CUSTODY_ROOT/manifest.json"
+          install -m 0444 "$CONSUMER_ROOT/var/framework-candidate/manifest.json.sha256" "$CUSTODY_ROOT/manifest.json.sha256"
+          HASH="$(tr -d '[:space:]' < "$CUSTODY_ROOT/manifest.json.sha256")"
+          test "$(sha256sum "$CUSTODY_ROOT/manifest.json" | awk '{print $1}')" = "$HASH"
+          test "$(jq -r '.released_compatibility' "$CUSTODY_ROOT/manifest.json")" = 'false'
+          test "$(jq -r '.schema' "$CUSTODY_ROOT/manifest.json")" = 'anokii.framework-candidate.v1'
+          test "$(jq -r '.external_dependency_changes.changed | length' "$CUSTODY_ROOT/manifest.json")" = '0'
+          jq '.external_dependency_changes' "$CUSTODY_ROOT/manifest.json"
+          echo "manifest_sha256=$HASH" >> "$GITHUB_OUTPUT"
+          cat "$CUSTODY_ROOT/manifest.json"
+
+      - name: Upload sealed custody evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: framework-candidate-${{ github.sha }}-${{ inputs.framework_sha }}
+          path: ${{ runner.temp }}/framework-candidate-custody/
+          if-no-files-found: error
+          retention-days: 14
+
+      # ------------------------------------------------------------------
+      # Acceptance gates. These are the same real gates quality.yml runs on the
+      # released lock, executed here against the candidate tree, including the
+      # real FrankenPHP worker acceptance from scripts/acceptance-frankenphp-http.sh.
+      # ------------------------------------------------------------------
+
+      - name: Canonical Composer inputs stay valid against the candidate install
+        env:
+          CONSUMER_ROOT: ${{ runner.temp }}/anokii-framework-candidate
+        run: composer --working-dir="$CONSUMER_ROOT" validate --strict
+
+      - name: Production field-access preflight and CLI boot on the candidate
+        env:
+          CONSUMER_ROOT: ${{ runner.temp }}/anokii-framework-candidate
+          ANOKII_COMMUNITY_ID: ci-community
+        run: |
+          set -euo pipefail
+          cd "$CONSUMER_ROOT"
+          # Deterministic local throwaway values. This lane reads no secret.
+          ANOKII_PRIVACY_SECRET="$(php -r 'echo str_repeat("p", 32);')"
+          WAASEYAA_JWT_SECRET="$(php -r 'echo str_repeat("j", 32);')"
+          WAASEYAA_APP_SECRET="base64:$(php -r 'echo base64_encode(str_repeat("a", 32));')"
+          AUTH_TOKEN_SECRET="$(php -r 'echo bin2hex(random_bytes(32));')"
+          WAASEYAA_DB="${RUNNER_TEMP}/anokii-candidate.sqlite"
+          export ANOKII_PRIVACY_SECRET WAASEYAA_JWT_SECRET WAASEYAA_APP_SECRET AUTH_TOKEN_SECRET WAASEYAA_DB
+          APP_ENV=local php vendor/bin/waaseyaa install:init
+          APP_ENV=production composer readiness:field-access
+          APP_ENV=production php vendor/bin/waaseyaa list >/dev/null
+
+      - name: Run the Anokii test suite on the candidate
+        env:
+          CONSUMER_ROOT: ${{ runner.temp }}/anokii-framework-candidate
+          ANOKII_COMMUNITY_ID: ci-community
+          WAASEYAA_DB: ${{ runner.temp }}/anokii-candidate.sqlite
+        run: composer --working-dir="$CONSUMER_ROOT" test
+
+      - name: Run static analysis on the candidate
+        env:
+          CONSUMER_ROOT: ${{ runner.temp }}/anokii-framework-candidate
+        run: composer --working-dir="$CONSUMER_ROOT" analyse
+
+      - name: Run the style gate on the candidate
+        env:
+          CONSUMER_ROOT: ${{ runner.temp }}/anokii-framework-candidate
+        run: composer --working-dir="$CONSUMER_ROOT" style
+
+      # Same checksum-pinned FrankenPHP 1.12.4 binary quality.yml uses. The
+      # download is verified before the file is made executable.
+      - name: Install checksum-pinned FrankenPHP 1.12.4
+        run: |
+          set -euo pipefail
+          curl -fsSL -o "${RUNNER_TEMP}/frankenphp" \
+            "https://github.com/php/frankenphp/releases/download/v1.12.4/frankenphp-linux-x86_64"
+          echo "b39c7511483c99faf0d857cc0789b39cc23023038260b31d4b40dd4ae18795dc  ${RUNNER_TEMP}/frankenphp" | sha256sum -c -
+          chmod +x "${RUNNER_TEMP}/frankenphp"
+          "${RUNNER_TEMP}/frankenphp" version
+
+      # The real FrankenPHP worker acceptance gate, run against the candidate
+      # tree. This is the clone's own copy of the script, so its ROOT resolves
+      # to the disposable consumer and never to the canonical checkout.
+      - name: Run the real FrankenPHP worker acceptance on the candidate
+        env:
+          CONSUMER_ROOT: ${{ runner.temp }}/anokii-framework-candidate
+          FRANKENPHP_BINARY: ${{ runner.temp }}/frankenphp
+          ANOKII_COMMUNITY_ID: ci-community
+          ANOKII_ACCEPTANCE_PORT: '3056'
+        # The working directory must be the consumer clone: the preflight step
+        # inside the script writes .waaseyaa/field-access-preflight.json
+        # relative to the current directory, and the worker then reads it.
+        run: |
+          set -euo pipefail
+          cd "$CONSUMER_ROOT"
+          bash scripts/acceptance-frankenphp-http.sh
+
+      - name: Prove the candidate worker released its port and left no process
+        if: always()
+        env:
+          FRANKENPHP_BINARY: ${{ runner.temp }}/frankenphp
+        run: |
+          set -euo pipefail
+          if [ ! -e "$FRANKENPHP_BINARY" ]; then
+            echo "FrankenPHP was never installed; nothing to dispose."
+            exit 0
+          fi
+          binary="$(readlink -f "$FRANKENPHP_BINARY")"
+          leftovers="$(for process in /proc/[0-9]*; do
+            [ "$(readlink -f "$process/exe" 2>/dev/null || true)" = "$binary" ] && basename "$process"
+          done; true)"
+          if [ -n "$leftovers" ]; then
+            echo "FrankenPHP processes survived candidate acceptance: ${leftovers}" >&2
+            # shellcheck disable=SC2086
+            kill $leftovers
+            exit 1
+          fi
+          if ss -ltn | grep -qE ':3056[[:space:]]'; then
+            echo "The candidate acceptance port is still listening." >&2
+            ss -ltn
+            exit 1
+          fi
+          rm -f -- "$binary"
+          test ! -e "$binary"
+
+      - name: Confirm sealed custody evidence did not drift
+        env:
+          CUSTODY_ROOT: ${{ runner.temp }}/framework-candidate-custody
+          CONSUMER_ROOT: ${{ runner.temp }}/anokii-framework-candidate
+          FRAMEWORK_ROOT: ${{ runner.temp }}/framework-candidate
+          FRAMEWORK_SHA: ${{ inputs.framework_sha }}
+          EXPECTED_MANIFEST_SHA256: ${{ steps.custody.outputs.manifest_sha256 }}
+        run: |
+          set -euo pipefail
+          test "$(sha256sum "$CUSTODY_ROOT/manifest.json" | awk '{print $1}')" = "$EXPECTED_MANIFEST_SHA256"
+          test "$(tr -d '[:space:]' < "$CUSTODY_ROOT/manifest.json.sha256")" = "$EXPECTED_MANIFEST_SHA256"
+          php scripts/verify-framework-candidate.php \
+            --consumer-root="$CONSUMER_ROOT" \
+            --framework-root="$FRAMEWORK_ROOT" \
+            --framework-sha="$FRAMEWORK_SHA" \
+            --manifest-sha256="$EXPECTED_MANIFEST_SHA256"
+          git -C "$GITHUB_WORKSPACE" diff --exit-code -- composer.json composer.lock
+
+      - name: Dispose of the candidate tree
+        if: always()
+        env:
+          CONSUMER_ROOT: ${{ runner.temp }}/anokii-framework-candidate
+          FRAMEWORK_ROOT: ${{ runner.temp }}/framework-candidate
+        run: |
+          set -euo pipefail
+          chmod -R u+w "$CONSUMER_ROOT" "$FRAMEWORK_ROOT" 2>/dev/null || true
+          rm -rf -- "$CONSUMER_ROOT" "$FRAMEWORK_ROOT"
+          rm -rf -- "${COMPOSER_CACHE_DIR:-${RUNNER_TEMP}/ephemeral-composer-cache}"
+          test ! -e "$CONSUMER_ROOT"
+          test ! -e "$FRAMEWORK_ROOT"
