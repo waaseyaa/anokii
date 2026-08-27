@@ -40,28 +40,26 @@ $handle = static function () use ($projectRoot): void {
     $response->send();
 };
 
-if (function_exists('frankenphp_handle_request')) {
+$workerMode = ($_SERVER['WAASEYAA_FRANKENPHP_WORKER'] ?? getenv('WAASEYAA_FRANKENPHP_WORKER')) === '1';
+if ($workerMode) {
+    if (!function_exists('frankenphp_handle_request')) {
+        throw new \RuntimeException('FrankenPHP worker mode is enabled but the worker API is unavailable.');
+    }
+
     ignore_user_abort(true);
 
     $maxRequestsRaw = getenv('FRANKENPHP_WORKER_MAX_REQUESTS');
     $maxRequests = $maxRequestsRaw === false ? 0 : (int) $maxRequestsRaw;
 
-    $handled = 0;
-    try {
-        for (; $maxRequests === 0 || $handled < $maxRequests; ++$handled) {
-            $keepRunning = frankenphp_handle_request($handle);
-            gc_collect_cycles();
-            if (!$keepRunning) {
-                break;
-            }
-        }
-
-        return;
-    } catch (\Throwable $e) {
-        if ($handled > 0) {
-            throw $e;
+    for ($handled = 0; $maxRequests === 0 || $handled < $maxRequests; ++$handled) {
+        $keepRunning = frankenphp_handle_request($handle);
+        gc_collect_cycles();
+        if (!$keepRunning) {
+            break;
         }
     }
+
+    return;
 }
 
 $handle();

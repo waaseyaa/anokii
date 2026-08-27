@@ -56,7 +56,10 @@ cat >"$CADDYFILE" <<EOF
 {
 	admin off
 	frankenphp {
-		worker $ROOT/public/index.php
+		worker {
+			file $ROOT/public/index.php
+			env WAASEYAA_FRANKENPHP_WORKER "1"
+		}
 	}
 }
 
