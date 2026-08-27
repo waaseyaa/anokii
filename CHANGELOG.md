@@ -28,6 +28,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Select FrankenPHP worker mode only through the explicit
+  `WAASEYAA_FRANKENPHP_WORKER=1` process marker, refuse marker/API disagreement,
+  and propagate real worker-loop failures instead of retrying them through the
+  classic request path (#33).
+
 - Make the canonical PHPUnit configuration own a finite 1G test-process memory
   ceiling, so direct discovery, focused tests, Composer, and hosted Quality no
   longer inherit a host PHP CLI default such as 128M. Production and FrankenPHP
