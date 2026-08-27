@@ -1,0 +1,14 @@
+# Anokii is intentionally maintained by one human. This records real ownership
+# without claiming an unavailable independent reviewer.
+* @jonesrussell
+
+# Integration, identity, package projection, deployment, and governance boundaries.
+/.github/ @jonesrussell
+/composer.json @jonesrussell
+/composer.lock @jonesrussell
+/config/ @jonesrussell
+/deploy.php @jonesrussell
+/migrations/ @jonesrussell
+/packages/ @jonesrussell
+/src/Access/ @jonesrussell
+/src/Provider/ @jonesrussell
