@@ -1,0 +1,17 @@
+{
+    "schema_version": 1,
+    "change_record": "FW-DEV-RUNTIME-01",
+    "repository": "waaseyaa/framework",
+    "commit": "78711436577d339d9f118976364626e302967752",
+    "consumer_files": {
+        "bin/dev-runtime": "68167896f8578093f3552bc8fc5283137c14e59b0393cde10d69c9f0d4f0b7a0",
+        "tools/lib/DevRuntimeConsumer.php": "543e0e9dde303d5cde5773a1cb0a42fdcfb2709dc074d0bf7ab30680da5027b7"
+    },
+    "authority_files": {
+        "bin/dev-runtime": "46d4de21bc6077b1ec2f30a9eb7f167d866788edf51ee62789a76a7d9eed1822",
+        "bin/git": "846a553248ff0f4dbb59e158b90fb62102a9461535df24f936b9027181249016",
+        "tools/lib/DevRuntime.php": "be57c33e66df7dbf7eb64f7e803f5ed72296ad176d0495d22300441ce64ec6f2",
+        "tools/dev-runtime-manifest.json": "7a5808cc730095533d0b6b24d33e9451f80c56233c5daf5af06076a45dc92fac",
+        "tools/frankenphp-runtime-pin.json": "bb3ca42720428f8ae529bbeec02cee3887cfa0edbea89dac99a426f8216cc149"
+    }
+}

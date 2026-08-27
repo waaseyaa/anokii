@@ -5,6 +5,7 @@ parameters:
         - vendor/deployer/deployer/src
     scanFiles:
         - scripts/lib/FrameworkCohort.php
+        - tools/lib/DevRuntimeConsumer.php
     level: max
     paths:
         - src

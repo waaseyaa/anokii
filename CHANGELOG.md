@@ -47,6 +47,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- Add the Framework-owned, exact-commit development-runtime launcher for the
+  supported WSL profile, with verified source caching and checkout-bound
+  runtime identity (#28).
+
 - `waaseyaa/anokii-core` and `waaseyaa/anokii-identity` source packages, plus an explicit read-only Identity host surface for existing Waaseyaa applications. The surface uses framework route authentication, immutable request principals, entity access checks, community-scoped storage, and package discovery without mounting Anokii's standalone login, public pages, or other workspace tools (#8).
 - A production-readiness gate that creates a fresh schema, writes the checksum-bound field-access preflight, and proves guarded production boot in CI. The reviewed schema-derived classifications live in `.waaseyaa/field-access-classification.json`; the generated preflight remains a build artifact.
 - CMS page creation, draft, publish, history, and rollback workflows, with public routes derived from published page entities and reserved `/admin` and `/api` paths rejected.

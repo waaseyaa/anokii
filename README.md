@@ -106,6 +106,29 @@ Brand palette: Deep Teal (`#0d4f4f → #0f766e → #14b8a6`) — differentiated 
 
 ---
 
+## Verified development runtime
+
+The supported local development profile is WSL2 Ubuntu 24.04 on x86-64. Use
+the repository launcher so ambient Composer, Node, npm, and FrankenPHP versions
+cannot silently change the result:
+
+```bash
+./bin/dev-runtime bootstrap
+./bin/dev-runtime doctor --json
+./bin/dev-runtime exec -- composer install
+./bin/dev-runtime exec -- composer check
+```
+
+The launcher is pinned to an exact accepted Framework commit by
+`tools/dev-runtime-source.json`. It verifies the local launcher and library,
+then downloads and verifies the canonical Framework runtime source into a
+content-addressed user cache. It does not change the caller's shell or global
+tools. Update the launcher, library, commit, and source hashes together from one
+reviewed Framework commit; do not copy managed-tool versions into this
+repository.
+
+---
+
 ## Install
 
 > **Not yet published to Packagist.** The following command will work once the first release tag is cut.
