@@ -19,6 +19,8 @@ The current repository contains an authenticated server-rendered workspace basel
 - **Co-Intelligence Workspaces** — Per-record AI access (OCAP A5 flagship)
 - **Admin Centre** — Distribution administration and Nation tenant management
 
+Workforce directory integration (Microsoft Entra ID, SCIM, or on-premises Active Directory Domain Services) is at the discovery stage. No connector is designed, authorized, or shipped, and the record is a research input for Nation-owned decisions rather than a commitment. See [`docs/architecture/workforce-directory-discovery.md`](docs/architecture/workforce-directory-discovery.md).
+
 Current security posture:
 
 - Workspace routes require authenticated accounts and immutable authorization principals.
