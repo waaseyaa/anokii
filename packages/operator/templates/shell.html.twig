@@ -81,8 +81,8 @@
     .anokii-signout:hover{ color:#fff; }
 
     .anokii-main{ display:flex; flex-direction:column; min-width:0; }
-    /* The skip target takes focus only so a keyboard or screen-reader user
-       lands in main content; it is not a control, so it draws no ring. */
+    /* The skip link focuses main only for the moment a keyboard or
+       screen-reader user skips there; it is not a control, so it draws no ring. */
     .anokii-main:focus{ outline:none; }
     /* Shown only while focused. Fixed colours keep it legible on any theme:
        the white fill stands out on dark chrome, the ink border on light. */
@@ -146,7 +146,7 @@
       {% endblock %}
       {% block sidebar_footer %}{% endblock %}
     </aside>
-    <main class="anokii-main" id="anokii-main-content" tabindex="-1">
+    <main class="anokii-main" id="anokii-main-content">
       {# Optional sticky top bar (search, notifications, top-bar user-chip). Empty
          by default, so a basic install renders unchanged. #}
       {% block topbar %}{% endblock %}
@@ -182,6 +182,21 @@
           close();
           toggle.focus();
         }
+      });
+    })();
+    (() => {
+      // Make main focusable only while the skip link sends focus there. If it
+      // stayed focusable, any click in main would focus it, and Chromium would
+      // start the next Tab from the top of main, not from the click. Without
+      // this script the link still moves the keyboard starting point.
+      const skip = document.querySelector('.anokii-skiplink');
+      const main = document.getElementById('anokii-main-content');
+      if (!(skip instanceof HTMLAnchorElement) || !(main instanceof HTMLElement)) return;
+      skip.addEventListener('click', event => {
+        event.preventDefault();
+        main.setAttribute('tabindex', '-1');
+        main.addEventListener('blur', () => main.removeAttribute('tabindex'), { once: true });
+        main.focus();
       });
     })();
   </script>

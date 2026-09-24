@@ -63,7 +63,11 @@ final class OperatorShellAccessibilityTest extends TestCase
         $target = $targets->item(0);
         self::assertInstanceOf(Element::class, $target);
         self::assertSame('MAIN', $target->tagName);
-        self::assertSame('-1', $target->getAttribute('tabindex'));
+        // Main becomes focusable only while the skip link sends focus there,
+        // so clicking in main never moves the keyboard starting point.
+        self::assertFalse($target->hasAttribute('tabindex'));
+        self::assertStringContainsString("main.setAttribute('tabindex', '-1');", $html);
+        self::assertStringContainsString("main.addEventListener('blur', () => main.removeAttribute('tabindex'), { once: true });", $html);
     }
 
     #[Test]
@@ -77,10 +81,25 @@ final class OperatorShellAccessibilityTest extends TestCase
         foreach ($icons as $icon) {
             self::assertSame('true', $icon->getAttribute('aria-hidden'));
         }
-        foreach ($page->querySelectorAll('.anokii-navlink') as $link) {
+        foreach ($page->querySelectorAll('.anokii-nav svg, .anokii-grid svg') as $icon) {
+            self::assertSame('false', $icon->getAttribute('focusable'));
+        }
+
+        $links = $page->querySelectorAll('.anokii-navlink');
+        self::assertGreaterThan(0, count($links));
+        foreach ($links as $link) {
             $label = $link->querySelector('span');
             self::assertInstanceOf(Element::class, $label);
-            self::assertSame(trim((string) $label->textContent), trim((string) $link->textContent));
+            self::assertNotSame('', trim((string) $label->textContent));
+            self::assertSame(trim((string) $label->textContent), self::exposedText($link));
+        }
+        // A tile's name starts with its visible label, then its description.
+        foreach ($page->querySelectorAll('.anokii-grid-card') as $tile) {
+            $label = trim((string) $tile->querySelector('b')?->textContent);
+            if ($label === '') {
+                self::fail('A dashboard tile has no visible label.');
+            }
+            self::assertStringStartsWith($label, self::exposedText($tile));
         }
     }
 
@@ -124,6 +143,21 @@ final class OperatorShellAccessibilityTest extends TestCase
             'brand_title' => 'Example Nation',
             ...$page,
         ]));
+    }
+
+    /** Text an element exposes to assistive technology, skipping aria-hidden subtrees. */
+    private static function exposedText(Element $element): string
+    {
+        $text = '';
+        foreach ($element->childNodes as $child) {
+            if ($child instanceof Element) {
+                $text .= $child->getAttribute('aria-hidden') === 'true' ? '' : ' ' . self::exposedText($child);
+            } else {
+                $text .= (string) $child->textContent;
+            }
+        }
+
+        return trim((string) preg_replace('/\s+/', ' ', $text));
     }
 
     private static function contrast(string $a, string $b): float

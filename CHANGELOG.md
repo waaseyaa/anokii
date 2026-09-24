@@ -30,7 +30,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - The `anokii-operator` shell now meets two DIR-A001 baseline requirements
   (#41). Its first focusable element is a "Skip to main content" link, shown
-  on focus, to its `<main>` region (`#anokii-main-content`). Its default
+  on focus, to its `<main>` region (`#anokii-main-content`). `<main>` is
+  focusable only while the link sends focus there, so clicks in the page are
+  unaffected. Its default
   decorative nav and dashboard-tile icons are hidden from assistive
   technology. A host's `/admin/anokii` changes this way only once it
   refreshes the package. Hosts that override the shell's `nav` block should
