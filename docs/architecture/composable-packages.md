@@ -20,6 +20,8 @@ It owns no routes, providers, login behavior, roles, or product entities.
 - entity/provider/policy/migration discovery metadata;
 - the optional authenticated read-only host route/controller.
 
+`waaseyaa/anokii-operator` owns the brandable operator shell, the module contract and catalogue, and fixture-driven demo support for prototyping operator workflows in that shell (`packages/operator/demo/README.md`). It registers no routes or providers. Hosts keep their own branding, fixtures, workflow pages and public-frontend previews.
+
 The root distribution owns standalone login, role composition across all workspace tools, Twig workspace chrome, and the full Identity write controller. Those surfaces consume package classes; they do not redefine the domain.
 
 ## Activation and host contract

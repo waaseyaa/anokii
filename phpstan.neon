@@ -13,6 +13,7 @@ parameters:
         - packages/operator/src
         - packages/operator/tests
         - packages/operator/examples
+        - packages/operator/demo
         - public
         - config/waaseyaa.php
         - deploy.php

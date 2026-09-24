@@ -180,6 +180,8 @@ jobs:
           php -r '
             require "/tmp/anokii-operator-consumer/vendor/autoload.php";
             foreach ([
+              Anokii\Operator\Demo\DemoFixture::class,
+              Anokii\Operator\Demo\OperatorDemo::class,
               Anokii\Operator\Http\OperatorResponsePolicy::class,
               Anokii\Operator\Module\OperatorModuleCatalog::class,
               Anokii\Operator\Shell\OperatorShell::class,
@@ -188,3 +190,56 @@ jobs:
               if (!class_exists($class)) { throw new RuntimeException("Missing " . $class); }
             }
           '
+          test -f /tmp/anokii-operator-consumer/vendor/waaseyaa/anokii-operator/demo/router.php
+      - name: Render the operator demo from the installed package
+        run: |
+          # Quoted heredoc: the shell expands nothing in the PHP below.
+          cat > /tmp/anokii-operator-demo-smoke.php <<'PHP'
+          <?php
+          declare(strict_types=1);
+
+          use Anokii\Operator\Demo\DemoFixture;
+          use Anokii\Operator\Demo\OperatorDemo;
+          use Anokii\Operator\Module\OperatorModule;
+          use Symfony\Component\HttpFoundation\Request;
+
+          require '/tmp/anokii-operator-consumer/vendor/autoload.php';
+
+          // The demo templates must resolve from the installed copy, not the monorepo.
+          $installed = realpath('/tmp/anokii-operator-consumer/vendor/waaseyaa/anokii-operator');
+          $templates = realpath(OperatorDemo::templatesPath());
+          if ($installed === false || $templates === false || !str_starts_with($templates, $installed . DIRECTORY_SEPARATOR)) {
+              throw new RuntimeException('Demo templates do not resolve from the installed package.');
+          }
+
+          $root = '/tmp/anokii-operator-demo-smoke';
+          if (!is_dir($root . '/templates')) {
+              mkdir($root . '/templates', 0o700, true);
+          }
+          file_put_contents(
+              $root . '/templates/desk.html.twig',
+              "{% extends '@anokii_operator/shell.html.twig' %}{% block content %}<p>Installed host page</p>{% endblock %}",
+          );
+          $demo = new OperatorDemo(DemoFixture::fromArray([
+              'brand' => ['title' => 'Example Nation'],
+              'operator' => ['name' => 'Sample Operator', 'role' => 'Communications'],
+              'modules' => [new OperatorModule('desk', 'Desk', 'Daily work', '/admin/anokii/desk', 'Sample desk.')],
+              'pages' => ['desk' => ['template' => 'desk.html.twig']],
+              'templates' => 'templates',
+          ], $root));
+
+          // The dashboard renders through the overlay shell; the host page also uses the page frame.
+          foreach (['/admin/anokii' => 'Welcome, Sample Operator', '/admin/anokii/desk' => 'Installed host page'] as $path => $expected) {
+              $response = $demo->handle(Request::create($path));
+              $html = (string) $response->getContent();
+              if ($response->getStatusCode() !== 200
+                  || !str_contains($html, $expected)
+                  || substr_count($html, 'Demo: nothing is saved or sent') !== 1
+                  || str_contains($html, 'class="anokii-signout"')
+                  || $response->headers->get('Content-Security-Policy') !== OperatorDemo::CONTENT_SECURITY_POLICY) {
+                  throw new RuntimeException("The installed demo did not render {$path} with its demo chrome.");
+              }
+          }
+          echo "The installed operator demo renders the dashboard and a host page.\n";
+          PHP
+          php /tmp/anokii-operator-demo-smoke.php

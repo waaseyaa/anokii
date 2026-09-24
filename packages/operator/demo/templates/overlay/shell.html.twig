@@ -1,0 +1,32 @@
+{#
+  Demo chrome for the Anokii operator shell.
+
+  Anokii\Operator\Demo\OperatorDemo puts this directory ahead of the package
+  templates in the demo process only, so it shadows
+  @anokii_operator/shell.html.twig there and extends the real shell. The
+  unmodified dashboard and module templates therefore render with:
+    - a persistent "Demo: nothing is saved or sent" marker at the top of the
+      main column;
+    - an inert user chip that labels the fixture identity as a sample and
+      has no sign-out link.
+  Production routing never loads this file.
+#}
+{% extends '@anokii_operator_base/shell.html.twig' %}
+
+{% block title %}{{ page_title }} | {{ brand_title }}{% endblock %}
+
+{% block userchip %}
+<div class="anokii-userchip">
+  <div class="anokii-avatar" aria-hidden="true">{{ user_initials }}</div>
+  <div class="anokii-uinfo"><b>{{ user_label }}</b><small>{{ user_role }}</small><small class="anokii-demo-sample">Sample identity. Sign-out is off.</small></div>
+</div>
+{% endblock %}
+
+{% block topbar %}
+<style>
+  .anokii-demo-flag{position:sticky;top:0;z-index:20;margin:0;padding:9px 30px;background:#fff4ce;color:#3d2e00;border-bottom:2px solid #8a6100;font-size:14px;font-weight:650;line-height:1.4}
+  .anokii-demo-sample{display:block}
+  @media(max-width:880px){.anokii-demo-flag{padding:9px 16px}}
+</style>
+<p class="anokii-demo-flag" data-anokii-demo-flag>Demo: nothing is saved or sent</p>
+{% endblock %}
