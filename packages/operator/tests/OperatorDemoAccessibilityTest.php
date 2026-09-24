@@ -198,8 +198,10 @@ final class OperatorDemoAccessibilityTest extends TestCase
         // move or skip that.
         self::assertSame([], array_map(static fn(Attr $attribute): string => $attribute->name, iterator_to_array($script->attributes)), "{$path}: the measuring script is a plain inline script");
         // The whole script is pinned, so nothing can skip the measurement.
+        // Comment lines may hold only printable ASCII, because JavaScript
+        // also ends a line at U+2028 and U+2029.
         self::assertMatchesRegularExpression(
-            '/^\s*\(\(\) => \{\s*(?:\/\/[^\n]*\n\s*)*const flag = document\.querySelector\(\'\[data-anokii-demo-flag\]\'\);\s*if \(!\(flag instanceof HTMLElement\)\) return;\s*const reserve = \(\) => \{\s*document\.documentElement\.style\.setProperty\(\'--anokii-demo-flag-height\', `\$\{Math\.ceil\(flag\.getBoundingClientRect\(\)\.height\)\}px`\);\s*\};\s*reserve\(\);\s*if \(typeof ResizeObserver === \'function\'\) new ResizeObserver\(reserve\)\.observe\(flag, \{ box: \'border-box\' \}\);\s*\}\)\(\);\s*$/',
+            '/^\s*\(\(\) => \{\s*(?:\/\/[ -~]*\n\s*)*const flag = document\.querySelector\(\'\[data-anokii-demo-flag\]\'\);\s*if \(!\(flag instanceof HTMLElement\)\) return;\s*const reserve = \(\) => \{\s*document\.documentElement\.style\.setProperty\(\'--anokii-demo-flag-height\', `\$\{Math\.ceil\(flag\.getBoundingClientRect\(\)\.height\)\}px`\);\s*\};\s*reserve\(\);\s*if \(typeof ResizeObserver === \'function\'\) new ResizeObserver\(reserve\)\.observe\(flag, \{ box: \'border-box\' \}\);\s*\}\)\(\);\s*$/',
             (string) $script->textContent,
             "{$path}: the script measures the marker's border box at once and on every resize",
         );
