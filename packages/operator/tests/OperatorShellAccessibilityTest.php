@@ -63,8 +63,8 @@ final class OperatorShellAccessibilityTest extends TestCase
         $target = $targets->item(0);
         self::assertInstanceOf(Element::class, $target);
         self::assertSame('MAIN', $target->tagName);
-        // Main becomes focusable only while the skip link sends focus there,
-        // so clicking in main never moves the keyboard starting point.
+        // Main becomes focusable only for a skip, so an ordinary click in main
+        // never focuses it.
         self::assertFalse($target->hasAttribute('tabindex'));
         self::assertStringContainsString("main.setAttribute('tabindex', '-1');", $html);
         self::assertStringContainsString("main.addEventListener('blur', () => main.removeAttribute('tabindex'), { once: true });", $html);

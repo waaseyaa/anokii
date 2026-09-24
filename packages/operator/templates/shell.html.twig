@@ -185,18 +185,17 @@
       });
     })();
     (() => {
-      // Make main focusable only while the skip link sends focus there. If it
-      // stayed focusable, any click in main would focus it, and Chromium would
-      // start the next Tab from the top of main, not from the click. Without
-      // this script the link still moves the keyboard starting point.
+      // Make main focusable only for the skip, so the link's own jump focuses
+      // and scrolls to it in every browser. If main stayed focusable, any click
+      // in it would focus it, and Chromium would start the next Tab from the
+      // top of main, not from the click. Without this script the jump still
+      // moves the keyboard starting point.
       const skip = document.querySelector('.anokii-skiplink');
       const main = document.getElementById('anokii-main-content');
       if (!(skip instanceof HTMLAnchorElement) || !(main instanceof HTMLElement)) return;
-      skip.addEventListener('click', event => {
-        event.preventDefault();
+      skip.addEventListener('click', () => {
         main.setAttribute('tabindex', '-1');
         main.addEventListener('blur', () => main.removeAttribute('tabindex'), { once: true });
-        main.focus();
       });
     })();
   </script>
