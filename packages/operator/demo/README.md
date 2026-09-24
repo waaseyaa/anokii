@@ -36,7 +36,15 @@ chrome. The package guarantees only what it controls:
   nosniff`. Under that policy the browser blocks connections, remote files and
   form submissions from the page.
 - A persistent "Demo: nothing is saved or sent" marker sits at the top of the
-  main column on every page.
+  main column on every page. The overlay reserves 48px of scroll padding,
+  which covers the one-line marker (about 40px) at default text size, so a
+  heading or control that a fragment link or `scrollIntoView({block:
+  'start'})` brings to the top stops below the marker instead of under it.
+  If text-only zoom or a very narrow window wraps the marker onto two lines,
+  it is taller than the padding. A host page that needs more scroll space
+  for a sticky element of its own can set `scroll-padding-top` on `:root`,
+  which takes precedence over the overlay's `html` rule, and should include
+  the marker's 48px in it.
 - The user chip labels the fixture operator as a sample identity and has no
   sign-out link.
 - Only `GET` and `HEAD` are accepted. The demo serves `/admin/anokii`, the

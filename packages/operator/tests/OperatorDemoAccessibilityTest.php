@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Anokii\Operator\Tests;
 
 use Anokii\Operator\Demo\OperatorDemo;
+use Anokii\Operator\Template\OperatorTemplates;
 use Dom\Element;
 use Dom\HTMLDocument;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -135,6 +136,67 @@ final class OperatorDemoAccessibilityTest extends TestCase
         }
     }
 
+    #[Test]
+    #[DataProvider('pages')]
+    public function scrollsStopBelowTheStickyDemoMarker(string $path): void
+    {
+        $page = self::page($path);
+
+        $markers = $page->querySelectorAll('[data-anokii-demo-flag]');
+        self::assertCount(1, $markers, $path);
+        self::assertNotNull($page->querySelector('main#anokii-main-content > .anokii-demo-flag[data-anokii-demo-flag]'), "{$path}: the marker heads the main region");
+
+        // The marker and the reserved space are styled only in the overlay's
+        // inline CSS, written in its compact form (no space before "{", px
+        // lengths, a unitless line-height, width first in border-bottom). A
+        // change to that form fails here loudly rather than passing wrongly.
+        $css = implode("\n", array_map(static fn(Element $style): string => (string) $style->textContent, iterator_to_array($page->querySelectorAll('style'))));
+        $css = (string) preg_replace('~/\*.*?\*/~s', '', $css);
+        preg_match_all('/\.anokii-demo-flag\{([^}]*)\}/', $css, $rules);
+        self::assertNotSame([], $rules[1], $path);
+        $base = self::declarations($rules[1][0]);
+        self::assertSame('sticky', $base['position'] ?? null, "{$path}: the marker stays sticky");
+        self::assertSame('0', $base['top'] ?? null, "{$path}: the marker sticks to the top");
+        self::assertSame(1, preg_match_all('/scroll-padding/', $css), "{$path}: one scroll-padding declaration, which nothing later overrides");
+
+        // A scroll that brings something to the top, such as a fragment link or
+        // scrollIntoView({block: 'start'}), stops at the reserved space, so it
+        // must cover the one-line marker at default text size: the base rule
+        // and each narrower-width override of it.
+        $reserved = (float) self::number($css, '/(?<![-\w])html\{[^}]*scroll-padding-top:([\d.]+)px/');
+        foreach ($rules[1] as $rule) {
+            // The height below comes from padding, line box and bottom border,
+            // so nothing else may set it.
+            self::assertDoesNotMatchRegularExpression('/(?<![-\w])(?:padding-(?:top|bottom|block)|(?:min-|max-)?height|border-top|border-block|border(?=:))/', $rule, "{$path}: the marker's height comes only from the declarations the test reads");
+            $marker = [...$base, ...self::declarations($rule)];
+            $padding = preg_split('/\s+/', trim($marker['padding'] ?? '0')) ?: ['0'];
+            $vertical = (float) $padding[0] + (float) ($padding[2] ?? $padding[0]);
+            $height = $vertical + (float) ($marker['font-size'] ?? 0) * (float) ($marker['line-height'] ?? 0) + (float) ($marker['border-bottom'] ?? 0);
+            self::assertGreaterThan(30.0, $height, "{$path}: the marker's height is worked out from its own rule");
+            self::assertGreaterThanOrEqual($height, $reserved, "{$path}: the reserved scroll space covers the {$height}px marker");
+            self::assertLessThanOrEqual($height + 12.0, $reserved, "{$path}: the reserved scroll space is sized to the marker");
+        }
+    }
+
+    #[Test]
+    public function productionTemplatesAndSharedStylesCarryNoMarkerOrScrollPadding(): void
+    {
+        $files = [dirname(__DIR__) . '/demo/assets/primitives.css'];
+        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(OperatorTemplates::path(), \FilesystemIterator::SKIP_DOTS)) as $file) {
+            if ($file instanceof \SplFileInfo && $file->isFile()) {
+                $files[] = $file->getPathname();
+            }
+        }
+        self::assertGreaterThan(1, count($files));
+        // The production shell reserves nothing, and the demo's shared
+        // stylesheet cannot resize the marker behind the overlay's back.
+        foreach ($files as $file) {
+            $source = (string) file_get_contents($file);
+            self::assertStringNotContainsString('scroll-padding', $source, basename($file));
+            self::assertStringNotContainsString('anokii-demo-flag', $source, basename($file));
+        }
+    }
+
     /** @return iterable<string, array{string, string, float}> */
     public static function colourPairs(): iterable
     {
@@ -200,6 +262,31 @@ final class OperatorDemoAccessibilityTest extends TestCase
         $hex = strtolower(ltrim($match[1], '#'));
 
         return '#' . (strlen($hex) === 3 ? $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2] : $hex);
+    }
+
+    /** @return array<string, string> property => value, lengths without their px unit */
+    private static function declarations(string $rule): array
+    {
+        $declarations = [];
+        foreach (explode(';', $rule) as $declaration) {
+            [$property, $value] = array_pad(explode(':', $declaration, 2), 2, '');
+            $value = trim($value);
+            if (trim($property) === 'border-bottom') {
+                $value = self::number($value, '/^([\d.]+)px\b/');
+            }
+            $declarations[trim($property)] = trim((string) preg_replace('/(\d)px\b/', '$1', $value));
+        }
+
+        return $declarations;
+    }
+
+    private static function number(string $source, string $pattern): string
+    {
+        if (preg_match($pattern, $source, $match) !== 1) {
+            throw new \LogicException("Nothing matches {$pattern}.");
+        }
+
+        return $match[1];
     }
 
     private static function page(string $path): HTMLDocument

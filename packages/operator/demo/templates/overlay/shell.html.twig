@@ -6,7 +6,8 @@
   @anokii_operator/shell.html.twig there and extends the real shell. The
   unmodified dashboard and module templates therefore render with:
     - a persistent "Demo: nothing is saved or sent" marker at the top of the
-      main column;
+      main column, with 48px of scroll padding reserved so content scrolled
+      to the top stops below it;
     - an inert user chip that labels the fixture identity as a sample and
       has no sign-out link.
   Production routing never loads this file.
@@ -24,6 +25,12 @@
 
 {% block topbar %}
 <style>
+  /* The marker is sticky, so a scroll that brings something to the top of
+     the page, such as a fragment link or scrollIntoView({block: 'start'}),
+     stops below it. On one line at default text size, the marker is 9px +
+     14px x 1.4 + 9px + a 2px border, about 40px tall; its text fits on one
+     line from about 240px wide. The fixed 48px covers that with a small gap. */
+  html{scroll-padding-top:48px}
   .anokii-demo-flag{position:sticky;top:0;z-index:20;margin:0;padding:9px 30px;background:#fff4ce;color:#3d2e00;border-bottom:2px solid #8a6100;font-size:14px;font-weight:650;line-height:1.4}
   .anokii-demo-sample{display:block}
   @media(max-width:880px){.anokii-demo-flag{padding:9px 16px}}
