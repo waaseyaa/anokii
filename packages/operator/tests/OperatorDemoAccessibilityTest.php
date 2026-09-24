@@ -21,6 +21,12 @@ use Symfony\Component\HttpFoundation\Request;
  */
 final class OperatorDemoAccessibilityTest extends TestCase
 {
+    /** What the demo marker may declare: its height is the padding shorthand, the line box and the bottom border. */
+    private const array MARKER_PROPERTIES = [
+        'position', 'top', 'z-index', 'margin', 'padding', 'background', 'color',
+        'border-bottom', 'font-size', 'font-weight', 'line-height',
+    ];
+
     /** @return iterable<string, array{string}> */
     public static function pages(): iterable
     {
@@ -154,6 +160,8 @@ final class OperatorDemoAccessibilityTest extends TestCase
         $css = (string) preg_replace('~/\*.*?\*/~s', '', $css);
         preg_match_all('/\.anokii-demo-flag\{([^}]*)\}/', $css, $rules);
         self::assertNotSame([], $rules[1], $path);
+        // Every rule that styles the marker is one the test reads.
+        self::assertSame(count($rules[1]), substr_count($css, 'anokii-demo-flag'), "{$path}: every marker rule is in the compact form the test reads");
         $base = self::declarations($rules[1][0]);
         self::assertSame('sticky', $base['position'] ?? null, "{$path}: the marker stays sticky");
         self::assertSame('0', $base['top'] ?? null, "{$path}: the marker sticks to the top");
@@ -162,12 +170,15 @@ final class OperatorDemoAccessibilityTest extends TestCase
         // A scroll that brings something to the top, such as a fragment link or
         // scrollIntoView({block: 'start'}), stops at the reserved space, so it
         // must cover the one-line marker at default text size: the base rule
-        // and each narrower-width override of it.
-        $reserved = (float) self::number($css, '/(?<![-\w])html\{[^}]*scroll-padding-top:([\d.]+)px/');
+        // and each narrower-width override of it. The reservation is a
+        // top-level rule, so it applies at every width.
+        $topLevel = (string) preg_replace('/@[a-z-]+[^{;]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/i', '', $css);
+        $reserved = (float) self::number($topLevel, '/(?<![-\w])html\{[^}]*scroll-padding-top:([\d.]+)px/');
         foreach ($rules[1] as $rule) {
-            // The height below comes from padding, line box and bottom border,
-            // so nothing else may set it.
-            self::assertDoesNotMatchRegularExpression('/(?<![-\w])(?:padding-(?:top|bottom|block)|(?:min-|max-)?height|border-top|border-block|border(?=:))/', $rule, "{$path}: the marker's height comes only from the declarations the test reads");
+            // The height below comes from the padding shorthand, the line box
+            // and the bottom border, so a marker rule may declare only these.
+            $declared = array_keys(array_filter(self::declarations($rule), static fn(string $value): bool => $value !== ''));
+            self::assertSame([], array_values(array_diff($declared, self::MARKER_PROPERTIES)), "{$path}: the marker declares only properties whose effect on its height the test knows");
             $marker = [...$base, ...self::declarations($rule)];
             $padding = preg_split('/\s+/', trim($marker['padding'] ?? '0')) ?: ['0'];
             $vertical = (float) $padding[0] + (float) ($padding[2] ?? $padding[0]);
@@ -179,17 +190,18 @@ final class OperatorDemoAccessibilityTest extends TestCase
     }
 
     #[Test]
-    public function productionTemplatesAndSharedStylesCarryNoMarkerOrScrollPadding(): void
+    public function productionTemplatesAndDemoStylesheetsCarryNoMarkerOrScrollPadding(): void
     {
-        $files = [dirname(__DIR__) . '/demo/assets/primitives.css'];
+        $files = [dirname(__DIR__) . '/demo/assets/primitives.css', ...(glob(dirname(__DIR__) . '/examples/demo/assets/*.css') ?: [])];
         foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(OperatorTemplates::path(), \FilesystemIterator::SKIP_DOTS)) as $file) {
             if ($file instanceof \SplFileInfo && $file->isFile()) {
                 $files[] = $file->getPathname();
             }
         }
-        self::assertGreaterThan(1, count($files));
-        // The production shell reserves nothing, and the demo's shared
-        // stylesheet cannot resize the marker behind the overlay's back.
+        self::assertGreaterThan(3, count($files));
+        // The production shell reserves nothing, and neither the demo's shared
+        // stylesheet nor the example's stylesheets can resize the marker or
+        // change the reserved space behind the overlay's back.
         foreach ($files as $file) {
             $source = (string) file_get_contents($file);
             self::assertStringNotContainsString('scroll-padding', $source, basename($file));

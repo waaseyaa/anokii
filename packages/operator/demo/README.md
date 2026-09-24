@@ -40,8 +40,10 @@ chrome. The package guarantees only what it controls:
   which covers the one-line marker (about 40px) at default text size, so a
   heading or control that a fragment link or `scrollIntoView({block:
   'start'})` brings to the top stops below the marker instead of under it.
-  If text-only zoom or a very narrow window wraps the marker onto two lines,
-  it is taller than the padding. A host page that needs more scroll space
+  The skip link's jump to the main region stops 48px down too, so on narrow
+  screens a strip of the brand row stays in view above the marker. If
+  text-only zoom or a very narrow window wraps the marker onto two lines, it
+  is taller than the padding. A host page that needs more scroll space
   for a sticky element of its own can set `scroll-padding-top` on `:root`,
   which takes precedence over the overlay's `html` rule, and should include
   the marker's 48px in it.
