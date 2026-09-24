@@ -160,20 +160,48 @@ final class OperatorDemoAccessibilityTest extends TestCase
         $css = (string) preg_replace('~/\*.*?\*/~s', '', $css);
         preg_match_all('/\.anokii-demo-flag\{([^}]*)\}/', $css, $rules);
         self::assertNotSame([], $rules[1], $path);
-        // Every rule that styles the marker is one the test reads.
-        self::assertSame(count($rules[1]), substr_count($css, 'anokii-demo-flag'), "{$path}: every marker rule is in the compact form the test reads");
+        // Every rule that styles the marker is one the test reads. The only
+        // other mention allowed is the measured-height custom property.
+        self::assertSame(count($rules[1]), substr_count($css, 'anokii-demo-flag') - substr_count($css, '--anokii-demo-flag-height'), "{$path}: every marker rule is in the compact form the test reads");
         $base = self::declarations($rules[1][0]);
         self::assertSame('sticky', $base['position'] ?? null, "{$path}: the marker stays sticky");
         self::assertSame('0', $base['top'] ?? null, "{$path}: the marker sticks to the top");
         self::assertSame(1, preg_match_all('/scroll-padding/', $css), "{$path}: one scroll-padding declaration, which nothing later overrides");
 
         // A scroll that brings something to the top, such as a fragment link or
-        // scrollIntoView({block: 'start'}), stops at the reserved space, so it
-        // must cover the one-line marker at default text size: the base rule
-        // and each narrower-width override of it. The reservation is a
-        // top-level rule, so it applies at every width.
+        // scrollIntoView({block: 'start'}), stops at the reserved space: the
+        // marker's measured height (--anokii-demo-flag-height) plus a small
+        // gap. The reservation is a top-level rule, so it applies at every
+        // width.
         $topLevel = (string) preg_replace('/@[a-z-]+[^{;]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/i', '', $css);
-        $reserved = (float) self::number($topLevel, '/(?<![-\w])html\{[^}]*scroll-padding-top:([\d.]+)px/');
+        if (preg_match('/(?<![-\w])html\{scroll-padding-top:calc\(var\(--anokii-demo-flag-height,\s*([\d.]+)px\)\s*\+\s*([\d.]+)px\)\}/', $topLevel, $reservation) !== 1) {
+            self::fail("{$path}: the scroll padding is the measured marker height plus a gap");
+        }
+        $fallback = (float) $reservation[1];
+        $gap = (float) $reservation[2];
+        self::assertGreaterThanOrEqual(4.0, $gap, "{$path}: the gap keeps content clear of the marker's edge");
+        self::assertLessThanOrEqual(12.0, $gap, "{$path}: the gap stays small");
+
+        // The script straight after the marker sets that height from the
+        // marker's rendered box when it first renders, before any fragment
+        // scroll, and again whenever the box changes size, as it does when the
+        // text wraps or is resized.
+        $flag = $markers->item(0);
+        self::assertInstanceOf(Element::class, $flag);
+        $script = $flag->nextElementSibling;
+        self::assertSame('SCRIPT', $script?->tagName, "{$path}: the measuring script follows the marker");
+        self::assertFalse($script->hasAttribute('src'));
+        $measure = (string) $script->textContent;
+        self::assertStringContainsString("const flag = document.querySelector('[data-anokii-demo-flag]');", $measure);
+        self::assertMatchesRegularExpression(
+            '/const reserve = \(\) => \{\s*document\.documentElement\.style\.setProperty\(\'--anokii-demo-flag-height\', `\$\{Math\.ceil\(flag\.getBoundingClientRect\(\)\.height\)\}px`\);\s*\};\s*reserve\(\);\s*if \(typeof ResizeObserver === \'function\'\) new ResizeObserver\(reserve\)\.observe\(flag\);/',
+            $measure,
+            "{$path}: the script measures the marker at once and on every resize",
+        );
+
+        // Without the script, the fallback stands in for the one-line marker
+        // at default text size, worked out from the base rule and each
+        // narrower-width override of it.
         foreach ($rules[1] as $rule) {
             // The height below comes from the padding shorthand, the line box
             // and the bottom border, so a marker rule may declare only these.
@@ -192,8 +220,8 @@ final class OperatorDemoAccessibilityTest extends TestCase
             $vertical = (float) $padding[0] + (float) ($padding[2] ?? $padding[0]);
             $height = $vertical + (float) ($marker['font-size'] ?? 0) * (float) ($marker['line-height'] ?? 0) + (float) ($marker['border-bottom'] ?? 0);
             self::assertGreaterThan(30.0, $height, "{$path}: the marker's height is worked out from its own rule");
-            self::assertGreaterThanOrEqual($height, $reserved, "{$path}: the reserved scroll space covers the {$height}px marker");
-            self::assertLessThanOrEqual($height + 12.0, $reserved, "{$path}: the reserved scroll space is sized to the marker");
+            self::assertGreaterThanOrEqual($height, $fallback, "{$path}: the fallback covers the {$height}px one-line marker");
+            self::assertLessThanOrEqual($height + 1.0, $fallback, "{$path}: the fallback is the one-line marker's height");
         }
     }
 

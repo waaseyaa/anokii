@@ -30,10 +30,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - `anokii-operator` demo pages no longer hide scrolled-to content under the
   sticky "Demo: nothing is saved or sent" marker (#44). The demo overlay
-  reserves 48px of scroll padding, which covers the one-line marker at
-  default text size. A heading or control that a fragment link or
-  `scrollIntoView({block: 'start'})` brings to the top now stops below the
-  marker. The production shell is unchanged.
+  measures the marker and reserves its height plus 8px as scroll padding. The
+  reservation follows the marker when its text wraps or is resized, and
+  falls back to the one-line height without scripts. A heading or control
+  that a fragment link or `scrollIntoView({block: 'start'})` brings to the
+  top now stops below the marker. The production shell is unchanged.
 
 - The `anokii-operator` shell's mobile menu no longer takes Escape from the
   rest of the page (#43). While the menu is open, Escape closes it and returns
