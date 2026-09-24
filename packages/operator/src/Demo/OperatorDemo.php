@@ -176,12 +176,18 @@ final class OperatorDemo
     /**
      * Top-level code never runs here, so a macro import outside a block would
      * leave the blocks without it. Checks the page and every host layout it
-     * statically extends, and fails with the fix instead of a Twig error.
+     * extends by a plain template name, and fails with the fix instead of a
+     * Twig error.
      */
     private function rejectTopLevelImports(string $template): void
     {
         $name = $template;
+        $seen = [];
         while ($name !== null && !str_starts_with($name, '@anokii_operator')) {
+            if (isset($seen[$name])) {
+                throw new \LogicException("Demo page {$template} extends itself through {$name}.");
+            }
+            $seen[$name] = true;
             $module = $this->twig->parse($this->twig->tokenize($this->twig->getLoader()->getSourceContext($name)));
             if (self::containsImport($module->getNode('body'))) {
                 throw new \LogicException(sprintf(

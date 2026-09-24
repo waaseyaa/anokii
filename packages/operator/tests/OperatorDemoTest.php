@@ -138,6 +138,19 @@ final class OperatorDemoTest extends TestCase
     }
 
     #[Test]
+    public function aCircularHostLayoutChainFailsClearly(): void
+    {
+        $demo = $this->demoWithPage(
+            "{% extends 'layout.html.twig' %}{% block content %}Body{% endblock %}",
+            ['layout.html.twig' => "{% extends 'desk.html.twig' %}"],
+        );
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('extends itself through');
+        $demo->handle(Request::create('/admin/anokii/desk'));
+    }
+
+    #[Test]
     public function macrosImportedInsideABlockRender(): void
     {
         $demo = $this->demoWithPage("{% extends '@anokii_operator/shell.html.twig' %}"

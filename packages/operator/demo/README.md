@@ -196,8 +196,8 @@ override page blocks.
 - The demo renders each of those blocks on its own and places the results in the
   shell. Code outside blocks never runs: a top-level `{% set %}` has no effect,
   so pass data through `pages.<id>.context`, and a top-level `{% import %}` or
-  `{% from %}` fails with an error. Import macros inside the block that uses
-  them.
+  `{% from %}` in the page, or in a host layout it extends by a plain template
+  name, fails with an error. Import macros inside the block that uses them.
 - The brand, nav, dashboard tiles, user chip, demo marker and mobile nav are
   always rendered by the package. A page that overrides `brand`, `nav`,
   `userchip`, `sidebar_footer`, `topbar` or `main_footer` fails with an error
@@ -272,9 +272,10 @@ to it by the checks below, without adding a JavaScript toolchain for axe-core:
 - **Contrast:** fixed colours and the example theme are measured in tests. A
   host theme needs its own check, because the shell and step indicator follow
   its tokens.
-- **Returning to a page:** Back and Forward start each scenario clean, so a
-  control the browser restored can never be out of step with what the page
-  shows.
+- **Returning to a page:** a scenario page rebuilt on Back or Forward starts
+  clean, so a control the browser restored is never out of step with what the
+  page shows. A page kept whole in the browser's back/forward cache comes back
+  exactly as it was left.
 
 `tests/OperatorDemoAccessibilityTest.php` checks the rendered markup and the
 colour pairs. Keyboard, focus and responsive behaviour are checked by hand, and

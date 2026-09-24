@@ -89,8 +89,9 @@ if (root) {
     }
   });
 
-  // Back and Forward can bring the page back with choices the browser
-  // restored but this script never saw, so every showing starts clean.
+  // A page rebuilt on Back or Forward can come back with choices the browser
+  // restored but this script never saw, so a rebuilt page starts clean. A page
+  // kept whole in the back/forward cache is already consistent; leave it.
   function reset() {
     items.forEach(item => {
       item.querySelector('input[value="later"]').checked = true;
@@ -99,5 +100,9 @@ if (root) {
       note(item).removeAttribute('aria-invalid');
     });
   }
-  window.addEventListener('pageshow', reset);
+  window.addEventListener('pageshow', event => {
+    if (!event.persisted) {
+      reset();
+    }
+  });
 }
