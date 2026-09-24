@@ -6,6 +6,7 @@ namespace Anokii\Operator\Tests;
 
 use Anokii\Operator\Demo\OperatorDemo;
 use Anokii\Operator\Template\OperatorTemplates;
+use Dom\Attr;
 use Dom\Element;
 use Dom\HTMLDocument;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -161,8 +162,10 @@ final class OperatorDemoAccessibilityTest extends TestCase
         preg_match_all('/\.anokii-demo-flag\{([^}]*)\}/', $css, $rules);
         self::assertNotSame([], $rules[1], $path);
         // Every rule that styles the marker is one the test reads. The only
-        // other mention allowed is the measured-height custom property.
-        self::assertSame(count($rules[1]), substr_count($css, 'anokii-demo-flag') - substr_count($css, '--anokii-demo-flag-height'), "{$path}: every marker rule is in the compact form the test reads");
+        // other mention allowed is the single use of the measured-height
+        // custom property, which the CSS reads but never sets.
+        self::assertSame(1, substr_count($css, '--anokii-demo-flag-height'), "{$path}: the CSS only reads the measured height, once");
+        self::assertSame(count($rules[1]), substr_count($css, 'anokii-demo-flag') - 1, "{$path}: every marker rule is in the compact form the test reads");
         $base = self::declarations($rules[1][0]);
         self::assertSame('sticky', $base['position'] ?? null, "{$path}: the marker stays sticky");
         self::assertSame('0', $base['top'] ?? null, "{$path}: the marker sticks to the top");
@@ -190,13 +193,15 @@ final class OperatorDemoAccessibilityTest extends TestCase
         self::assertInstanceOf(Element::class, $flag);
         $script = $flag->nextElementSibling;
         self::assertSame('SCRIPT', $script?->tagName, "{$path}: the measuring script follows the marker");
-        self::assertFalse($script->hasAttribute('src'));
-        $measure = (string) $script->textContent;
-        self::assertStringContainsString("const flag = document.querySelector('[data-anokii-demo-flag]');", $measure);
+        // A classic inline script runs as soon as it is parsed; a src, a type
+        // (module, or anything the browser does not run) or async/defer would
+        // move or skip that.
+        self::assertSame([], array_map(static fn(Attr $attribute): string => $attribute->name, iterator_to_array($script->attributes)), "{$path}: the measuring script is a plain inline script");
+        // The whole script is pinned, so nothing can skip the measurement.
         self::assertMatchesRegularExpression(
-            '/const reserve = \(\) => \{\s*document\.documentElement\.style\.setProperty\(\'--anokii-demo-flag-height\', `\$\{Math\.ceil\(flag\.getBoundingClientRect\(\)\.height\)\}px`\);\s*\};\s*reserve\(\);\s*if \(typeof ResizeObserver === \'function\'\) new ResizeObserver\(reserve\)\.observe\(flag\);/',
-            $measure,
-            "{$path}: the script measures the marker at once and on every resize",
+            '/^\s*\(\(\) => \{\s*(?:\/\/[^\n]*\n\s*)*const flag = document\.querySelector\(\'\[data-anokii-demo-flag\]\'\);\s*if \(!\(flag instanceof HTMLElement\)\) return;\s*const reserve = \(\) => \{\s*document\.documentElement\.style\.setProperty\(\'--anokii-demo-flag-height\', `\$\{Math\.ceil\(flag\.getBoundingClientRect\(\)\.height\)\}px`\);\s*\};\s*reserve\(\);\s*if \(typeof ResizeObserver === \'function\'\) new ResizeObserver\(reserve\)\.observe\(flag, \{ box: \'border-box\' \}\);\s*\}\)\(\);\s*$/',
+            (string) $script->textContent,
+            "{$path}: the script measures the marker's border box at once and on every resize",
         );
 
         // Without the script, the fallback stands in for the one-line marker

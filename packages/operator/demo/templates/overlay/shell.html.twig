@@ -48,7 +48,7 @@
       document.documentElement.style.setProperty('--anokii-demo-flag-height', `${Math.ceil(flag.getBoundingClientRect().height)}px`);
     };
     reserve();
-    if (typeof ResizeObserver === 'function') new ResizeObserver(reserve).observe(flag);
+    if (typeof ResizeObserver === 'function') new ResizeObserver(reserve).observe(flag, { box: 'border-box' });
   })();
 </script>
 {% endblock %}

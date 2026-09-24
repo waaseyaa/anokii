@@ -42,7 +42,9 @@ chrome. The package guarantees only what it controls:
   marker instead of under it, including when the marker's text wraps or is
   resized. A small inline script measures the marker as it renders and
   whenever its size changes. Without scripts, the reservation assumes the
-  one-line marker at default text size (40px). The skip link's jump to the
+  one-line marker at default text size (40px), so a marker that wraps or is
+  resized can still cover the top of a target; the demo's scenarios need
+  scripts anyway. The skip link's jump to the
   main region stops the same distance down, so on narrow screens a strip of
   the brand row stays in view above the marker. A host page that needs more
   scroll space for a sticky element of its own can set `scroll-padding-top`
