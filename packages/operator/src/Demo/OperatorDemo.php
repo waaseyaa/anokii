@@ -16,8 +16,10 @@ use Twig\Loader\FilesystemLoader;
 
 /**
  * Renders a fixture-driven operator demo through the real @anokii_operator
- * templates. It has no kernel, database, auth, or network access, and every
- * response is private and blocked from making outbound connections.
+ * templates, with no kernel, database, or auth. This class makes no network
+ * calls, and every response is private and carries a CSP that stops the
+ * browser opening connections. The fixture, host templates, and the CSS and
+ * JavaScript they load are trusted host code.
  *
  * Only demo/router.php (PHP's built-in server) and tests construct this; no
  * production route or service provider does.
@@ -126,8 +128,9 @@ final class OperatorDemo
 
     /**
      * Renders a host page one allowed block at a time, then frames those blocks
-     * in the shell. Top-level template code never runs, so a page cannot swap
-     * the brand, nav, user chip, or demo marker, even through `{% set %}`.
+     * in the shell. Top-level template code never runs, so the page's Twig
+     * cannot swap the brand, nav, user chip, or demo marker, even through
+     * `{% set %}`. Styles and scripts the page adds still run in the browser.
      *
      * @param array<string, mixed> $context
      */

@@ -10,9 +10,11 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * Keeps the operator demo offline and out of production routing. The CSP in
- * OperatorDemo blocks connections at runtime; this guard fails earlier, on the
- * source of every file a demo page loads.
+ * Keeps the package's demo sources offline and the demo out of production
+ * routing. The CSP in OperatorDemo blocks browser connections at runtime; this
+ * guard fails earlier, on the package's demo files and its fictional example.
+ * Host fixtures, templates, and assets are trusted host code that each host
+ * guards in its own tests.
  */
 final class OperatorDemoOfflineGuardTest extends TestCase
 {

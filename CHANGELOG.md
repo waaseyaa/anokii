@@ -62,12 +62,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `anokii-operator` demo support: `demo/router.php` runs under PHP's built-in
   server and renders the real operator dashboard and module templates from a
   host-supplied fixture file (brand, theme, sample operator, modules, pages and
-  assets). There is no kernel, database, sign-in or network. Host module pages
-  contribute only page blocks. The package keeps the nav, the user chip (shown
-  as a sample, with no sign-out) and a persistent "Demo: nothing is saved or
-  sent" marker. Responses set `connect-src 'none'`, and the demo is not
-  reachable from production routing. See `packages/operator/demo/README.md`
-  (#38).
+  assets). It needs no kernel, database or sign-in, and the package's code
+  makes no network calls. Fixtures, host templates and their CSS and JavaScript
+  are trusted host code. Host module pages contribute only page blocks, so
+  their Twig can't replace the nav, the user chip (shown as a sample, with no
+  sign-out) or a persistent "Demo: nothing is saved or sent" marker. Responses
+  set `connect-src 'none'`, so the browser can't open connections, and the demo
+  is not reachable from production routing. See
+  `packages/operator/demo/README.md` (#38).
 
 - Add the Framework-owned, exact-commit development-runtime launcher for the
   supported WSL profile, with verified source caching and checkout-bound

@@ -3,11 +3,28 @@
 Prototype an operator workflow inside the real Anokii operator dashboard, using
 fictional data. The demo renders the unmodified `@anokii_operator` dashboard and
 module templates from a fixture file that the host supplies, under PHP's built-in
-server. It needs no Waaseyaa kernel, database, sign-in or network.
+server. It needs no Waaseyaa kernel, database or sign-in, and the package's own
+code makes no network calls.
 
 Anokii owns the shell, the demo entry point and its inert chrome. The host owns
 its branding and theme, fixtures, workflow pages, and any previews of its own
 public website, email or social posts. Nothing host-specific belongs in Anokii.
+
+## Trust model
+
+The fixture file, the host's templates, and the CSS and JavaScript they load are
+trusted host code. The fixture is plain PHP that runs in the demo process. Page
+styles and scripts run in the browser with the same reach as the package's own
+chrome. The package guarantees only what it controls:
+
+- **Package code** makes no network calls. It renders templates and serves the
+  files the fixture declares.
+- **Browser connections** are blocked by the Content-Security-Policy below
+  (`connect-src 'none'`), whatever script the page runs.
+- **Host sources** are the host's responsibility. Keep them free of network
+  calls, outside links and real data, and guard them in your own tests. See
+  `tests/OperatorDemoOfflineGuardTest.php` in the Anokii repository for the
+  guard Anokii runs over its own demo sources.
 
 ## What stays inert
 
@@ -16,7 +33,8 @@ public website, email or social posts. Nothing host-specific belongs in Anokii.
   img-src 'self' data:; font-src 'self'; connect-src 'none'; form-action 'none';
   frame-ancestors 'none'; base-uri 'none'`, plus `Cache-Control: private,
   no-store`, `X-Robots-Tag: noindex, nofollow` and `X-Content-Type-Options:
-  nosniff`. Pages can't open connections, load remote files or submit forms.
+  nosniff`. Under that policy the browser blocks connections, remote files and
+  form submissions from the page.
 - A persistent "Demo: nothing is saved or sent" marker sits at the top of the
   main column on every page.
 - The user chip labels the fixture operator as a sample identity and has no
@@ -28,11 +46,10 @@ public website, email or social posts. Nothing host-specific belongs in Anokii.
   empty 404. The package registers no provider or route, so production routing
   never reaches the demo.
 
-The marker and chip come from the package, and the page contract below keeps
-host pages from replacing them. Host scripts still run in the page, though. The
-CSP stops outbound connections, but keeping demo code free of network calls,
-outside links and real data is the host's job. Add your own guard over your demo
-files; see `tests/OperatorDemoOfflineGuardTest.php` in the Anokii repository.
+The marker, user chip, brand and nav come from the package, and a page's Twig
+blocks can't replace them (see [Custom module pages](#custom-module-pages)).
+That guarantee covers templates only: host CSS or JavaScript running in the page
+can still hide or change them.
 
 ## Run the example
 
@@ -74,8 +91,8 @@ request, so edits show on reload. Bind to `127.0.0.1`.
 
 ## Fixture reference
 
-A fixture is a PHP file that returns an array. It runs as trusted host code in
-the demo process.
+A fixture is a PHP file that returns an array. Like the rest of your demo files,
+it's trusted host code (see [Trust model](#trust-model)).
 
 ```php
 use Anokii\Operator\Module\OperatorModule;
@@ -163,10 +180,11 @@ override page blocks.
   shell. Code outside blocks, such as a top-level `{% set %}`, never runs, so
   pass data through `pages.<id>.context`. Macros imported at the top of the page
   still work.
-- The brand, nav, dashboard tiles, user chip, demo marker and mobile nav always
-  come from the package. A page that overrides `brand`, `nav`, `userchip`,
-  `sidebar_footer`, `topbar` or `main_footer` fails with an error naming the
-  block.
+- The brand, nav, dashboard tiles, user chip, demo marker and mobile nav are
+  always rendered by the package. A page that overrides `brand`, `nav`,
+  `userchip`, `sidebar_footer`, `topbar` or `main_footer` fails with an error
+  naming the block. This holds for the page's Twig only; its styles and scripts
+  still run against the whole document.
 - Template names resolve inside the fixture's `templates` directory, so pages
   can include your own partials by name.
 
