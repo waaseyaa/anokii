@@ -1,0 +1,69 @@
+{#
+  Fictional needs-review workflow (scenario B). An operator decides on sample
+  submissions, confirms, and applies the decisions as a simulation. It uses
+  the same shared demo primitives as the communications desk.
+#}
+{% extends '@anokii_operator/shell.html.twig' %}
+
+{% block head_extra %}<link rel="stylesheet" href="/demo-assets/scenarios.css">{% endblock %}
+
+{% block content %}
+{% import '@anokii_operator_demo/primitives.html.twig' as demo %}
+<header class="scenario-head">
+  <p>{{ page_eyebrow }}</p>
+  <h1>{{ page_title }}</h1>
+  <p>{{ page_intro }}</p>
+</header>
+
+<div class="scenario" data-review data-fail-first="{{ fail_first|join(' ') }}">
+  {{ demo.steps('Review steps', ['Decide', 'Confirm', 'Results']) }}
+
+  <section class="scenario-step" data-step aria-labelledby="review-decide-title">
+    <h2 id="review-decide-title">1. Decide on each item</h2>
+    <p>Approve an item, send it back with a note, or leave it for later.</p>
+    {% for item in items %}
+    <article class="review-item" data-item="{{ item.id }}" data-title="{{ item.title }}" aria-labelledby="review-item-{{ item.id }}">
+      <h3 id="review-item-{{ item.id }}">{{ item.title }}</h3>
+      <p class="review-meta">{{ item.kind }}. {{ item.submitted }}. {{ demo.sim('Sample item') }}</p>
+      <p>{{ item.summary }}</p>
+      <fieldset>
+        <legend>Decision<span class="anokii-demo-vh"> for {{ item.title }}</span></legend>
+        <label class="scenario-choice"><input type="radio" name="review-{{ item.id }}" value="approve"><span>Approve</span></label>
+        <label class="scenario-choice"><input type="radio" name="review-{{ item.id }}" value="send-back"><span>Send back with a note</span></label>
+        <label class="scenario-choice"><input type="radio" name="review-{{ item.id }}" value="later" checked><span>Decide later</span></label>
+      </fieldset>
+      <div class="review-note" data-note hidden>
+        <label for="review-note-{{ item.id }}">Note for the submitter (required)</label>
+        <textarea id="review-note-{{ item.id }}" rows="3" aria-required="true"></textarea>
+      </div>
+    </article>
+    {% endfor %}
+    <p class="scenario-error" role="alert" data-error></p>
+    <div class="scenario-actions">
+      <button type="button" class="scenario-button primary" data-next>Continue</button>
+    </div>
+  </section>
+
+  <section class="scenario-step" data-step hidden aria-labelledby="review-confirm-title">
+    <h2 id="review-confirm-title">2. Confirm the decisions</h2>
+    <p>Nothing changes until you apply these decisions, and applying them is simulated.</p>
+    <ul class="review-summary" data-summary></ul>
+    <p class="scenario-error" role="alert" data-error></p>
+    <div class="scenario-actions">
+      <button type="button" class="scenario-button secondary" data-back>Back</button>
+      <button type="button" class="scenario-button primary" data-apply>Apply decisions (simulated)</button>
+    </div>
+  </section>
+
+  <section class="scenario-step" data-step hidden aria-labelledby="review-results-title">
+    <h2 id="review-results-title">3. Results</h2>
+    <p>Each decision shows its own simulated result. Nothing was saved or sent.</p>
+    {{ demo.outcomes('review-outcomes', 'Results by item') }}
+    <div class="scenario-actions">
+      <button type="button" class="scenario-button secondary" data-restart>Review again</button>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block page_scripts %}<script type="module" src="/demo-assets/review.js"></script>{% endblock %}

@@ -46,7 +46,8 @@ final class OperatorDemoTest extends TestCase
         self::assertStringContainsString('<title>Workspace | Example Nation</title>', $html);
         self::assertStringContainsString('href="/demo-assets/theme.css"', $html);
         self::assertStringContainsString('src="/demo-assets/logo.svg"', $html);
-        self::assertStringContainsString('class="anokii-grid-card" href="/admin/anokii/updates"', $html);
+        self::assertStringContainsString('class="anokii-grid-card" href="/admin/anokii/desk"', $html);
+        self::assertStringContainsString('class="anokii-grid-card" href="/admin/anokii/review"', $html);
         self::assertStringContainsString('class="anokii-grid-card" href="/admin/anokii/records"', $html);
         // The real shell's layout and mobile nav, not a copy of them.
         self::assertStringContainsString('Open workspace navigation', $html);
@@ -70,13 +71,15 @@ final class OperatorDemoTest extends TestCase
     #[Test]
     public function hostPagesContributeTheirOwnMarkupStylesAndScript(): void
     {
-        $html = self::html(self::example(), '/admin/anokii/updates');
+        $html = self::html(self::example(), '/admin/anokii/desk');
 
-        self::assertStringContainsString('<title>Updates | Example Nation</title>', $html);
-        self::assertStringContainsString('Office closed for the holiday', $html);
-        self::assertStringContainsString('.example-drafts{', $html);
-        self::assertStringContainsString("document.querySelectorAll('[data-example-review]')", $html);
-        self::assertStringContainsString('href="/admin/anokii/updates" aria-current="page"', $html);
+        self::assertStringContainsString('<title>Communications desk | Example Nation</title>', $html);
+        self::assertStringContainsString('1. Choose a source', $html);
+        // The package's primitive styles load first, then the page's own.
+        self::assertMatchesRegularExpression('#href="/anokii-demo/primitives\.css">\s*<link rel="stylesheet" href="/demo-assets/scenarios\.css">#', $html);
+        self::assertStringContainsString('<script type="module" src="/demo-assets/desk.js"></script>', $html);
+        self::assertStringContainsString('href="/admin/anokii/desk" aria-current="page"', $html);
+        self::assertStringContainsString('href="/admin/anokii/review"', $html);
         self::assertStringContainsString('href="/admin/anokii/records"', $html);
         self::assertStringContainsString('Open workspace navigation', $html);
         self::assertDemoChrome($html);
@@ -103,6 +106,34 @@ final class OperatorDemoTest extends TestCase
     }
 
     #[Test]
+    #[DataProvider('topLevelImports')]
+    public function hostPagesMustImportMacrosInsideTheirBlocks(string $import): void
+    {
+        $demo = $this->demoWithPage("{% extends '@anokii_operator/shell.html.twig' %}{$import}"
+            . '{% block content %}Body{% endblock %}');
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('imports macros outside a block');
+        $demo->handle(Request::create('/admin/anokii/desk'));
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function topLevelImports(): iterable
+    {
+        yield 'import' => ["{% import '@anokii_operator_demo/primitives.html.twig' as demo %}"];
+        yield 'from' => ["{% from '@anokii_operator_demo/primitives.html.twig' import sim %}"];
+    }
+
+    #[Test]
+    public function macrosImportedInsideABlockRender(): void
+    {
+        $demo = $this->demoWithPage("{% extends '@anokii_operator/shell.html.twig' %}"
+            . "{% block content %}{% import '@anokii_operator_demo/primitives.html.twig' as demo %}{{ demo.sim('Sample row') }}{% endblock %}");
+
+        self::assertStringContainsString('<span class="anokii-demo-sim">Sample row</span>', self::html($demo, '/admin/anokii/desk'));
+    }
+
+    #[Test]
     public function hostPageTopLevelCodeCannotRewriteTheShellContext(): void
     {
         $demo = $this->demoWithPage("{% extends '@anokii_operator/shell.html.twig' %}"
@@ -122,12 +153,14 @@ final class OperatorDemoTest extends TestCase
         $demo = self::example();
         $requests = [
             Request::create('/admin/anokii'),
-            Request::create('/admin/anokii/updates'),
+            Request::create('/admin/anokii/desk'),
+            Request::create('/admin/anokii/review'),
             Request::create('/admin/anokii/records'),
             Request::create('/demo-assets/theme.css'),
+            Request::create('/anokii-demo/primitives.js'),
             Request::create('/'),
             Request::create('/missing'),
-            Request::create('/admin/anokii/updates', 'POST'),
+            Request::create('/admin/anokii/desk', 'POST'),
         ];
 
         foreach ($requests as $request) {
@@ -157,12 +190,18 @@ final class OperatorDemoTest extends TestCase
         self::assertSame('text/css; charset=UTF-8', $theme->headers->get('Content-Type'));
         self::assertStringEqualsFile(dirname(__DIR__) . '/examples/demo/assets/theme.css', (string) $theme->getContent());
         self::assertSame('image/svg+xml', $demo->handle(Request::create('/demo-assets/logo.svg'))->headers->get('Content-Type'));
+        foreach (['primitives.css' => 'text/css; charset=UTF-8', 'primitives.js' => 'text/javascript; charset=UTF-8'] as $file => $type) {
+            $asset = $demo->handle(Request::create('/anokii-demo/' . $file));
+            self::assertSame(Response::HTTP_OK, $asset->getStatusCode(), $file);
+            self::assertSame($type, $asset->headers->get('Content-Type'), $file);
+            self::assertStringEqualsFile(dirname(__DIR__) . '/demo/assets/' . $file, (string) $asset->getContent());
+        }
 
-        foreach (['/composer.json', '/fixture.php', '/demo-assets/', '/demo-assets/../fixture.php', '/templates/updates.html.twig', '/admin/anokii/', '/admin/anokii/missing'] as $path) {
+        foreach (['/composer.json', '/fixture.php', '/demo-assets/', '/demo-assets/../fixture.php', '/templates/updates.html.twig', '/admin/anokii/', '/admin/anokii/missing', '/anokii-demo/', '/anokii-demo/primitives.html.twig', '/anokii-demo/../README.md'] as $path) {
             self::assertSame(Response::HTTP_NOT_FOUND, $demo->handle(Request::create($path))->getStatusCode(), $path);
         }
 
-        $post = $demo->handle(Request::create('/admin/anokii/updates', 'POST'));
+        $post = $demo->handle(Request::create('/admin/anokii/desk', 'POST'));
         self::assertSame(Response::HTTP_METHOD_NOT_ALLOWED, $post->getStatusCode());
         self::assertSame('GET, HEAD', $post->headers->get('Allow'));
     }
@@ -197,10 +236,11 @@ final class OperatorDemoTest extends TestCase
         yield 'page context replaces the operator' => [['pages' => ['desk' => ['context' => ['user_label' => 'Somebody Else']]]], 'shell keys: user_label'];
         yield 'template outside the templates directory' => [['pages' => ['desk' => ['template' => '../fixture.php']]], "fixture's templates directory"];
         yield 'namespaced package template' => [['pages' => ['desk' => ['template' => '@anokii_operator/dashboard.html.twig']]], "fixture's templates directory"];
-        yield 'template without a templates directory' => [['templates' => null, 'pages' => ['desk' => ['template' => 'updates.html.twig']]], 'no templates directory'];
+        yield 'template without a templates directory' => [['templates' => null, 'pages' => ['desk' => ['template' => 'desk.html.twig']]], 'no templates directory'];
         yield 'remote theme' => [['theme_href' => 'https://example.invalid/theme.css'], 'theme_href'];
         yield 'undeclared logo' => [['brand' => ['title' => 'Example Nation', 'logo_src' => '/logo.png']], 'brand.logo_src'];
         yield 'asset under the operator routes' => [['assets' => ['/admin/anokii/theme.css' => 'assets/theme.css']], 'outside /admin/anokii'];
+        yield 'asset under the package demo path' => [['assets' => ['/anokii-demo/theme.css' => 'assets/theme.css']], 'reserved for the package'];
         yield 'asset path traversal' => [['assets' => ['/demo-assets/../theme.css' => 'assets/theme.css']], 'plain local path'];
         yield 'asset with a script type' => [['assets' => ['/fixture.php' => 'fixture.php']], 'unsupported type'];
         yield 'missing asset file' => [['assets' => ['/demo-assets/missing.css' => 'assets/missing.css']], 'file not found'];
@@ -245,7 +285,7 @@ final class OperatorDemoTest extends TestCase
             'theme_href' => '/demo-assets/theme.css',
             'operator' => ['name' => 'Sample Operator', 'role' => 'Communications'],
             'modules' => [new OperatorModule('desk', 'Desk', 'Daily work', '/admin/anokii/desk', 'Sample desk.')],
-            'pages' => ['desk' => ['template' => 'updates.html.twig']],
+            'pages' => ['desk' => ['template' => 'desk.html.twig']],
             'templates' => 'templates',
             'assets' => ['/demo-assets/theme.css' => 'assets/theme.css', '/demo-assets/logo.svg' => 'assets/logo.svg'],
         ];

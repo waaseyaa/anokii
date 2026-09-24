@@ -218,7 +218,7 @@ jobs:
           }
           file_put_contents(
               $root . '/templates/desk.html.twig',
-              "{% extends '@anokii_operator/shell.html.twig' %}{% block content %}<p>Installed host page</p>{% endblock %}",
+              "{% extends '@anokii_operator/shell.html.twig' %}{% block content %}{% import '@anokii_operator_demo/primitives.html.twig' as demo %}<p>Installed host page</p>{{ demo.sim('Sample') }}{% endblock %}",
           );
           $demo = new OperatorDemo(DemoFixture::fromArray([
               'brand' => ['title' => 'Example Nation'],
@@ -228,8 +228,8 @@ jobs:
               'templates' => 'templates',
           ], $root));
 
-          // The dashboard renders through the overlay shell; the host page also uses the page frame.
-          foreach (['/admin/anokii' => 'Welcome, Sample Operator', '/admin/anokii/desk' => 'Installed host page'] as $path => $expected) {
+          // The dashboard renders through the overlay shell; the host page also uses the page frame and a primitive.
+          foreach (['/admin/anokii' => 'Welcome, Sample Operator', '/admin/anokii/desk' => '<span class="anokii-demo-sim">Sample</span>'] as $path => $expected) {
               $response = $demo->handle(Request::create($path));
               $html = (string) $response->getContent();
               if ($response->getStatusCode() !== 200
@@ -240,6 +240,13 @@ jobs:
                   throw new RuntimeException("The installed demo did not render {$path} with its demo chrome.");
               }
           }
-          echo "The installed operator demo renders the dashboard and a host page.\n";
+          foreach (['primitives.css' => 'text/css; charset=UTF-8', 'primitives.js' => 'text/javascript; charset=UTF-8'] as $file => $type) {
+              $response = $demo->handle(Request::create('/anokii-demo/' . $file));
+              if ($response->getStatusCode() !== 200 || $response->headers->get('Content-Type') !== $type
+                  || $response->getContent() !== file_get_contents(OperatorDemo::assetsPath() . '/' . $file)) {
+                  throw new RuntimeException("The installed demo did not serve {$file}.");
+              }
+          }
+          echo "The installed operator demo renders the dashboard, a host page with a primitive, and its assets.\n";
           PHP
           php /tmp/anokii-operator-demo-smoke.php

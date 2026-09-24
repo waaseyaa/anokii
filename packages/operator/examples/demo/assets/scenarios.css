@@ -1,0 +1,49 @@
+/*
+  Fictional host styles shared by the two example scenario pages. A host
+  brings its own; only the demo primitives come from the package.
+*/
+.scenario-head{margin-bottom:18px}
+.scenario-head p:first-child{color:var(--anokii-shell-muted);font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.scenario-head h1{margin:4px 0 8px;font-family:var(--anokii-shell-display-font,inherit);font-size:34px;line-height:1.1}
+.scenario-head p:last-child{max-width:64ch;color:var(--anokii-shell-muted)}
+.scenario{max-width:840px}
+.scenario-step{padding:22px;border:1px solid var(--anokii-shell-line);border-radius:14px;background:var(--anokii-shell-card)}
+.scenario-step h2{margin-bottom:6px;font-size:21px}
+.scenario-step > p{max-width:64ch;color:var(--anokii-shell-muted)}
+.scenario-step fieldset{margin:18px 0 0;padding:0;border:0;min-width:0}
+.scenario-step legend{margin-bottom:6px;font-weight:700}
+.scenario-choice{display:flex;align-items:flex-start;gap:10px;margin-top:8px;padding:10px 12px;border:1px solid var(--anokii-shell-line);border-radius:10px;cursor:pointer}
+.scenario-choice input{flex:none;width:18px;height:18px;margin-top:3px;accent-color:var(--anokii-shell-accent)}
+.scenario-choice small{display:block;color:var(--anokii-shell-muted)}
+.scenario-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.scenario-button{min-height:44px;padding:10px 18px;border:1px solid var(--anokii-shell-accent);border-radius:9px;font:inherit;font-weight:700;cursor:pointer}
+.scenario-button.primary{background:var(--anokii-shell-accent);color:var(--anokii-shell-accent-ink)}
+.scenario-button.secondary{background:var(--anokii-shell-card);color:var(--anokii-shell-ink)}
+.scenario :focus-visible{outline:3px solid #1d4f91;outline-offset:2px}
+.scenario-error{min-height:1.5em;margin-top:12px;color:#9c1c16;font-weight:650}
+
+.desk-drop{position:relative;display:grid;place-items:center;gap:4px;min-height:120px;margin-top:16px;padding:18px;border:2px dashed var(--anokii-shell-muted);border-radius:12px;text-align:center}
+.desk-drop label{font-weight:700}
+.desk-drop input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.desk-drop:focus-within{outline:3px solid #1d4f91;outline-offset:2px}
+.desk-drop.is-over{border-color:var(--anokii-shell-accent);background:var(--anokii-shell-accent-soft,#eef5f4)}
+.desk-drop-hint{color:var(--anokii-shell-muted);font-size:14px}
+.desk-source{min-height:1.5em;margin-top:12px;font-weight:650}
+.desk-drafts{display:grid;gap:12px;margin-top:16px}
+.desk-draft{padding:16px;border:1px solid var(--anokii-shell-line);border-radius:12px}
+.desk-draft h3{display:inline;margin-right:8px;font-size:17px}
+.desk-draft p{margin-top:8px}
+.desk-draft-source{color:var(--anokii-shell-muted);font-size:14px}
+.desk-approve{margin-top:16px}
+
+.review-item{margin-top:16px;padding:16px;border:1px solid var(--anokii-shell-line);border-radius:12px}
+.review-item h3{font-size:17px}
+.review-meta{margin:4px 0 8px;color:var(--anokii-shell-muted);font-size:14px}
+.review-note{margin-top:12px}
+.review-note label{display:block;margin-bottom:6px;font-weight:700}
+.review-note textarea{width:100%;padding:10px;border:1px solid var(--anokii-shell-muted);border-radius:8px;font:inherit}
+.review-note textarea[aria-invalid="true"]{border:2px solid #9c1c16}
+.review-summary{margin:16px 0 0;padding-left:20px}
+.review-summary li{margin-top:6px}
+
+@media(max-width:600px){.scenario-step{padding:16px}.scenario-head h1{font-size:28px}}

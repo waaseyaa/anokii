@@ -203,6 +203,9 @@ final readonly class DemoFixture
                 || in_array('..', explode('/', $url), true) || str_starts_with($url, '/admin/anokii')) {
                 throw new \InvalidArgumentException("Demo asset path {$url} must be a plain local path outside /admin/anokii.");
             }
+            if (str_starts_with($url, OperatorDemo::PACKAGE_ASSET_PREFIX)) {
+                throw new \InvalidArgumentException("Demo asset path {$url} is reserved for the package's own demo assets.");
+            }
             if (!isset(self::ASSET_TYPES[strtolower(pathinfo($url, PATHINFO_EXTENSION))])) {
                 throw new \InvalidArgumentException("Demo asset {$url} has an unsupported type.");
             }

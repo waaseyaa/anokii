@@ -1,0 +1,99 @@
+{#
+  Fictional communications desk (scenario A). Public updates can go to the
+  website, the newsletter, and social media; members-only updates go only to
+  members' channels and never offer a public or social one. It uses the
+  package's shared demo primitives; the drop zone stays here because no other
+  scenario needs one.
+#}
+{% extends '@anokii_operator/shell.html.twig' %}
+
+{% block head_extra %}<link rel="stylesheet" href="/demo-assets/scenarios.css">{% endblock %}
+
+{% block content %}
+{% import '@anokii_operator_demo/primitives.html.twig' as demo %}
+<header class="scenario-head">
+  <p>{{ page_eyebrow }}</p>
+  <h1>{{ page_title }}</h1>
+  <p>{{ page_intro }}</p>
+</header>
+
+<div class="scenario" data-desk data-fail-first="{{ fail_first|join(' ') }}">
+  {{ demo.steps('Publishing steps', ['Source', 'Audience and channels', 'Review and approve', 'Results']) }}
+
+  <section class="scenario-step" data-step aria-labelledby="desk-source-title">
+    <h2 id="desk-source-title">1. Choose a source</h2>
+    <p>Drop a document or pick a sample. Only a file's name is kept: the file is never opened, read, or uploaded.</p>
+    <div class="desk-drop" data-drop>
+      <label for="desk-file">Drop a document here, or select to choose one</label>
+      <input id="desk-file" type="file" aria-describedby="desk-file-hint" data-file>
+      <p id="desk-file-hint" class="desk-drop-hint">Only the file name is kept.</p>
+    </div>
+    <fieldset>
+      <legend>Or use a sample source</legend>
+      {% for source in sample_sources %}
+      <label class="scenario-choice"><input type="radio" name="desk-sample" value="{{ source.id }}" data-title="{{ source.title }}"><span>{{ source.title }} {{ demo.sim('Sample') }}</span></label>
+      {% endfor %}
+    </fieldset>
+    <p class="desk-source" role="status" data-source-status></p>
+    <p class="scenario-error" role="alert" data-error></p>
+    <div class="scenario-actions">
+      <button type="button" class="scenario-button primary" data-next>Continue</button>
+    </div>
+  </section>
+
+  <section class="scenario-step" data-step hidden aria-labelledby="desk-audience-title">
+    <h2 id="desk-audience-title">2. Choose the audience and channels</h2>
+    <p>Members-only updates never go to the website, the newsletter, or social media.</p>
+    <fieldset>
+      <legend>Who is this update for?</legend>
+      <label class="scenario-choice"><input type="radio" name="desk-audience" value="public"><span>Public<small>Anyone can see it.</small></span></label>
+      <label class="scenario-choice"><input type="radio" name="desk-audience" value="members"><span>Members only<small>Only signed-in members can see it.</small></span></label>
+    </fieldset>
+    {% for audience, label in {public: 'Public channels', members: 'Members-only channels'} %}
+    <fieldset data-audience="{{ audience }}" hidden>
+      <legend>{{ label }}</legend>
+      {% for channel in channels[audience] %}
+      <label class="scenario-choice"><input type="checkbox" name="desk-channel" value="{{ channel.id }}" data-label="{{ channel.label }}"><span>{{ channel.label }}<small>{{ channel.hint }}</small></span></label>
+      {% endfor %}
+    </fieldset>
+    {% endfor %}
+    <p class="scenario-error" role="alert" data-error></p>
+    <div class="scenario-actions">
+      <button type="button" class="scenario-button secondary" data-back>Back</button>
+      <button type="button" class="scenario-button primary" data-next>Continue</button>
+    </div>
+  </section>
+
+  <section class="scenario-step" data-step hidden aria-labelledby="desk-review-title">
+    <h2 id="desk-review-title">3. Review and approve the drafts</h2>
+    <p>Read every draft. Publishing waits for your explicit approval.</p>
+    <div class="desk-drafts">
+      {% for audience in ['public', 'members'] %}{% for channel in channels[audience] %}
+      <article class="desk-draft" data-draft="{{ channel.id }}" aria-labelledby="desk-draft-{{ channel.id }}" hidden>
+        <h3 id="desk-draft-{{ channel.id }}">{{ channel.label }}</h3>
+        {{ demo.sim('Sample draft: not sent') }}
+        <p>{{ channel.draft }}</p>
+        <p class="desk-draft-source">Source: <span data-source-name></span></p>
+      </article>
+      {% endfor %}{% endfor %}
+    </div>
+    <label class="scenario-choice desk-approve"><input type="checkbox" data-approve><span>I read every draft and approve this simulated publish.</span></label>
+    <p class="scenario-error" role="alert" data-error></p>
+    <div class="scenario-actions">
+      <button type="button" class="scenario-button secondary" data-back>Back</button>
+      <button type="button" class="scenario-button primary" data-publish>Publish (simulated)</button>
+    </div>
+  </section>
+
+  <section class="scenario-step" data-step hidden aria-labelledby="desk-results-title">
+    <h2 id="desk-results-title">4. Results</h2>
+    <p>Each channel shows its own simulated result. Nothing was published or sent.</p>
+    {{ demo.outcomes('desk-outcomes', 'Publish results by channel') }}
+    <div class="scenario-actions">
+      <button type="button" class="scenario-button secondary" data-restart>Start another update</button>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block page_scripts %}<script type="module" src="/demo-assets/desk.js"></script>{% endblock %}

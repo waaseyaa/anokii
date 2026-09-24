@@ -59,6 +59,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- `anokii-operator` demo scenarios and shared primitives (#38). The fictional
+  example now has a communications desk (public and members-only flows;
+  members-only never offers a public or social channel) and a needs-review
+  workflow. Both use the three primitives the package now ships, each used by
+  both scenarios: a simulation label, a step indicator and a per-target outcome
+  list with simulated failure and retry. They are Twig macros plus
+  `/anokii-demo/primitives.css` and `/anokii-demo/primitives.js`. Demo
+  scenario pages are recorded as development tooling rather than DIR-A001
+  product surfaces, and still meet WCAG 2.1 AA through focused markup and
+  contrast tests plus documented manual keyboard and responsive checks. Host
+  pages that import macros outside a block now fail with a clear error, instead
+  of the demo README wrongly saying such imports work.
+
 - `anokii-operator` demo support: `demo/router.php` runs under PHP's built-in
   server and renders the real operator dashboard and module templates from a
   host-supplied fixture file (brand, theme, sample operator, modules, pages and

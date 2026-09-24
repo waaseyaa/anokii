@@ -68,8 +68,20 @@ php -S 127.0.0.1:8080 packages/operator/demo/router.php
 ```
 
 Then open <http://127.0.0.1:8080/admin/anokii>. The example is a fictional
-"Example Nation" with one host page (`updates`) and one generic module page
-(`records`).
+"Example Nation" with two scenario pages and one generic module page:
+
+- **Communications desk** (`desk`): choose a source (drop a document, whose
+  name is the only thing kept, or pick a sample), choose Public or Members only,
+  choose channels, read every draft, approve, and publish as a simulation. Public
+  updates offer the website, the newsletter and social media. Members-only
+  updates offer only the members portal and email to opted-in members, never a
+  public or social channel.
+- **Needs review** (`review`): approve sample submissions or send them back with
+  a required note, confirm, and apply the decisions as a simulation.
+- **Records** (`records`): the package's generic module page.
+
+In both scenarios one target fails on its first try, so every flow shows a
+simulated failure and retry.
 
 ## Run a host demo
 
@@ -137,8 +149,10 @@ Validation happens before anything renders, and unknown keys are errors.
   `nav_active`, `home_path`, `logout_path`, `user_*`, `brand_*`, `theme_href`,
   `page_title`, `page_eyebrow`, `page_intro` and `page_blocks`.
 - **Assets** are served only at the paths you list. A path must be a plain local
-  path outside `/admin/anokii`, and its extension must be one of: css, js, svg,
-  png, jpg, jpeg, gif, webp, avif, woff or woff2.
+  path outside `/admin/anokii` and `/anokii-demo/` (the package's own demo
+  assets), and its extension must be one of: css, js, svg, png, jpg, jpeg, gif,
+  webp, avif, woff or woff2. Scripts can be ES modules
+  (`<script type="module" src="...">`).
 
 ## Branding
 
@@ -177,9 +191,10 @@ override page blocks.
   `page_scripts`. Link your own stylesheets, such as public-frontend preview
   styles, from `head_extra` as declared assets.
 - The demo renders each of those blocks on its own and places the results in the
-  shell. Code outside blocks, such as a top-level `{% set %}`, never runs, so
-  pass data through `pages.<id>.context`. Macros imported at the top of the page
-  still work.
+  shell. Code outside blocks never runs: a top-level `{% set %}` has no effect,
+  so pass data through `pages.<id>.context`, and a top-level `{% import %}` or
+  `{% from %}` fails with an error. Import macros inside the block that uses
+  them.
 - The brand, nav, dashboard tiles, user chip, demo marker and mobile nav are
   always rendered by the package. A page that overrides `brand`, `nav`,
   `userchip`, `sidebar_footer`, `topbar` or `main_footer` fails with an error
@@ -193,6 +208,70 @@ A module without a `template` uses the package's
 `primary_title`, `primary_intro`, `preview_rows` (a list of `title`, `detail`
 and `state`) and `quick_actions` (a list of `label` and `href`; keep each
 `href` local, such as `#section`).
+
+## Shared demo primitives
+
+The package ships a primitive only when both fictional scenarios in the Anokii
+repository use it. There are three:
+
+| Primitive | Markup (Twig macro) | Behaviour (`/anokii-demo/primitives.js`) |
+| --- | --- | --- |
+| Simulation label | `demo.sim(text)` | None. |
+| Step indicator | `demo.steps(label, names, current)` | `showStep(list, sections, index)` shows one step section, updates the list, and moves focus to the section's heading. `setStep(list, index)` only updates the list. |
+| Outcome list | `demo.outcomes(id, label)` | `showOutcomes(container, targets, options)` shows one simulated result per `{ id, label }` target. Targets in `options.failFirst` fail once and offer Retry; a retry always succeeds and keeps focus on that row. `doneText`, `failedText` and `simulatedText` set the wording. |
+
+Use them from a host page:
+
+```twig
+{% block content %}
+  {% import '@anokii_operator_demo/primitives.html.twig' as demo %}
+  {{ demo.steps('Publishing steps', ['Source', 'Review', 'Results']) }}
+  ...
+{% endblock %}
+
+{% block page_scripts %}<script type="module" src="/demo-assets/page.js"></script>{% endblock %}
+```
+
+```js
+import { showOutcomes, showStep } from '/anokii-demo/primitives.js';
+```
+
+Host demo pages load the primitives' styles automatically. State colours are
+fixed so they keep AA contrast under any theme; layout follows the shell tokens.
+Nothing in the primitives reads files, stores data or opens a connection.
+
+The communications desk's drop zone is not a primitive, because only that
+scenario uses one. It stays in the example page (`examples/demo/`), where it
+keeps only a chosen or dropped file's name and clears the file input straight
+away. Channel drafts and public-frontend previews also stay with each host.
+
+## Accessibility and DIR-A001
+
+Maintainer decision, 2026-09-24: demo scenario pages are **not** production
+product surfaces. They are fictional, local-only development tooling with no
+production route, so they need no DIR-A001 charter exception. The real operator
+shell stays governed by DIR-A001.
+
+Demo pages and the shared primitives still meet WCAG 2.1 AA, without adding a
+JavaScript toolchain for axe-core:
+
+- **Semantic markup:** one `h1` per page and no skipped heading levels; a
+  visible label on every control; radio and checkbox groups in a `fieldset` with
+  a `legend`; errors in `role="alert"` regions and results in a `role="status"`
+  region; state shown in words or marks, never by colour alone.
+- **Keyboard:** only native controls; no positive `tabindex`; a visible focus
+  ring on every control; focus moves to each new step's heading, to the field
+  that needs fixing after an error, and to a row's new state after Retry.
+- **Responsive:** no horizontal scrolling at 320px; the shell's mobile nav
+  behaves as it does in production.
+- **Contrast:** fixed colours and the example theme are measured in tests.
+
+`tests/OperatorDemoAccessibilityTest.php` checks the rendered markup and the
+colour pairs. Keyboard, focus and responsive behaviour are checked by hand:
+walk each scenario with the keyboard alone (Tab, Shift+Tab, Space, Enter, the
+arrow keys in radio groups), including every error and a Retry. Then check
+widths of 320, 375 and 640 pixels (the last approximates 200% zoom), and record
+the results in the pull request.
 
 ## Pin and refresh the package
 

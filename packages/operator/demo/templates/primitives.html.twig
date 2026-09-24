@@ -1,0 +1,40 @@
+{#
+  Shared demo primitives for host demo pages.
+
+  A primitive lands here only when both fictional scenarios in the Anokii
+  repository use it. Import the macros inside the block that uses them (demo
+  pages render one block at a time, so a top-level import is rejected):
+
+    {% block content %}
+      {% import '@anokii_operator_demo/primitives.html.twig' as demo %}
+      ...
+
+  Their styles load on every host demo page (/anokii-demo/primitives.css).
+  Behaviour lives in the /anokii-demo/primitives.js module.
+#}
+
+{# A visible label marking a sample item or a simulated result. #}
+{% macro sim(text = 'Simulated: nothing sent') %}<span class="anokii-demo-sim">{{ text }}</span>{% endmacro %}
+
+{#
+  An ordered step indicator. `current` is the zero-based active step; move it
+  with showStep() or setStep() from primitives.js.
+#}
+{% macro steps(label, names, current = 0) %}
+<ol class="anokii-demo-steps" aria-label="{{ label }}">
+  {%- for name in names %}
+  <li data-state="{{ loop.index0 < current ? 'done' : (loop.index0 == current ? 'current' : 'todo') }}"{% if loop.index0 == current %} aria-current="step"{% endif %}>{{ name }}{% if loop.index0 < current %}<span class="anokii-demo-vh"> (done)</span>{% endif %}</li>
+  {%- endfor %}
+</ol>
+{% endmacro %}
+
+{#
+  An empty per-target outcome list that showOutcomes() from primitives.js
+  fills. `label` names the list for assistive technology.
+#}
+{% macro outcomes(id, label) %}
+<div class="anokii-demo-outcomes" id="{{ id }}">
+  <ul class="anokii-demo-outcome-list" aria-label="{{ label }}"></ul>
+  <p class="anokii-demo-outcome-status" role="status"></p>
+</div>
+{% endmacro %}
