@@ -12,7 +12,8 @@
     {% endblock %}
 
   Each entry in `cards` is { label, href, desc?, icon?, badge? }. `icon` is raw
-  inner SVG. No brand colours, fonts, or tool names live here.
+  inner SVG, drawn as decoration beside the label and hidden from assistive
+  technology. No brand colours, fonts, or tool names live here.
 #}
 <style>
   .anokii-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:18px; }
@@ -29,7 +30,7 @@
   {% for card in cards|default([]) %}
     <a class="anokii-grid-card" href="{{ card.href }}">
       <div class="anokii-grid-head">
-        {% if card.icon is defined %}<span class="anokii-grid-icon"><svg viewBox="0 0 24 24" fill="none">{{ card.icon|raw }}</svg></span>{% endif %}
+        {% if card.icon is defined %}<span class="anokii-grid-icon"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">{{ card.icon|raw }}</svg></span>{% endif %}
         <b>{{ card.label }}</b>
         {% if card.badge is defined and card.badge %}<span class="anokii-grid-badge">{{ card.badge }}</span>{% endif %}
       </div>
