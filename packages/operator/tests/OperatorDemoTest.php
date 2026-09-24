@@ -146,7 +146,7 @@ final class OperatorDemoTest extends TestCase
         );
 
         $this->expectException(\LogicException::class);
-        $this->expectExceptionMessage('extends itself through');
+        $this->expectExceptionMessage('has a circular layout chain at desk.html.twig');
         $demo->handle(Request::create('/admin/anokii/desk'));
     }
 

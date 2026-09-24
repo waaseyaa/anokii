@@ -185,7 +185,7 @@ final class OperatorDemo
         $seen = [];
         while ($name !== null && !str_starts_with($name, '@anokii_operator')) {
             if (isset($seen[$name])) {
-                throw new \LogicException("Demo page {$template} extends itself through {$name}.");
+                throw new \LogicException("Demo page {$template} has a circular layout chain at {$name}.");
             }
             $seen[$name] = true;
             $module = $this->twig->parse($this->twig->tokenize($this->twig->getLoader()->getSourceContext($name)));
