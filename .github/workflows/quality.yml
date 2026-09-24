@@ -180,6 +180,8 @@ jobs:
           php -r '
             require "/tmp/anokii-operator-consumer/vendor/autoload.php";
             foreach ([
+              Anokii\Operator\Demo\DemoFixture::class,
+              Anokii\Operator\Demo\OperatorDemo::class,
               Anokii\Operator\Http\OperatorResponsePolicy::class,
               Anokii\Operator\Module\OperatorModuleCatalog::class,
               Anokii\Operator\Shell\OperatorShell::class,
@@ -188,3 +190,4 @@ jobs:
               if (!class_exists($class)) { throw new RuntimeException("Missing " . $class); }
             }
           '
+          test -f /tmp/anokii-operator-consumer/vendor/waaseyaa/anokii-operator/demo/router.php
