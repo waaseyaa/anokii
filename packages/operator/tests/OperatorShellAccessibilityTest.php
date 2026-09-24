@@ -160,11 +160,12 @@ final class OperatorShellAccessibilityTest extends TestCase
             self::assertTrue($closesFrom($link), 'a menu link');
         }
         // Each page must actually contain the regions it is meant to exercise,
-        // so a renamed block or a dropped control cannot pass by absence.
+        // so a renamed block or a dropped control cannot pass by absence, and
+        // a page missing from this list fails with an unhandled match.
         $regions = match ($this->dataName()) {
             'dashboard', 'module page' => ['.anokii-userchip a.anokii-signout'],
             'host page with a sidebar footer' => ['.anokii-userchip a.anokii-signout', '.anokii-side > .host-footer button', 'main button'],
-            default => [],
+            'demo page' => [],
         };
         self::assertCount(1, $page->querySelectorAll('.anokii-side a.anokii-brand'));
         foreach ($regions as $selector) {
