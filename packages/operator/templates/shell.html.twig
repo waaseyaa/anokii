@@ -23,7 +23,13 @@
   content" link to the <main> region (#anokii-main-content). The default nav
   hides its decorative icons from assistive technology; an instance that
   overrides the `nav` block hides its own decorative icons the same way
-  (aria-hidden="true").
+  (aria-hidden="true"). On narrow screens, Escape closes the open workspace
+  menu and returns focus to its button only from the menu button or the menu
+  navigation (`.anokii-nav`). From the brand link, the user chip, the
+  `sidebar_footer` block or the page, Escape leaves the menu and focus alone.
+  A control that an instance puts in an overridden `nav` block and that uses
+  Escape itself (a search field, a disclosure) should call preventDefault()
+  in its own keydown handler, or the menu closes as well.
 
   No brand colours, fonts, nav items, or entity names live in this file. Those
   are instance-specific by design.
@@ -174,15 +180,25 @@
         toggle.setAttribute('aria-expanded', String(open));
         toggle.setAttribute('aria-label', open ? 'Close workspace navigation' : 'Open workspace navigation');
       });
-      side.querySelector('.anokii-nav')?.addEventListener('click', event => {
+      const nav = side.querySelector('.anokii-nav');
+      nav?.addEventListener('click', event => {
         if (event.target instanceof Element && event.target.closest('a')) close();
       });
-      document.addEventListener('keydown', event => {
+      // Escape closes the open menu only from the menu button or the menu
+      // navigation. Everywhere else, including the brand link, the user chip,
+      // the sidebar footer and the page, Escape leaves the menu and focus
+      // alone. An Escape that a control has already handled, or that the
+      // browser reports as part of text composition (isComposing), is left
+      // alone too.
+      const closeOnEscape = event => {
+        if (event.defaultPrevented || event.isComposing) return;
         if (event.key === 'Escape' && side.classList.contains('nav-open')) {
           close();
           toggle.focus();
         }
-      });
+      };
+      toggle.addEventListener('keydown', closeOnEscape);
+      nav?.addEventListener('keydown', closeOnEscape);
     })();
     (() => {
       // Make main focusable only for the skip, so the link's own jump focuses

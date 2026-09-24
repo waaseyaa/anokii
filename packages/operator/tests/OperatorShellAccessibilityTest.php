@@ -15,12 +15,16 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Twig\Environment;
+use Twig\Loader\ArrayLoader;
+use Twig\Loader\ChainLoader;
 use Twig\Loader\FilesystemLoader;
 
 /**
- * DIR-A001 requirements of the production operator shell (#41): a skip link
- * as the first focusable element, and decorative icons hidden from assistive
- * technology. Keyboard behaviour is checked by hand in a browser.
+ * DIR-A001 requirements of the production operator shell: a skip link as the
+ * first focusable element, and decorative icons hidden from assistive
+ * technology (#41), and a mobile menu whose Escape stays out of the page's way
+ * (#43). The Escape test models which focusable elements the pinned listeners
+ * can hear; keyboard behaviour itself is checked by hand in a browser.
  */
 final class OperatorShellAccessibilityTest extends TestCase
 {
@@ -38,6 +42,11 @@ final class OperatorShellAccessibilityTest extends TestCase
         ])];
         $demo = OperatorDemo::fromFixtureFile(dirname(__DIR__) . '/examples/demo/fixture.php');
         yield 'demo page' => [(string) $demo->handle(Request::create('/admin/anokii/desk'))->getContent()];
+        yield 'host page with a sidebar footer' => [self::render('host.html.twig', 'website', [], <<<'TWIG'
+            {% extends '@anokii_operator/shell.html.twig' %}
+            {% block sidebar_footer %}<div class="host-footer"><button type="button">Help</button></div>{% endblock %}
+            {% block content %}<p>Host page.</p><button type="button">Save</button>{% endblock %}
+            TWIG)];
     }
 
     #[Test]
@@ -104,6 +113,73 @@ final class OperatorShellAccessibilityTest extends TestCase
     }
 
     #[Test]
+    #[DataProvider('pages')]
+    public function escapeClosesTheMenuOnlyFromItsButtonOrNavigation(string $html): void
+    {
+        $page = HTMLDocument::createFromString($html, LIBXML_NOERROR);
+
+        // The shell's own inline script, not a page's scripts, is what this pins.
+        $scripts = array_values(array_filter(
+            array_map(static fn(Element $script): string => (string) $script->textContent, iterator_to_array($page->querySelectorAll('script:not([src])'))),
+            static fn(string $script): bool => str_contains($script, '.anokii-navtoggle'),
+        ));
+        self::assertCount(1, $scripts);
+        $script = $scripts[0];
+
+        // It listens for keys on exactly two elements, the menu button and the
+        // menu navigation, and closes the open menu on an unhandled Escape.
+        self::assertStringContainsString("const side = document.querySelector('.anokii-side');", $script);
+        self::assertStringContainsString("const toggle = document.querySelector('.anokii-navtoggle');", $script);
+        self::assertStringContainsString("const nav = side.querySelector('.anokii-nav');", $script);
+        self::assertSame(2, preg_match_all('/addEventListener\(\s*[\'"`]key(?:down|up|press)/', $script));
+        self::assertSame(0, preg_match_all('/\bonkey(?:down|up|press)\s*=/', $script), 'no key handler is set as a property');
+        preg_match_all('/([\w.?]+)\.addEventListener\(\s*\'keydown\',\s*(\w+)\s*\)/', $script, $listeners, PREG_SET_ORDER);
+        self::assertSame(
+            [['toggle', 'closeOnEscape'], ['nav?', 'closeOnEscape']],
+            array_map(static fn(array $listener): array => [$listener[1], $listener[2]], $listeners),
+        );
+        self::assertMatchesRegularExpression(
+            "/const closeOnEscape = event => \\{\\s*if \\(event\\.defaultPrevented \\|\\| event\\.isComposing\\) return;\\s*if \\(event\\.key === 'Escape' && side\\.classList\\.contains\\('nav-open'\\)\\) \\{\\s*close\\(\\);\\s*toggle\\.focus\\(\\);/",
+            $script,
+        );
+
+        // What that means for each focusable element on the page: a keydown
+        // reaches those listeners only from the menu button or from inside the
+        // menu navigation. The brand link, the user chip, the sidebar footer
+        // and the page keep Escape and focus.
+        $toggle = $page->querySelector('.anokii-side button.anokii-navtoggle');
+        $nav = $page->querySelector('.anokii-side nav.anokii-nav');
+        self::assertInstanceOf(Element::class, $toggle);
+        self::assertInstanceOf(Element::class, $nav);
+        $closesFrom = static fn(Element $element): bool => $element->isSameNode($toggle) || $nav->contains($element);
+
+        self::assertTrue($closesFrom($toggle), 'the menu button');
+        $links = $nav->querySelectorAll('a[href]');
+        self::assertGreaterThan(0, count($links));
+        foreach ($links as $link) {
+            self::assertTrue($closesFrom($link), 'a menu link');
+        }
+        // Each page must actually contain the regions it is meant to exercise,
+        // so a renamed block or a dropped control cannot pass by absence, and
+        // a page missing from this list fails.
+        $pageName = (string) $this->dataName();
+        $regions = match ($pageName) {
+            'dashboard', 'module page' => ['.anokii-userchip a.anokii-signout'],
+            'host page with a sidebar footer' => ['.anokii-userchip a.anokii-signout', '.anokii-side > .host-footer button', 'main button'],
+            'demo page' => [],
+            default => self::fail("Page {$pageName} has no expected regions; add them here."),
+        };
+        self::assertCount(1, $page->querySelectorAll('.anokii-side a.anokii-brand'));
+        foreach ($regions as $selector) {
+            self::assertCount(1, $page->querySelectorAll($selector), "the page has {$selector}");
+        }
+        $others = $page->querySelectorAll('.anokii-brand, .anokii-userchip a[href], .anokii-userchip button, .host-footer button, main a[href], main button, main input, main textarea, main select');
+        foreach ($others as $element) {
+            self::assertFalse($closesFrom($element), $element->tagName . '.' . $element->getAttribute('class') . ' keeps its Escape');
+        }
+    }
+
+    #[Test]
     public function theSkipLinkStaysLegibleOnDarkAndLightChrome(): void
     {
         $shell = (string) file_get_contents(OperatorTemplates::path() . '/shell.html.twig');
@@ -129,14 +205,18 @@ final class OperatorShellAccessibilityTest extends TestCase
         }
     }
 
-    /** @param array<string, mixed> $page */
-    private static function render(string $template, string $active, array $page = []): string
+    /**
+     * @param array<string, mixed> $page
+     * @param ?string $host a host template, registered as $template, that extends the shell
+     */
+    private static function render(string $template, string $active, array $page = [], ?string $host = null): string
     {
         $modules = [
             new OperatorModule('website', 'Website', 'Daily work', '/admin/anokii/website', 'Manage the public website.', self::ICON),
             new OperatorModule('members', 'Members', 'Daily work', '/admin/anokii/members', 'Manage members portal access.', self::ICON),
         ];
-        $twig = new Environment(new FilesystemLoader(), ['strict_variables' => true]);
+        $loader = $host === null ? new FilesystemLoader() : new ChainLoader([new ArrayLoader([$template => $host])]);
+        $twig = new Environment($loader, ['strict_variables' => true]);
         OperatorTemplates::register($twig);
 
         return $twig->render($template, OperatorShell::context($modules, $active, 'Sample Operator', 'Communications', [
