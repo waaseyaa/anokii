@@ -67,10 +67,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   list with simulated failure and retry. They are Twig macros plus
   `/anokii-demo/primitives.css` and `/anokii-demo/primitives.js`. Demo
   scenario pages are recorded as development tooling rather than DIR-A001
-  product surfaces, and still meet WCAG 2.1 AA through focused markup and
-  contrast tests plus documented manual keyboard and responsive checks. Host
-  pages that import macros outside a block now fail with a clear error, instead
-  of the demo README wrongly saying such imports work.
+  product surfaces. They must still meet WCAG 2.1 AA, which focused markup
+  and contrast tests check, with manual keyboard and responsive checks
+  recorded in pull requests. A host page, or a host layout it extends, that
+  imports macros outside a block now fails with a clear error. The demo
+  README had wrongly said such imports work.
 
 - `anokii-operator` demo support: `demo/router.php` runs under PHP's built-in
   server and renders the real operator dashboard and module templates from a

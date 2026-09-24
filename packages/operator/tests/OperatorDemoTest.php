@@ -125,6 +125,19 @@ final class OperatorDemoTest extends TestCase
     }
 
     #[Test]
+    public function importsInAnExtendedHostLayoutAreRejectedToo(): void
+    {
+        $demo = $this->demoWithPage(
+            "{% extends 'layout.html.twig' %}{% block content %}Body{% endblock %}",
+            ['layout.html.twig' => "{% extends '@anokii_operator/shell.html.twig' %}{% import '@anokii_operator_demo/primitives.html.twig' as demo %}"],
+        );
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('imports macros outside a block (in layout.html.twig)');
+        $demo->handle(Request::create('/admin/anokii/desk'));
+    }
+
+    #[Test]
     public function macrosImportedInsideABlockRender(): void
     {
         $demo = $this->demoWithPage("{% extends '@anokii_operator/shell.html.twig' %}"
@@ -291,12 +304,16 @@ final class OperatorDemoTest extends TestCase
         ];
     }
 
-    private function demoWithPage(string $template): OperatorDemo
+    /** @param array<string, string> $partials other host templates, by name */
+    private function demoWithPage(string $template, array $partials = []): OperatorDemo
     {
         $dir = sys_get_temp_dir() . '/anokii-operator-demo-' . bin2hex(random_bytes(6));
         mkdir($dir . '/templates', 0o700, true);
         $this->tempDirs[] = $dir;
         file_put_contents($dir . '/templates/desk.html.twig', $template);
+        foreach ($partials as $name => $source) {
+            file_put_contents($dir . '/templates/' . $name, $source);
+        }
 
         return new OperatorDemo(DemoFixture::fromArray([
             'brand' => ['title' => 'Example Nation'],

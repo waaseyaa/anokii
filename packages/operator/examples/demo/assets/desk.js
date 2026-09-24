@@ -114,13 +114,20 @@ if (root) {
         simulatedText: 'Simulated: nothing published',
       });
     } else if (button.matches('[data-restart]')) {
-      setSource('', '');
-      [...samples, ...audiences, approve].forEach(input => { input.checked = false; });
-      channelGroups.forEach(group => {
-        group.hidden = true;
-        group.querySelectorAll('input').forEach(box => { box.checked = false; });
-      });
+      reset();
       go(0);
     }
   });
+
+  // Back and Forward can bring the page back with choices the browser
+  // restored but this script never saw, so every showing starts clean.
+  function reset() {
+    setSource('', '');
+    [...samples, ...audiences, approve].forEach(input => { input.checked = false; });
+    channelGroups.forEach(group => {
+      group.hidden = true;
+      group.querySelectorAll('input').forEach(box => { box.checked = false; });
+    });
+  }
+  window.addEventListener('pageshow', reset);
 }

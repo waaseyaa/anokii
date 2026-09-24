@@ -36,7 +36,7 @@ final class OperatorDemoScenariosTest extends TestCase
         foreach ($page->querySelectorAll('fieldset[data-audience]') as $group) {
             self::assertTrue($group->hasAttribute('hidden'));
         }
-        // Each audience has a channel that fails first, so both flows show retry.
+        // Each audience has a channel set to fail first, so both flows can show retry.
         $root = $page->querySelector('[data-desk]');
         self::assertInstanceOf(Element::class, $root);
         $failing = explode(' ', (string) $root->getAttribute('data-fail-first'));

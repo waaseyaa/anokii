@@ -13,6 +13,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
+use Twig\Node\Expression\ConstantExpression;
 use Twig\Node\ImportNode;
 use Twig\Node\Node;
 
@@ -151,15 +152,7 @@ final class OperatorDemo
      */
     private function renderHostPage(string $template, array $context): string
     {
-        // Top-level code never runs here, so a macro import outside a block
-        // would leave the blocks without it. Fail with the fix, not a Twig error.
-        $module = $this->twig->parse($this->twig->tokenize($this->twig->getLoader()->getSourceContext($template)));
-        if (self::containsImport($module->getNode('body'))) {
-            throw new \LogicException(sprintf(
-                'Demo page %s imports macros outside a block. Demo pages render one block at a time, so import inside the block that uses them.',
-                $template,
-            ));
-        }
+        $this->rejectTopLevelImports($template);
         $page = $this->twig->load($template);
         $shell = $this->twig->load('@anokii_operator/shell.html.twig');
         foreach (self::CHROME_BLOCKS as $block) {
@@ -178,6 +171,28 @@ final class OperatorDemo
         }
 
         return $this->twig->render('@anokii_operator_demo/page.html.twig', [...$context, 'page_blocks' => $blocks]);
+    }
+
+    /**
+     * Top-level code never runs here, so a macro import outside a block would
+     * leave the blocks without it. Checks the page and every host layout it
+     * statically extends, and fails with the fix instead of a Twig error.
+     */
+    private function rejectTopLevelImports(string $template): void
+    {
+        $name = $template;
+        while ($name !== null && !str_starts_with($name, '@anokii_operator')) {
+            $module = $this->twig->parse($this->twig->tokenize($this->twig->getLoader()->getSourceContext($name)));
+            if (self::containsImport($module->getNode('body'))) {
+                throw new \LogicException(sprintf(
+                    'Demo page %s imports macros outside a block%s. Demo pages render one block at a time, so import inside the block that uses them.',
+                    $template,
+                    $name === $template ? '' : " (in {$name})",
+                ));
+            }
+            $parent = $module->hasNode('parent') ? $module->getNode('parent') : null;
+            $name = $parent instanceof ConstantExpression && is_string($parent->getAttribute('value')) ? $parent->getAttribute('value') : null;
+        }
     }
 
     private static function containsImport(Node $node): bool

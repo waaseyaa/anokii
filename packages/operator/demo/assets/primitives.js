@@ -3,7 +3,7 @@
 // or opens a connection.
 
 /** Marks step `index` of a steps list as current and every earlier step as done. */
-export function setStep(list, index) {
+function setStep(list, index) {
   list.querySelectorAll(':scope > li').forEach((item, position) => {
     const state = position < index ? 'done' : position === index ? 'current' : 'todo';
     item.dataset.state = state;

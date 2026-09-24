@@ -59,7 +59,7 @@ return [
                         ['id' => 'members-email', 'label' => 'Email to opted-in members', 'hint' => 'Only members who chose to get email.', 'draft' => 'The agenda for the next members meeting is now in the members portal.'],
                     ],
                 ],
-                // One channel per audience fails on the first try, so both flows show retry.
+                // One channel per audience fails on its first try; choosing it shows retry.
                 'fail_first' => ['social', 'members-email'],
             ],
         ],

@@ -1,8 +1,10 @@
 /*
   Anokii operator demo primitives. Each is used by both fictional scenarios in
-  the Anokii repository. Colours that carry state are fixed, so they keep WCAG
-  AA contrast under any host theme; everything else follows the shell tokens.
-  State is never shown by colour alone: every state also has words or a mark.
+  the Anokii repository. The simulation label, outcome states, Retry button,
+  and focus rings use fixed colours with AA contrast on white cards. The step
+  indicator and layout follow the shell tokens, so they depend on the host
+  theme. State is never shown by colour alone: every state also has words or
+  a mark.
 */
 .anokii-demo-vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 

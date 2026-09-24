@@ -12,7 +12,7 @@ This document defines the single baseline that every Anokii surface meets and th
 
 The baseline is enforced, not advisory. Per DIR-A001 the axe-core CI gate runs on every pull request that touches a product surface, backed by per-component tests in Vitest plus Playwright. A surface that ships without an axe-core baseline is a charter violation. Bypassing the baseline requires a `charter-exception` record with a mandatory removal date, per the charter Exception Policy.
 
-Operator demo pages (`packages/operator/demo`) are fictional, local-only development tooling with no production route, not product surfaces. They need no charter exception, but they still meet WCAG 2.1 AA through the checks recorded in `packages/operator/demo/README.md`. The real operator shell they render in stays governed by this baseline.
+Operator demo pages (`packages/operator/demo`) are fictional, local-only development tooling with no production route, not product surfaces. They need no charter exception, but they must still meet WCAG 2.1 AA, through the checks described in `packages/operator/demo/README.md`. The real operator shell they render in stays governed by this baseline.
 
 ## Tier applicability
 

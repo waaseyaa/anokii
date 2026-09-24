@@ -18,7 +18,7 @@ styles and scripts run in the browser with the same reach as the package's own
 chrome. The package guarantees only what it controls:
 
 - **Package code** makes no network calls. It renders templates and serves the
-  files the fixture declares.
+  files the fixture declares, plus the package's own two primitive assets.
 - **Browser connections** are blocked by the Content-Security-Policy below
   (`connect-src 'none'`), whatever script the page runs.
 - **Host sources** are the host's responsibility. Keep them free of network
@@ -40,8 +40,9 @@ chrome. The package guarantees only what it controls:
 - The user chip labels the fixture operator as a sample identity and has no
   sign-out link.
 - Only `GET` and `HEAD` are accepted. The demo serves `/admin/anokii`, the
-  fixture's module routes and the assets the fixture declares. Every other path
-  is a 404, including files in the directory `php -S` was started from.
+  fixture's module routes, the assets the fixture declares, and
+  `/anokii-demo/primitives.css` and `/anokii-demo/primitives.js`. Every other
+  path is a 404, including files in the directory `php -S` was started from.
 - `router.php` answers only under PHP's built-in server; any other SAPI gets an
   empty 404. The package registers no provider or route, so production routing
   never reaches the demo.
@@ -80,8 +81,10 @@ Then open <http://127.0.0.1:8080/admin/anokii>. The example is a fictional
   a required note, confirm, and apply the decisions as a simulation.
 - **Records** (`records`): the package's generic module page.
 
-In both scenarios one target fails on its first try, so every flow shows a
-simulated failure and retry.
+Each flow has one target set to fail on its first try: Social media post
+(public) and Email to opted-in members (members only) on the desk, and the
+summer student job in review. Choose that target to see a simulated failure
+and retry.
 
 ## Run a host demo
 
@@ -217,7 +220,7 @@ repository use it. There are three:
 | Primitive | Markup (Twig macro) | Behaviour (`/anokii-demo/primitives.js`) |
 | --- | --- | --- |
 | Simulation label | `demo.sim(text)` | None. |
-| Step indicator | `demo.steps(label, names, current)` | `showStep(list, sections, index)` shows one step section, updates the list, and moves focus to the section's heading. `setStep(list, index)` only updates the list. |
+| Step indicator | `demo.steps(label, names)`, starting on the first step | `showStep(list, sections, index)` shows one step section, hides the others, marks earlier steps done, and moves focus to the section's heading. |
 | Outcome list | `demo.outcomes(id, label)` | `showOutcomes(container, targets, options)` shows one simulated result per `{ id, label }` target. Targets in `options.failFirst` fail once and offer Retry; a retry always succeeds and keeps focus on that row. `doneText`, `failedText` and `simulatedText` set the wording. |
 
 Use them from a host page:
@@ -236,8 +239,10 @@ Use them from a host page:
 import { showOutcomes, showStep } from '/anokii-demo/primitives.js';
 ```
 
-Host demo pages load the primitives' styles automatically. State colours are
-fixed so they keep AA contrast under any theme; layout follows the shell tokens.
+Host demo pages load the primitives' styles automatically. The simulation
+label, outcome states, Retry button and focus rings use fixed colours, measured
+for AA contrast against white cards. The step indicator follows the shell
+tokens, so its contrast depends on the host theme; check it with your theme.
 Nothing in the primitives reads files, stores data or opens a connection.
 
 The communications desk's drop zone is not a primitive, because only that
@@ -252,8 +257,8 @@ product surfaces. They are fictional, local-only development tooling with no
 production route, so they need no DIR-A001 charter exception. The real operator
 shell stays governed by DIR-A001.
 
-Demo pages and the shared primitives still meet WCAG 2.1 AA, without adding a
-JavaScript toolchain for axe-core:
+Demo pages and the shared primitives must still meet WCAG 2.1 AA. They are held
+to it by the checks below, without adding a JavaScript toolchain for axe-core:
 
 - **Semantic markup:** one `h1` per page and no skipped heading levels; a
   visible label on every control; radio and checkbox groups in a `fieldset` with
@@ -264,14 +269,21 @@ JavaScript toolchain for axe-core:
   that needs fixing after an error, and to a row's new state after Retry.
 - **Responsive:** no horizontal scrolling at 320px; the shell's mobile nav
   behaves as it does in production.
-- **Contrast:** fixed colours and the example theme are measured in tests.
+- **Contrast:** fixed colours and the example theme are measured in tests. A
+  host theme needs its own check, because the shell and step indicator follow
+  its tokens.
+- **Returning to a page:** Back and Forward start each scenario clean, so a
+  control the browser restored can never be out of step with what the page
+  shows.
 
 `tests/OperatorDemoAccessibilityTest.php` checks the rendered markup and the
-colour pairs. Keyboard, focus and responsive behaviour are checked by hand:
-walk each scenario with the keyboard alone (Tab, Shift+Tab, Space, Enter, the
-arrow keys in radio groups), including every error and a Retry. Then check
-widths of 320, 375 and 640 pixels (the last approximates 200% zoom), and record
-the results in the pull request.
+colour pairs. Keyboard, focus and responsive behaviour are checked by hand, and
+the results are recorded in the pull request that changes them:
+
+1. Walk each scenario with the keyboard alone (Tab, Shift+Tab, Space, Enter,
+   and the arrow keys in radio groups), including every error and a Retry.
+2. Leave a scenario part-way through, then come back with Back.
+3. Check widths of 320, 375 and 640 pixels (the last approximates 200% zoom).
 
 ## Pin and refresh the package
 

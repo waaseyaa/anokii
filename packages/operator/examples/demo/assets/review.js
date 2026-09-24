@@ -84,13 +84,20 @@ if (root) {
         simulatedText: 'Simulated: nothing saved',
       });
     } else if (button.matches('[data-restart]')) {
-      items.forEach(item => {
-        item.querySelector('input[value="later"]').checked = true;
-        item.querySelector('[data-note]').hidden = true;
-        note(item).value = '';
-        note(item).removeAttribute('aria-invalid');
-      });
+      reset();
       go(0);
     }
   });
+
+  // Back and Forward can bring the page back with choices the browser
+  // restored but this script never saw, so every showing starts clean.
+  function reset() {
+    items.forEach(item => {
+      item.querySelector('input[value="later"]').checked = true;
+      item.querySelector('[data-note]').hidden = true;
+      note(item).value = '';
+      note(item).removeAttribute('aria-invalid');
+    });
+  }
+  window.addEventListener('pageshow', reset);
 }

@@ -17,13 +17,13 @@
 {% macro sim(text = 'Simulated: nothing sent') %}<span class="anokii-demo-sim">{{ text }}</span>{% endmacro %}
 
 {#
-  An ordered step indicator. `current` is the zero-based active step; move it
-  with showStep() or setStep() from primitives.js.
+  An ordered step indicator that starts on the first step; move it with
+  showStep() from primitives.js.
 #}
-{% macro steps(label, names, current = 0) %}
+{% macro steps(label, names) %}
 <ol class="anokii-demo-steps" aria-label="{{ label }}">
   {%- for name in names %}
-  <li data-state="{{ loop.index0 < current ? 'done' : (loop.index0 == current ? 'current' : 'todo') }}"{% if loop.index0 == current %} aria-current="step"{% endif %}>{{ name }}{% if loop.index0 < current %}<span class="anokii-demo-vh"> (done)</span>{% endif %}</li>
+  <li data-state="{{ loop.first ? 'current' : 'todo' }}"{% if loop.first %} aria-current="step"{% endif %}>{{ name }}</li>
   {%- endfor %}
 </ol>
 {% endmacro %}
