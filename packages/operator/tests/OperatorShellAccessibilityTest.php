@@ -18,9 +18,10 @@ use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
 
 /**
- * DIR-A001 requirements of the production operator shell (#41): a skip link
- * as the first focusable element, and decorative icons hidden from assistive
- * technology. Keyboard behaviour is checked by hand in a browser.
+ * DIR-A001 requirements of the production operator shell: a skip link as the
+ * first focusable element, and decorative icons hidden from assistive
+ * technology (#41), and a mobile menu whose Escape stays out of the page's way
+ * (#43). Keyboard behaviour is checked by hand in a browser.
  */
 final class OperatorShellAccessibilityTest extends TestCase
 {
@@ -101,6 +102,34 @@ final class OperatorShellAccessibilityTest extends TestCase
             }
             self::assertStringStartsWith($label, self::exposedText($tile));
         }
+    }
+
+    #[Test]
+    #[DataProvider('pages')]
+    public function escapeClosesTheMenuOnlyFromTheMenuOrItsButton(string $html): void
+    {
+        $page = HTMLDocument::createFromString($html, LIBXML_NOERROR);
+
+        // The menu button and the menu both sit in the sidebar.
+        self::assertNotNull($page->querySelector('.anokii-side button.anokii-navtoggle'));
+        self::assertNotNull($page->querySelector('.anokii-side nav.anokii-nav'));
+
+        // The shell's own inline script, not a page's scripts, is what this pins.
+        $scripts = array_values(array_filter(
+            array_map(static fn(Element $script): string => (string) $script->textContent, iterator_to_array($page->querySelectorAll('script:not([src])'))),
+            static fn(string $script): bool => str_contains($script, '.anokii-navtoggle'),
+        ));
+        self::assertCount(1, $scripts);
+        $script = $scripts[0];
+
+        // Its only key listener is on the sidebar, so it hears Escape only
+        // while focus is inside the sidebar, never from the page's controls.
+        self::assertStringContainsString("const side = document.querySelector('.anokii-side');", $script);
+        self::assertSame(1, preg_match_all('/addEventListener\(\s*[\'"`]key(?:down|up|press)/', $script));
+        self::assertMatchesRegularExpression(
+            "/\\bside\\.addEventListener\\('keydown', event => \\{\\s*if \\(event\\.defaultPrevented \\|\\| event\\.isComposing\\) return;\\s*if \\(event\\.key === 'Escape' && side\\.classList\\.contains\\('nav-open'\\)\\) \\{\\s*close\\(\\);\\s*toggle\\.focus\\(\\);/",
+            $script,
+        );
     }
 
     #[Test]

@@ -23,7 +23,10 @@
   content" link to the <main> region (#anokii-main-content). The default nav
   hides its decorative icons from assistive technology; an instance that
   overrides the `nav` block hides its own decorative icons the same way
-  (aria-hidden="true").
+  (aria-hidden="true"). On narrow screens, Escape closes the open workspace
+  menu and returns focus to its button only while focus is in the sidebar
+  (the brand link, the menu button, the nav, the user chip or the
+  `sidebar_footer` block), so a page control keeps its own Escape.
 
   No brand colours, fonts, nav items, or entity names live in this file. Those
   are instance-specific by design.
@@ -177,7 +180,12 @@
       side.querySelector('.anokii-nav')?.addEventListener('click', event => {
         if (event.target instanceof Element && event.target.closest('a')) close();
       });
-      document.addEventListener('keydown', event => {
+      // Escape closes the open menu only while focus is in the sidebar, which
+      // holds the menu button and the menu, so a page control keeps its own
+      // Escape. An Escape that a control in the sidebar has already handled,
+      // or that ends text composition, is left alone too.
+      side.addEventListener('keydown', event => {
+        if (event.defaultPrevented || event.isComposing) return;
         if (event.key === 'Escape' && side.classList.contains('nav-open')) {
           close();
           toggle.focus();
