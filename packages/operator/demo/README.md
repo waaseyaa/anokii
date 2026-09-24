@@ -1,0 +1,201 @@
+# Operator demo
+
+Prototype an operator workflow inside the real Anokii operator dashboard, using
+fictional data. The demo renders the unmodified `@anokii_operator` dashboard and
+module templates from a fixture file that the host supplies, under PHP's built-in
+server. It needs no Waaseyaa kernel, database, sign-in or network.
+
+Anokii owns the shell, the demo entry point and its inert chrome. The host owns
+its branding and theme, fixtures, workflow pages, and any previews of its own
+public website, email or social posts. Nothing host-specific belongs in Anokii.
+
+## What stays inert
+
+- Every response carries `Content-Security-Policy: default-src 'none';
+  script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';
+  img-src 'self' data:; font-src 'self'; connect-src 'none'; form-action 'none';
+  frame-ancestors 'none'; base-uri 'none'`, plus `Cache-Control: private,
+  no-store`, `X-Robots-Tag: noindex, nofollow` and `X-Content-Type-Options:
+  nosniff`. Pages can't open connections, load remote files or submit forms.
+- A persistent "Demo: nothing is saved or sent" marker sits at the top of the
+  main column on every page.
+- The user chip labels the fixture operator as a sample identity and has no
+  sign-out link.
+- Only `GET` and `HEAD` are accepted. The demo serves `/admin/anokii`, the
+  fixture's module routes and the assets the fixture declares. Every other path
+  is a 404, including files in the directory `php -S` was started from.
+- `router.php` answers only under PHP's built-in server; any other SAPI gets an
+  empty 404. The package registers no provider or route, so production routing
+  never reaches the demo.
+
+The marker and chip come from the package, and the page contract below keeps
+host pages from replacing them. Host scripts still run in the page, though. The
+CSP stops outbound connections, but keeping demo code free of network calls,
+outside links and real data is the host's job. Add your own guard over your demo
+files; see `tests/OperatorDemoOfflineGuardTest.php` in the Anokii repository.
+
+## Run the example
+
+From the Anokii repository root, after `composer install`:
+
+```bash
+ANOKII_OPERATOR_DEMO_AUTOLOAD=vendor/autoload.php \
+ANOKII_OPERATOR_DEMO_FIXTURE=packages/operator/examples/demo/fixture.php \
+php -S 127.0.0.1:8080 packages/operator/demo/router.php
+```
+
+```powershell
+$env:ANOKII_OPERATOR_DEMO_AUTOLOAD = 'vendor/autoload.php'
+$env:ANOKII_OPERATOR_DEMO_FIXTURE = 'packages/operator/examples/demo/fixture.php'
+php -S 127.0.0.1:8080 packages/operator/demo/router.php
+```
+
+Then open <http://127.0.0.1:8080/admin/anokii>. The example is a fictional
+"Example Nation" with one host page (`updates`) and one generic module page
+(`records`).
+
+## Run a host demo
+
+Keep the demo files in your own repository, outside the web root, for example
+`demos/operator/` with `fixture.php`, `templates/` and `assets/`. Leave that
+directory out of release archives (`/demos/ export-ignore`). Then, from your
+project root:
+
+```bash
+ANOKII_OPERATOR_DEMO_AUTOLOAD=vendor/autoload.php \
+ANOKII_OPERATOR_DEMO_FIXTURE=demos/operator/fixture.php \
+php -S 127.0.0.1:8080 vendor/waaseyaa/anokii-operator/demo/router.php
+```
+
+Both settings are required. The router never guesses paths. Relative values
+resolve against the directory `php -S` starts in, and paths inside the fixture
+resolve against the fixture file's directory. The fixture is read again on every
+request, so edits show on reload. Bind to `127.0.0.1`.
+
+## Fixture reference
+
+A fixture is a PHP file that returns an array. It runs as trusted host code in
+the demo process.
+
+```php
+use Anokii\Operator\Module\OperatorModule;
+
+return [
+    'brand' => [
+        'title' => 'Example Nation',             // required
+        'tag' => 'Operator workspace',           // optional
+        'logo_src' => '/demo-assets/logo.svg',   // optional; must be a declared asset
+        'logo_alt' => 'Example Nation',          // optional; defaults to the title
+    ],
+    'theme_href' => '/demo-assets/theme.css',    // optional; must be a declared asset
+    'operator' => ['name' => 'Sample Operator', 'role' => 'Communications'], // required
+    'dashboard_intro' => 'Choose a task to get started.', // optional
+    'modules' => [                               // required, at least one
+        new OperatorModule('updates', 'Updates', 'Daily work', '/admin/anokii/updates', 'Review sample updates.'),
+    ],
+    'pages' => [                                 // optional, keyed by module id
+        'updates' => [
+            'template' => 'updates.html.twig',   // optional host page; see below
+            'title' => 'Updates',                // optional; defaults to the module label
+            'eyebrow' => 'Communications',       // optional; defaults to the module group
+            'intro' => 'Review sample updates.', // optional; defaults to the module description
+            'context' => ['drafts' => []],       // optional; extra template variables
+        ],
+    ],
+    'templates' => 'templates',                  // required when a page names a template
+    'assets' => [                                // URL path => file
+        '/demo-assets/theme.css' => 'assets/theme.css',
+        '/demo-assets/logo.svg' => 'assets/logo.svg',
+    ],
+];
+```
+
+Validation happens before anything renders, and unknown keys are errors.
+
+- **Modules** are `OperatorModule` values, so they get the same checks as in
+  production, and they pass through `OperatorModuleCatalog`, which rejects
+  duplicate ids. Each module needs its own route below `/admin/anokii/`, with no
+  query or fragment.
+- **Page context** can't replace the keys the shell owns: `nav`, `tiles`,
+  `nav_active`, `home_path`, `logout_path`, `user_*`, `brand_*`, `theme_href`,
+  `page_title`, `page_eyebrow`, `page_intro` and `page_blocks`.
+- **Assets** are served only at the paths you list. A path must be a plain local
+  path outside `/admin/anokii`, and its extension must be one of: css, js, svg,
+  png, jpg, jpeg, gif, webp, avif, woff or woff2.
+
+## Branding
+
+Set `brand` and `operator`, then point `theme_href` at a stylesheet that
+overrides the shell tokens:
+
+`--anokii-shell-font`, `--anokii-shell-display-font`, `--anokii-shell-ink`,
+`--anokii-shell-bg`, `--anokii-shell-card`, `--anokii-shell-line`,
+`--anokii-shell-muted`, `--anokii-shell-side-bg`, `--anokii-shell-side-line`,
+`--anokii-shell-side-muted`, `--anokii-shell-accent`, `--anokii-shell-accent-ink`
+and `--anokii-shell-accent-soft`.
+
+The same theme file can serve your live operator pages, so the demo and
+production look the same. Declare fonts and images the theme loads as assets
+too; the CSP blocks anything remote.
+
+## Custom module pages
+
+Write a demo page the way you'd write a live module page: extend the shell and
+override page blocks.
+
+```twig
+{% extends '@anokii_operator/shell.html.twig' %}
+
+{% block shell_styles %}.desk-list{display:grid;gap:12px}{% endblock %}
+
+{% block content %}
+  <h1>{{ page_title }}</h1>
+  <ul class="desk-list">{% for draft in drafts %}<li>{{ draft.title }}</li>{% endfor %}</ul>
+{% endblock %}
+
+{% block page_scripts %}<script>/* page behaviour, no network calls */</script>{% endblock %}
+```
+
+- A page may define `title`, `head_extra`, `shell_styles`, `content` and
+  `page_scripts`. Link your own stylesheets, such as public-frontend preview
+  styles, from `head_extra` as declared assets.
+- The demo renders each of those blocks on its own and places the results in the
+  shell. Code outside blocks, such as a top-level `{% set %}`, never runs, so
+  pass data through `pages.<id>.context`. Macros imported at the top of the page
+  still work.
+- The brand, nav, dashboard tiles, user chip, demo marker and mobile nav always
+  come from the package. A page that overrides `brand`, `nav`, `userchip`,
+  `sidebar_footer`, `topbar` or `main_footer` fails with an error naming the
+  block.
+- Template names resolve inside the fixture's `templates` directory, so pages
+  can include your own partials by name.
+
+A module without a `template` uses the package's
+`@anokii_operator/module-preview.html.twig`. Fill it through `context` with
+`primary_title`, `primary_intro`, `preview_rows` (a list of `title`, `detail`
+and `state`) and `quick_actions` (a list of `label` and `href`; keep each
+`href` local, such as `#section`).
+
+## Pin and refresh the package
+
+Until tagged releases exist, hosts consume the `waaseyaa/anokii-operator` split
+repository, which this monorepo projects from reviewed `main` commits. Always
+pin an exact reviewed commit, never a moving branch:
+
+- **Composer VCS dependency:** add the split repository as a `vcs` repository,
+  require `"waaseyaa/anokii-operator": "dev-main#<40-character commit>"`, and
+  commit `composer.lock`.
+- **Package carried in your repository** (a Composer `path` repository with
+  `symlink: false`): copy the package tree of one reviewed split commit, for
+  example from `git archive <commit>`, which leaves out Anokii's tests and
+  examples. Record that commit beside the copy.
+
+To refresh, pick the new reviewed commit, update the pin or the copy and its
+recorded commit, run `composer update waaseyaa/anokii-operator`, then run your
+installed-package tests and check your live operator pages. A refresh changes
+what your `/admin/anokii` serves, so review and ship it like any other
+production change. Running the demo changes nothing you serve.
+
+Package archives leave out `tests/` and `examples/`, so a dist install has no
+example fixture. Copy `examples/demo/` from the Anokii repository as a starting
+point.

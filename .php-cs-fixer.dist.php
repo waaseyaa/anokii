@@ -12,6 +12,7 @@ $finder = PhpCsFixer\Finder::create()
         __DIR__.'/packages/operator/src',
         __DIR__.'/packages/operator/tests',
         __DIR__.'/packages/operator/examples',
+        __DIR__.'/packages/operator/demo',
     ])
     ->append([__DIR__.'/deploy.php'])
     ->name('*.php')

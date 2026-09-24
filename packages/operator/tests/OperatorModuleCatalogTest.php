@@ -45,14 +45,14 @@ final class OperatorModuleCatalogTest extends TestCase
     #[Test]
     public function hostModulesAreResolvedForTheExactPrincipalInProviderOrder(): void
     {
-        $principal = new AuthorizationPrincipal(7, true, ['communications'], ['access sfn authoring surface'], 'operator-test');
+        $principal = new AuthorizationPrincipal(7, true, ['communications'], ['access example authoring surface'], 'operator-test');
         $provider = new class implements OperatorModuleProviderInterface {
             public function modules(AuthorizationPrincipalInterface $principal): iterable
             {
-                if ($principal->hasPermission('access sfn authoring surface')) {
+                if ($principal->hasPermission('access example authoring surface')) {
                     yield new OperatorModule('website', 'Website', 'Daily work', '/admin/anokii/website', 'Manage public site content.');
                 }
-                if ($principal->hasPermission('sfn_manage_members')) {
+                if ($principal->hasPermission('example_manage_members')) {
                     yield new OperatorModule('members', 'Members', 'Daily work', '/admin/anokii/members', 'Manage members portal access.');
                 }
             }
@@ -101,12 +101,12 @@ final class OperatorModuleCatalogTest extends TestCase
     public function hostBrandingOverridesDefaultsWithoutReplacingAuthorizedModules(): void
     {
         $modules = [new OperatorModule('website', 'Website', 'Daily work', '/admin/anokii/website', 'Manage the public website.')];
-        $context = OperatorShell::context($modules, '', 'Matthew Owl', 'Communications Officer', [
-            'brand_title' => 'Sheguiandah First Nation',
+        $context = OperatorShell::context($modules, '', 'Sample Operator', 'Communications', [
+            'brand_title' => 'Example Nation',
             'brand_tag' => 'Anokii workspace',
-            'brand_logo_src' => '/media/sfn-logo.png',
-            'brand_logo_alt' => 'Sheguiandah First Nation',
-            'theme_href' => '/assets/sfn-operator.css',
+            'brand_logo_src' => '/media/example-logo.png',
+            'brand_logo_alt' => 'Example Nation',
+            'theme_href' => '/assets/example-operator.css',
             'nav' => [],
             'tiles' => [],
         ]);
@@ -115,16 +115,16 @@ final class OperatorModuleCatalogTest extends TestCase
         $nav = $context['nav'];
         /** @var list<array{id: string}> $tiles */
         $tiles = $context['tiles'];
-        self::assertSame('Sheguiandah First Nation', $context['brand_title']);
+        self::assertSame('Example Nation', $context['brand_title']);
         self::assertSame(['website'], array_column($nav, 'id'));
         self::assertSame(['website'], array_column($tiles, 'id'));
 
         $twig = new Environment(new FilesystemLoader());
         OperatorTemplates::register($twig);
         $html = $twig->render('@anokii_operator/dashboard.html.twig', $context);
-        self::assertStringContainsString('Sheguiandah First Nation', $html);
-        self::assertStringContainsString('/media/sfn-logo.png', $html);
-        self::assertStringContainsString('/assets/sfn-operator.css', $html);
+        self::assertStringContainsString('Example Nation', $html);
+        self::assertStringContainsString('/media/example-logo.png', $html);
+        self::assertStringContainsString('/assets/example-operator.css', $html);
         self::assertStringContainsString('/admin/anokii/website', $html);
         self::assertStringContainsString('Open workspace navigation', $html);
         self::assertStringContainsString('grid-template-rows:auto minmax(0,1fr)', $html);

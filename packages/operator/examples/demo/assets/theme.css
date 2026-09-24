@@ -1,0 +1,16 @@
+/* Fictional host theme: the demo applies it through the shell's theme_href. */
+:root{
+  --anokii-shell-font:'Segoe UI',system-ui,sans-serif;
+  --anokii-shell-display-font:Georgia,'Times New Roman',serif;
+  --anokii-shell-ink:#1f2a33;
+  --anokii-shell-bg:#f6f4ef;
+  --anokii-shell-line:#e2ddd2;
+  --anokii-shell-muted:#55616b;
+  --anokii-shell-side-bg:#1d3a3a;
+  --anokii-shell-side-line:rgba(255,255,255,.14);
+  --anokii-shell-side-muted:#c8dad6;
+  --anokii-shell-accent:#1f6f5c;
+  --anokii-shell-accent-ink:#ffffff;
+  --anokii-shell-accent-soft:#e3f1ec;
+}
+.anokii-brandcopy b{font-family:var(--anokii-shell-display-font)}
