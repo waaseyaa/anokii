@@ -30,12 +30,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - The `anokii-operator` shell's mobile menu no longer takes Escape from the
   rest of the page (#43). While the menu is open, Escape closes it and returns
-  focus to the menu button only when focus is in the sidebar: the brand link,
-  the menu button, a menu link, the user chip or the `sidebar_footer` block.
-  Escape pressed in the page, such as in a form field, leaves the menu and
-  focus alone, and so does an Escape that a sidebar control has already
-  handled. Desktop widths, where the menu button is hidden, are unchanged. A
-  host's `/admin/anokii` changes this way only once it refreshes the package.
+  focus to the menu button only when focus is on that button or in the menu
+  navigation. Escape pressed anywhere else, including the brand link, the user
+  chip, the `sidebar_footer` block and page fields, leaves the menu and focus
+  alone, and so does an Escape that a control has already handled. Desktop
+  widths, where the menu button is hidden, are unchanged. A host's
+  `/admin/anokii` changes this way only once it refreshes the package.
 
 - The `anokii-operator` shell now meets two DIR-A001 baseline requirements
   (#41). Its first focusable element is a "Skip to main content" link, shown
