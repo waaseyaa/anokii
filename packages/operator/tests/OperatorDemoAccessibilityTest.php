@@ -180,6 +180,14 @@ final class OperatorDemoAccessibilityTest extends TestCase
             $declared = array_keys(array_filter(self::declarations($rule), static fn(string $value): bool => $value !== ''));
             self::assertSame([], array_values(array_diff($declared, self::MARKER_PROPERTIES)), "{$path}: the marker declares only properties whose effect on its height the test knows");
             $marker = [...$base, ...self::declarations($rule)];
+            // At every width the marker stays stuck to the top, and its
+            // lengths are px (unit stripped) or a unitless line-height, the
+            // only forms the height below understands.
+            self::assertSame('sticky', $marker['position'] ?? null, "{$path}: the marker stays sticky at every width");
+            self::assertSame('0', $marker['top'] ?? null, "{$path}: the marker sticks to the top at every width");
+            self::assertMatchesRegularExpression('/^[\d.]+(?:\s+[\d.]+){0,3}$/', $marker['padding'] ?? '', "{$path}: the marker's padding is in px");
+            self::assertMatchesRegularExpression('/^[\d.]+$/', $marker['font-size'] ?? '', "{$path}: the marker's font size is in px");
+            self::assertMatchesRegularExpression('/^[\d.]+$/', $marker['line-height'] ?? '', "{$path}: the marker's line height is unitless");
             $padding = preg_split('/\s+/', trim($marker['padding'] ?? '0')) ?: ['0'];
             $vertical = (float) $padding[0] + (float) ($padding[2] ?? $padding[0]);
             $height = $vertical + (float) ($marker['font-size'] ?? 0) * (float) ($marker['line-height'] ?? 0) + (float) ($marker['border-bottom'] ?? 0);
@@ -192,7 +200,10 @@ final class OperatorDemoAccessibilityTest extends TestCase
     #[Test]
     public function productionTemplatesAndDemoStylesheetsCarryNoMarkerOrScrollPadding(): void
     {
-        $files = [dirname(__DIR__) . '/demo/assets/primitives.css', ...(glob(dirname(__DIR__) . '/examples/demo/assets/*.css') ?: [])];
+        $examples = glob(dirname(__DIR__) . '/examples/demo/assets/*.css') ?: [];
+        self::assertContains('theme.css', array_map('basename', $examples));
+        self::assertContains('scenarios.css', array_map('basename', $examples));
+        $files = [dirname(__DIR__) . '/demo/assets/primitives.css', ...$examples];
         foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(OperatorTemplates::path(), \FilesystemIterator::SKIP_DOTS)) as $file) {
             if ($file instanceof \SplFileInfo && $file->isFile()) {
                 $files[] = $file->getPathname();
