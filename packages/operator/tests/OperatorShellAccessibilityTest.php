@@ -132,6 +132,7 @@ final class OperatorShellAccessibilityTest extends TestCase
         self::assertStringContainsString("const toggle = document.querySelector('.anokii-navtoggle');", $script);
         self::assertStringContainsString("const nav = side.querySelector('.anokii-nav');", $script);
         self::assertSame(2, preg_match_all('/addEventListener\(\s*[\'"`]key(?:down|up|press)/', $script));
+        self::assertSame(0, preg_match_all('/\bonkey(?:down|up|press)\s*=/', $script), 'no key handler is set as a property');
         preg_match_all('/([\w.?]+)\.addEventListener\(\s*\'keydown\',\s*(\w+)\s*\)/', $script, $listeners, PREG_SET_ORDER);
         self::assertSame(
             [['toggle', 'closeOnEscape'], ['nav?', 'closeOnEscape']],
@@ -158,8 +159,18 @@ final class OperatorShellAccessibilityTest extends TestCase
         foreach ($links as $link) {
             self::assertTrue($closesFrom($link), 'a menu link');
         }
+        // Each page must actually contain the regions it is meant to exercise,
+        // so a renamed block or a dropped control cannot pass by absence.
+        $regions = match ($this->dataName()) {
+            'dashboard', 'module page' => ['.anokii-userchip a.anokii-signout'],
+            'host page with a sidebar footer' => ['.anokii-userchip a.anokii-signout', '.anokii-side > .host-footer button', 'main button'],
+            default => [],
+        };
+        self::assertCount(1, $page->querySelectorAll('.anokii-side a.anokii-brand'));
+        foreach ($regions as $selector) {
+            self::assertCount(1, $page->querySelectorAll($selector), "the page has {$selector}");
+        }
         $others = $page->querySelectorAll('.anokii-brand, .anokii-userchip a[href], .anokii-userchip button, .host-footer button, main a[href], main button, main input, main textarea, main select');
-        self::assertGreaterThan(0, count($others));
         foreach ($others as $element) {
             self::assertFalse($closesFrom($element), $element->tagName . '.' . $element->getAttribute('class') . ' keeps its Escape');
         }

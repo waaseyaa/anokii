@@ -27,6 +27,9 @@
   menu and returns focus to its button only from the menu button or the menu
   navigation (`.anokii-nav`). From the brand link, the user chip, the
   `sidebar_footer` block or the page, Escape leaves the menu and focus alone.
+  A control that an instance puts in an overridden `nav` block and that uses
+  Escape itself (a search field, a disclosure) should call preventDefault()
+  in its own keydown handler, or the menu closes as well.
 
   No brand colours, fonts, nav items, or entity names live in this file. Those
   are instance-specific by design.
