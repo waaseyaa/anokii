@@ -183,7 +183,8 @@
       // Escape closes the open menu only while focus is in the sidebar, which
       // holds the menu button and the menu, so a page control keeps its own
       // Escape. An Escape that a control in the sidebar has already handled,
-      // or that ends text composition, is left alone too.
+      // or that the browser reports as part of text composition
+      // (isComposing), is left alone too.
       side.addEventListener('keydown', event => {
         if (event.defaultPrevented || event.isComposing) return;
         if (event.key === 'Escape' && side.classList.contains('nav-open')) {

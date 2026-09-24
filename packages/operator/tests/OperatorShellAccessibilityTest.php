@@ -106,7 +106,7 @@ final class OperatorShellAccessibilityTest extends TestCase
 
     #[Test]
     #[DataProvider('pages')]
-    public function escapeClosesTheMenuOnlyFromTheMenuOrItsButton(string $html): void
+    public function escapeClosesTheMenuOnlyFromTheSidebar(string $html): void
     {
         $page = HTMLDocument::createFromString($html, LIBXML_NOERROR);
 
