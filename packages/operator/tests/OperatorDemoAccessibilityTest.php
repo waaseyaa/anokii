@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Anokii\Operator\Tests;
 
 use Anokii\Operator\Demo\OperatorDemo;
+use Anokii\Operator\Template\OperatorTemplates;
+use Dom\Attr;
 use Dom\Element;
 use Dom\HTMLDocument;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -20,6 +22,12 @@ use Symfony\Component\HttpFoundation\Request;
  */
 final class OperatorDemoAccessibilityTest extends TestCase
 {
+    /** What the demo marker may declare: its height is the padding shorthand, the line box and the bottom border. */
+    private const array MARKER_PROPERTIES = [
+        'position', 'top', 'z-index', 'margin', 'padding', 'background', 'color',
+        'border-bottom', 'font-size', 'font-weight', 'line-height',
+    ];
+
     /** @return iterable<string, array{string}> */
     public static function pages(): iterable
     {
@@ -135,6 +143,118 @@ final class OperatorDemoAccessibilityTest extends TestCase
         }
     }
 
+    #[Test]
+    #[DataProvider('pages')]
+    public function scrollsStopBelowTheStickyDemoMarker(string $path): void
+    {
+        $page = self::page($path);
+
+        $markers = $page->querySelectorAll('[data-anokii-demo-flag]');
+        self::assertCount(1, $markers, $path);
+        self::assertNotNull($page->querySelector('main#anokii-main-content > .anokii-demo-flag[data-anokii-demo-flag]'), "{$path}: the marker heads the main region");
+
+        // The marker and the reserved space are styled only in the overlay's
+        // inline CSS, written in its compact form (no space before "{", px
+        // lengths, a unitless line-height, width first in border-bottom). A
+        // change to that form fails here loudly rather than passing wrongly.
+        $css = implode("\n", array_map(static fn(Element $style): string => (string) $style->textContent, iterator_to_array($page->querySelectorAll('style'))));
+        $css = (string) preg_replace('~/\*.*?\*/~s', '', $css);
+        preg_match_all('/\.anokii-demo-flag\{([^}]*)\}/', $css, $rules);
+        self::assertNotSame([], $rules[1], $path);
+        // Every rule that styles the marker is one the test reads. The only
+        // other mention allowed is the single use of the measured-height
+        // custom property, which the CSS reads but never sets.
+        self::assertSame(1, substr_count($css, '--anokii-demo-flag-height'), "{$path}: the CSS only reads the measured height, once");
+        self::assertSame(count($rules[1]), substr_count($css, 'anokii-demo-flag') - 1, "{$path}: every marker rule is in the compact form the test reads");
+        $base = self::declarations($rules[1][0]);
+        self::assertSame('sticky', $base['position'] ?? null, "{$path}: the marker stays sticky");
+        self::assertSame('0', $base['top'] ?? null, "{$path}: the marker sticks to the top");
+        self::assertSame(1, preg_match_all('/scroll-padding/', $css), "{$path}: one scroll-padding declaration, which nothing later overrides");
+
+        // A scroll that brings something to the top, such as a fragment link or
+        // scrollIntoView({block: 'start'}), stops at the reserved space: the
+        // marker's measured height (--anokii-demo-flag-height) plus a small
+        // gap. The reservation is a top-level rule, so it applies at every
+        // width.
+        $topLevel = (string) preg_replace('/@[a-z-]+[^{;]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/i', '', $css);
+        if (preg_match('/(?<![-\w])html\{scroll-padding-top:calc\(var\(--anokii-demo-flag-height,\s*([\d.]+)px\)\s*\+\s*([\d.]+)px\)\}/', $topLevel, $reservation) !== 1) {
+            self::fail("{$path}: the scroll padding is the measured marker height plus a gap");
+        }
+        $fallback = (float) $reservation[1];
+        $gap = (float) $reservation[2];
+        self::assertGreaterThanOrEqual(4.0, $gap, "{$path}: the gap keeps content clear of the marker's edge");
+        self::assertLessThanOrEqual(12.0, $gap, "{$path}: the gap stays small");
+
+        // The script straight after the marker sets that height from the
+        // marker's rendered box when it first renders, before any fragment
+        // scroll, and again whenever the box changes size, as it does when the
+        // text wraps or is resized.
+        $flag = $markers->item(0);
+        self::assertInstanceOf(Element::class, $flag);
+        $script = $flag->nextElementSibling;
+        self::assertSame('SCRIPT', $script?->tagName, "{$path}: the measuring script follows the marker");
+        // A classic inline script runs as soon as it is parsed; a src, a type
+        // (module, or anything the browser does not run) or async/defer would
+        // move or skip that.
+        self::assertSame([], array_map(static fn(Attr $attribute): string => $attribute->name, iterator_to_array($script->attributes)), "{$path}: the measuring script is a plain inline script");
+        // The whole script is pinned, so nothing can skip the measurement.
+        // Comment lines may hold only printable ASCII, because JavaScript
+        // also ends a line at U+2028 and U+2029.
+        self::assertMatchesRegularExpression(
+            '/^\s*\(\(\) => \{\s*(?:\/\/[ -~]*\n\s*)*const flag = document\.querySelector\(\'\[data-anokii-demo-flag\]\'\);\s*if \(!\(flag instanceof HTMLElement\)\) return;\s*const reserve = \(\) => \{\s*document\.documentElement\.style\.setProperty\(\'--anokii-demo-flag-height\', `\$\{Math\.ceil\(flag\.getBoundingClientRect\(\)\.height\)\}px`\);\s*\};\s*reserve\(\);\s*if \(typeof ResizeObserver === \'function\'\) new ResizeObserver\(reserve\)\.observe\(flag, \{ box: \'border-box\' \}\);\s*\}\)\(\);\s*$/',
+            (string) $script->textContent,
+            "{$path}: the script measures the marker's border box at once and on every resize",
+        );
+
+        // Without the script, the fallback stands in for the one-line marker
+        // at default text size, worked out from the base rule and each
+        // narrower-width override of it.
+        foreach ($rules[1] as $rule) {
+            // The height below comes from the padding shorthand, the line box
+            // and the bottom border, so a marker rule may declare only these.
+            $declared = array_keys(array_filter(self::declarations($rule), static fn(string $value): bool => $value !== ''));
+            self::assertSame([], array_values(array_diff($declared, self::MARKER_PROPERTIES)), "{$path}: the marker declares only properties whose effect on its height the test knows");
+            $marker = [...$base, ...self::declarations($rule)];
+            // At every width the marker stays stuck to the top, and its
+            // lengths are px (unit stripped) or a unitless line-height, the
+            // only forms the height below understands.
+            self::assertSame('sticky', $marker['position'] ?? null, "{$path}: the marker stays sticky at every width");
+            self::assertSame('0', $marker['top'] ?? null, "{$path}: the marker sticks to the top at every width");
+            self::assertMatchesRegularExpression('/^[\d.]+(?:\s+[\d.]+){0,3}$/', $marker['padding'] ?? '', "{$path}: the marker's padding is in px");
+            self::assertMatchesRegularExpression('/^[\d.]+$/', $marker['font-size'] ?? '', "{$path}: the marker's font size is in px");
+            self::assertMatchesRegularExpression('/^[\d.]+$/', $marker['line-height'] ?? '', "{$path}: the marker's line height is unitless");
+            $padding = preg_split('/\s+/', trim($marker['padding'] ?? '0')) ?: ['0'];
+            $vertical = (float) $padding[0] + (float) ($padding[2] ?? $padding[0]);
+            $height = $vertical + (float) ($marker['font-size'] ?? 0) * (float) ($marker['line-height'] ?? 0) + (float) ($marker['border-bottom'] ?? 0);
+            self::assertGreaterThan(30.0, $height, "{$path}: the marker's height is worked out from its own rule");
+            self::assertGreaterThanOrEqual($height, $fallback, "{$path}: the fallback covers the {$height}px one-line marker");
+            self::assertLessThanOrEqual($height + 1.0, $fallback, "{$path}: the fallback is the one-line marker's height");
+        }
+    }
+
+    #[Test]
+    public function productionTemplatesAndDemoStylesheetsCarryNoMarkerOrScrollPadding(): void
+    {
+        $examples = glob(dirname(__DIR__) . '/examples/demo/assets/*.css') ?: [];
+        self::assertContains('theme.css', array_map('basename', $examples));
+        self::assertContains('scenarios.css', array_map('basename', $examples));
+        $files = [dirname(__DIR__) . '/demo/assets/primitives.css', ...$examples];
+        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(OperatorTemplates::path(), \FilesystemIterator::SKIP_DOTS)) as $file) {
+            if ($file instanceof \SplFileInfo && $file->isFile()) {
+                $files[] = $file->getPathname();
+            }
+        }
+        self::assertGreaterThan(3, count($files));
+        // The production shell reserves nothing, and neither the demo's shared
+        // stylesheet nor the example's stylesheets can resize the marker or
+        // change the reserved space behind the overlay's back.
+        foreach ($files as $file) {
+            $source = (string) file_get_contents($file);
+            self::assertStringNotContainsString('scroll-padding', $source, basename($file));
+            self::assertStringNotContainsString('anokii-demo-flag', $source, basename($file));
+        }
+    }
+
     /** @return iterable<string, array{string, string, float}> */
     public static function colourPairs(): iterable
     {
@@ -200,6 +320,31 @@ final class OperatorDemoAccessibilityTest extends TestCase
         $hex = strtolower(ltrim($match[1], '#'));
 
         return '#' . (strlen($hex) === 3 ? $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2] : $hex);
+    }
+
+    /** @return array<string, string> property => value, lengths without their px unit */
+    private static function declarations(string $rule): array
+    {
+        $declarations = [];
+        foreach (explode(';', $rule) as $declaration) {
+            [$property, $value] = array_pad(explode(':', $declaration, 2), 2, '');
+            $value = trim($value);
+            if (trim($property) === 'border-bottom') {
+                $value = self::number($value, '/^([\d.]+)px\b/');
+            }
+            $declarations[trim($property)] = trim((string) preg_replace('/(\d)px\b/', '$1', $value));
+        }
+
+        return $declarations;
+    }
+
+    private static function number(string $source, string $pattern): string
+    {
+        if (preg_match($pattern, $source, $match) !== 1) {
+            throw new \LogicException("Nothing matches {$pattern}.");
+        }
+
+        return $match[1];
     }
 
     private static function page(string $path): HTMLDocument
