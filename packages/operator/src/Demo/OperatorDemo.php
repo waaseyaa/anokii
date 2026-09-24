@@ -13,6 +13,9 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
+use Twig\Node\Expression\ConstantExpression;
+use Twig\Node\ImportNode;
+use Twig\Node\Node;
 
 /**
  * Renders a fixture-driven operator demo through the real @anokii_operator
@@ -37,6 +40,12 @@ final class OperatorDemo
 
     /** Shell chrome that only the package renders in a demo. */
     public const array CHROME_BLOCKS = ['brand', 'nav', 'userchip', 'sidebar_footer', 'topbar', 'main_footer'];
+
+    /** URL prefix reserved for the package's own demo assets. */
+    public const string PACKAGE_ASSET_PREFIX = '/anokii-demo/';
+
+    /** Shared demo primitives, served from demo/assets under PACKAGE_ASSET_PREFIX. */
+    public const array PACKAGE_ASSETS = ['primitives.css', 'primitives.js'];
 
     private readonly Environment $twig;
 
@@ -66,6 +75,11 @@ final class OperatorDemo
         return dirname(__DIR__, 2) . '/demo/templates';
     }
 
+    public static function assetsPath(): string
+    {
+        return dirname(__DIR__, 2) . '/demo/assets';
+    }
+
     public function handle(Request $request): Response
     {
         if (!in_array($request->getMethod(), ['GET', 'HEAD'], true)) {
@@ -82,10 +96,12 @@ final class OperatorDemo
         if ($path === '/') {
             return self::secure(new RedirectResponse(self::HOME_PATH));
         }
+        $packageAsset = substr($path, strlen(self::PACKAGE_ASSET_PREFIX));
+        if (str_starts_with($path, self::PACKAGE_ASSET_PREFIX) && in_array($packageAsset, self::PACKAGE_ASSETS, true)) {
+            return self::asset(self::assetsPath() . '/' . $packageAsset, $path);
+        }
         if (isset($this->fixture->assets[$path])) {
-            return self::secure(new Response((string) file_get_contents($this->fixture->assets[$path]), Response::HTTP_OK, [
-                'Content-Type' => DemoFixture::ASSET_TYPES[strtolower(pathinfo($path, PATHINFO_EXTENSION))],
-            ]));
+            return self::asset($this->fixture->assets[$path], $path);
         }
         if ($path === self::HOME_PATH) {
             return self::html($this->twig->render(
@@ -136,6 +152,7 @@ final class OperatorDemo
      */
     private function renderHostPage(string $template, array $context): string
     {
+        $this->rejectTopLevelImports($template);
         $page = $this->twig->load($template);
         $shell = $this->twig->load('@anokii_operator/shell.html.twig');
         foreach (self::CHROME_BLOCKS as $block) {
@@ -157,6 +174,48 @@ final class OperatorDemo
     }
 
     /**
+     * Top-level code never runs here, so a macro import outside a block would
+     * leave the blocks without it. Checks the page and every host layout it
+     * extends by a plain template name, and fails with the fix instead of a
+     * Twig error.
+     */
+    private function rejectTopLevelImports(string $template): void
+    {
+        $name = $template;
+        $seen = [];
+        while ($name !== null && !str_starts_with($name, '@anokii_operator')) {
+            if (isset($seen[$name])) {
+                throw new \LogicException("Demo page {$template} has a circular layout chain at {$name}.");
+            }
+            $seen[$name] = true;
+            $module = $this->twig->parse($this->twig->tokenize($this->twig->getLoader()->getSourceContext($name)));
+            if (self::containsImport($module->getNode('body'))) {
+                throw new \LogicException(sprintf(
+                    'Demo page %s imports macros outside a block%s. Demo pages render one block at a time, so import inside the block that uses them.',
+                    $template,
+                    $name === $template ? '' : " (in {$name})",
+                ));
+            }
+            $parent = $module->hasNode('parent') ? $module->getNode('parent') : null;
+            $name = $parent instanceof ConstantExpression && is_string($parent->getAttribute('value')) ? $parent->getAttribute('value') : null;
+        }
+    }
+
+    private static function containsImport(Node $node): bool
+    {
+        if ($node instanceof ImportNode) {
+            return true;
+        }
+        foreach ($node as $child) {
+            if (self::containsImport($child)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * @param array<string, mixed> $page
      *
      * @return array<string, mixed>
@@ -173,6 +232,13 @@ final class OperatorDemo
             'logout_path' => '',
             ...$page,
         ]);
+    }
+
+    private static function asset(string $file, string $path): Response
+    {
+        return self::secure(new Response((string) file_get_contents($file), Response::HTTP_OK, [
+            'Content-Type' => DemoFixture::ASSET_TYPES[strtolower(pathinfo($path, PATHINFO_EXTENSION))],
+        ]));
     }
 
     private static function html(string $html): Response

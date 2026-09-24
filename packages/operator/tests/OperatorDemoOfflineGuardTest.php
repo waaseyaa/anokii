@@ -23,6 +23,13 @@ final class OperatorDemoOfflineGuardTest extends TestCase
         'RTCPeerConnection', 'importScripts', 'serviceWorker', 'window.open(',
     ];
 
+    /** APIs that read a file's contents or keep data after the page closes. */
+    private const array CONTENT_OR_STORAGE_APIS = [
+        'FileReader', 'readAsText', 'readAsDataURL', 'readAsArrayBuffer', '.arrayBuffer(', '.text()', '.stream()',
+        'createObjectURL', 'showOpenFilePicker', 'getAsFileSystemHandle', 'webkitGetAsEntry',
+        'localStorage', 'sessionStorage', 'indexedDB', 'document.cookie', 'caches.',
+    ];
+
     /** SVG's namespace name is an identifier, not a request. */
     private const string SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 
@@ -45,11 +52,31 @@ final class OperatorDemoOfflineGuardTest extends TestCase
     }
 
     #[Test]
+    public function demoSourcesNeverReadFileContentsOrStoreData(): void
+    {
+        // A dropped or chosen file contributes only its name, and nothing a
+        // demo page does outlives it.
+        $package = dirname(__DIR__);
+        foreach (['demo', 'examples/demo'] as $dir) {
+            $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($package . '/' . $dir, \FilesystemIterator::SKIP_DOTS));
+            foreach ($files as $file) {
+                if (!$file instanceof \SplFileInfo || !in_array($file->getExtension(), ['twig', 'js', 'html'], true)) {
+                    continue;
+                }
+                $source = (string) file_get_contents($file->getPathname());
+                foreach (self::CONTENT_OR_STORAGE_APIS as $api) {
+                    self::assertStringNotContainsString($api, $source, "{$dir}/{$file->getFilename()} uses {$api}");
+                }
+            }
+        }
+    }
+
+    #[Test]
     public function everyRenderedExamplePageLinksOnlyToItself(): void
     {
         $demo = OperatorDemo::fromFixtureFile(dirname(__DIR__) . '/examples/demo/fixture.php');
 
-        foreach (['/admin/anokii', '/admin/anokii/updates', '/admin/anokii/records'] as $path) {
+        foreach (['/admin/anokii', '/admin/anokii/desk', '/admin/anokii/review', '/admin/anokii/records'] as $path) {
             $html = (string) $demo->handle(Request::create($path))->getContent();
             self::assertLocalOnly($html, $path);
             preg_match_all('/\b(?:src|href|action)="([^"]*)"/', $html, $matches);

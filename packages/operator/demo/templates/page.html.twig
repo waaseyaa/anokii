@@ -4,12 +4,13 @@
   OperatorDemo renders the host page's allowed blocks one at a time and passes
   them in `page_blocks`, so the page contributes only its title, head links,
   styles, content, and scripts. The brand, nav, dashboard tiles, user chip,
-  demo marker, and mobile nav always come from the operator package.
+  demo marker, and mobile nav always come from the operator package. The shared
+  primitives' styles load first, so page styles can build on them.
 #}
 {% extends '@anokii_operator/shell.html.twig' %}
 
 {% block title %}{% if page_blocks.title %}{{ page_blocks.title|raw }}{% else %}{{ parent() }}{% endif %}{% endblock %}
-{% block head_extra %}{{ page_blocks.head_extra|raw }}{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="/anokii-demo/primitives.css">{{ page_blocks.head_extra|raw }}{% endblock %}
 {% block shell_styles %}{{ page_blocks.shell_styles|raw }}{% endblock %}
 {% block content %}{{ page_blocks.content|raw }}{% endblock %}
 {% block page_scripts %}{{ page_blocks.page_scripts|raw }}{% endblock %}

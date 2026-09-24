@@ -48,6 +48,14 @@ final class OperatorDemoServerTest extends TestCase
         self::assertSame(200, $status);
         self::assertSame('text/css; charset=UTF-8', $headers['content-type'] ?? null);
 
+        // Browsers run module scripts only when they arrive as JavaScript.
+        foreach (['/anokii-demo/primitives.js', '/demo-assets/desk.js', '/demo-assets/review.js'] as $path) {
+            [$status, $headers] = self::get($base . $path);
+            self::assertSame(200, $status, $path);
+            self::assertSame('text/javascript; charset=UTF-8', $headers['content-type'] ?? null, $path);
+            self::assertSame('nosniff', $headers['x-content-type-options'] ?? null, $path);
+        }
+
         // Files in the server's document root (here the repository) stay private.
         foreach (['/composer.json', '/vendor/autoload.php', '/packages/operator/examples/demo/fixture.php'] as $path) {
             [$status] = self::get($base . $path);
