@@ -7,11 +7,14 @@ namespace Anokii\Tests\Auth;
 use Anokii\Auth\LoginThrottle;
 use Anokii\Dashboard\AdminLoginController;
 use Anokii\Dashboard\LoginBrand;
-use Anokii\Tests\Support\FakeInternalFieldReader;
+use Anokii\Tests\Support\AuditedIdentityRuntime;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
+use Waaseyaa\Auth\Authentication\VerifiedEmailAuthenticationEligibility;
+use Waaseyaa\Auth\AuthManager;
+use Waaseyaa\Auth\Config\AuthConfig;
 use Waaseyaa\Auth\DatabaseRateLimiter;
 use Waaseyaa\Database\DBALDatabase;
 
@@ -30,14 +33,18 @@ final class AdminLoginRedirectSafetyTest extends TestCase
     #[DataProvider('redirectCases')]
     public function redirect_target_is_a_path_boundary_not_a_string_prefix(string $candidate, string $expected): void
     {
+        $audited = new AuditedIdentityRuntime();
+        $reader = $audited->internalFieldReader();
         $controller = new AdminLoginController(
             null,
             '/admin/login',
             '/admin',
             null,
             new LoginBrand(),
-            new FakeInternalFieldReader(),
+            $reader,
             new LoginThrottle(new DatabaseRateLimiter(DBALDatabase::createSqlite(':memory:'))),
+            new AuthManager($reader, new VerifiedEmailAuthenticationEligibility(AuthConfig::fromArray([], 'testing'), $reader)),
+            $audited->principalFactory(),
         );
         $request = Request::create('/admin/login', 'POST', ['next' => $candidate]);
         $method = new \ReflectionMethod($controller, 'safeNext');

@@ -33,6 +33,7 @@ final class WorkspaceController extends DashboardGate
         ?EntityTypeManager $entityTypeManager,
         ?\Waaseyaa\Access\User\UserInternalFieldReaderInterface $internalFieldReader = null,
         private readonly ?AccountBoundary $accounts = null,
+        private readonly ?\Waaseyaa\Auth\AuthManager $auth = null,
     ) {
         parent::__construct($entityTypeManager, $internalFieldReader);
     }
@@ -140,16 +141,16 @@ final class WorkspaceController extends DashboardGate
             if (strlen($new) < 10) {
                 return new JsonResponse(['ok' => false, 'error' => 'New password must be at least 10 characters.'], 422);
             }
-            if ($this->internalFields === null) {
+            if ($this->auth === null) {
                 throw new \LogicException(sprintf(
-                    '%s was mounted without a UserInternalFieldReaderInterface; the password-change '
-                    . 'flow cannot verify the current password. Pass the resolved reader to the constructor.',
+                    '%s was mounted without the framework AuthManager; the password-change '
+                    . 'flow cannot verify the current password. Pass the resolved manager to the constructor.',
                     static::class,
                 ));
             }
             // Credential verification via the framework's audited authority —
             // the sealed entity can no longer answer checkPassword() itself.
-            if (!new \Waaseyaa\Auth\AuthManager($this->internalFields)->authenticate($user, $current)) {
+            if (!$this->auth->authenticate($user, $current)) {
                 return new JsonResponse(['ok' => false, 'error' => 'Current password is incorrect.'], 422);
             }
             $updated = $updated->setRawPassword($new);

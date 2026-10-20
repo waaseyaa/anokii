@@ -155,7 +155,11 @@ final class WorkspaceServiceProvider extends ServiceProvider implements Provides
         }
         $loginThrottle = new LoginThrottle(new DatabaseRateLimiter($this->db()));
 
-        $shell = new WorkspaceController($entityTypeManager, $internalFieldReader, $accounts);
+        $auth = $this->resolve(\Waaseyaa\Auth\AuthManager::class);
+        if (!$auth instanceof \Waaseyaa\Auth\AuthManager) {
+            throw new \LogicException('The workspace requires the framework AuthManager binding.');
+        }
+        $shell = new WorkspaceController($entityTypeManager, $internalFieldReader, $accounts, $auth);
         $login = new WorkspaceLoginController(
             $entityTypeManager,
             new SetupTokenRepository($this->db()),
@@ -165,6 +169,7 @@ final class WorkspaceServiceProvider extends ServiceProvider implements Provides
             'anokii/set-password.html.twig',
             $internalFieldReader,
             $loginThrottle,
+            $auth,
         );
         $identity = new IdentityController(
             $entityTypeManager,

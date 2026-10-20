@@ -34,7 +34,7 @@ final class InMemoryUserRepository implements EntityRepositoryInterface
         }
     }
 
-    public function find(string $id, ?string $langcode = null, bool $fallback = false): ?EntityInterface
+    public function find(int|string $id, ?string $langcode = null, bool $fallback = false): ?EntityInterface
     {
         return $this->entities[$id] ?? null;
     }
@@ -48,7 +48,7 @@ final class InMemoryUserRepository implements EntityRepositoryInterface
         return $existing ? 2 : 1;
     }
 
-    public function exists(string $id): bool
+    public function exists(int|string $id): bool
     {
         return isset($this->entities[$id]);
     }
@@ -83,46 +83,46 @@ final class InMemoryUserRepository implements EntityRepositoryInterface
         throw $this->unsupported(__FUNCTION__);
     }
 
-    public function loadRevision(string $entityId, int $revisionId): ?EntityInterface
+    public function loadRevision(int|string $entityId, int $revisionId): ?EntityInterface
     {
         throw $this->unsupported(__FUNCTION__);
     }
 
     public function rollback(
-        string $entityId,
+        int|string $entityId,
         int $targetRevisionId,
         ?EntityMutationToken $expected = null,
     ): EntityInterface {
         throw $this->unsupported(__FUNCTION__);
     }
 
-    public function listRevisions(string $entityId): array
+    public function listRevisions(int|string $entityId): array
     {
         throw $this->unsupported(__FUNCTION__);
     }
 
     public function setCurrentRevision(
-        string $entityId,
+        int|string $entityId,
         int $revisionId,
         ?EntityMutationToken $expected = null,
     ): EntityInterface {
         throw $this->unsupported(__FUNCTION__);
     }
 
-    public function loadPublishedRevision(string $entityId): ?EntityInterface
+    public function loadPublishedRevision(int|string $entityId): ?EntityInterface
     {
         throw $this->unsupported(__FUNCTION__);
     }
 
     public function setPublishedRevision(
-        string $entityId,
+        int|string $entityId,
         int $revisionId,
         ?EntityMutationToken $expected = null,
     ): EntityInterface {
         throw $this->unsupported(__FUNCTION__);
     }
 
-    public function loadWorkingCopy(string $id): ?EntityInterface
+    public function loadWorkingCopy(int|string $id): ?EntityInterface
     {
         throw $this->unsupported(__FUNCTION__);
     }
@@ -143,7 +143,7 @@ final class InMemoryUserRepository implements EntityRepositoryInterface
     }
 
     public function saveTranslation(
-        string $entityId,
+        int|string $entityId,
         string $langcode,
         array $values,
         ?string $log = null,
@@ -152,12 +152,12 @@ final class InMemoryUserRepository implements EntityRepositoryInterface
         throw $this->unsupported(__FUNCTION__);
     }
 
-    public function loadTranslation(string $entityId, string $langcode): ?EntityInterface
+    public function loadTranslation(int|string $entityId, string $langcode): ?EntityInterface
     {
         throw $this->unsupported(__FUNCTION__);
     }
 
-    public function listTranslationRevisions(string $entityId, string $langcode): array
+    public function listTranslationRevisions(int|string $entityId, string $langcode): array
     {
         throw $this->unsupported(__FUNCTION__);
     }

@@ -28,6 +28,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Resolve the framework-owned authentication manager for login, logout and
+  workspace password verification, preserving configured eligibility and
+  credential-upgrade services. HTTP dashboard permissions now use immutable
+  account principals rather than maintenance-only reads. Regression tests use
+  sealed accounts and audited readers, including session rotation and revocation.
+- Qualify the distribution against published Framework alpha.305. Declare the
+  existing workspace permissions, retain Identity permission ownership in its
+  package, allow supported Symfony 8 dependencies, and refresh the provider roster
+  for the removed vector provider and added CLI providers.
+
 - `anokii-operator` demo pages no longer hide scrolled-to content under the
   sticky "Demo: nothing is saved or sent" marker (#44). The demo overlay
   measures the marker and reserves its height plus 8px as scroll padding. The
