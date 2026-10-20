@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Anokii\Shell;
 
 use Anokii\Support\Auth;
+use Waaseyaa\Access\User\UserSessionSnapshot;
 use Waaseyaa\User\User;
 
 /**
@@ -25,7 +26,7 @@ final class Shell
     /**
      * Assemble the base shell context for a page.
      *
-     * @param User                       $user       The signed-in account.
+     * @param User|UserSessionSnapshot                       $user       The signed-in account.
      * @param string                     $active     The id of the active nav entry.
      * @param array<string, mixed>       $extra      Instance context merged on top
      *                                               (for example the nav/module list
@@ -41,7 +42,7 @@ final class Shell
      * @api
      */
     public static function context(
-        User $user,
+        User|UserSessionSnapshot $user,
         string $active,
         array $extra = [],
         array $roleLabels = [],
@@ -66,10 +67,10 @@ final class Shell
      *
      * @api
      */
-    public static function roleLabel(User $user, array $roleLabels = []): string
+    public static function roleLabel(User|UserSessionSnapshot $user, array $roleLabels = []): string
     {
         try {
-            $roles = $user->getRoles();
+            $roles = $user instanceof UserSessionSnapshot ? $user->roles : $user->getRoles();
         } catch (\Waaseyaa\Entity\Exception\FieldReadDenied | \Waaseyaa\Entity\Exception\MissingFieldReadContext) {
             // Framework ≥ alpha.269 seals `roles` as Internal; without an
             // audited capability the entity cannot answer. The chip label is

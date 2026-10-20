@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Anokii\Dashboard;
 
-use Anokii\Access\WorkspacePermissions;
+use Anokii\Auth\LoginThrottle;
 use Anokii\Support\Auth;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Waaseyaa\Access\AccountPrincipalFactoryInterface;
 use Waaseyaa\Access\User\UserInternalFieldReaderInterface;
+use Waaseyaa\Auth\AuthManager;
 use Waaseyaa\Entity\EntityTypeManager;
 use Waaseyaa\User\Middleware\CsrfMiddleware;
 
@@ -43,9 +45,12 @@ final class AdminLoginController extends DashboardGate
         private readonly ?string $requiredPermission,
         private readonly LoginBrand $brand,
         UserInternalFieldReaderInterface $internalFieldReader,
+        private readonly LoginThrottle $loginThrottle,
+        private readonly AuthManager $auth,
+        AccountPrincipalFactoryInterface $principals,
         private readonly string $pathPrefix = '/admin',
     ) {
-        parent::__construct($entityTypeManager, $internalFieldReader);
+        parent::__construct($entityTypeManager, $internalFieldReader, $principals);
     }
 
     protected function loginPath(): string
@@ -69,19 +74,26 @@ final class AdminLoginController extends DashboardGate
         $password = (string) $request->request->get('password', '');
         $next = $this->safeNext($request);
 
-        \assert($this->internalFields !== null); // constructor requires it
-        $user = Auth::login($this->entityTypeManager, $email, $password, $this->internalFields);
+        if ($this->loginThrottle->isBlocked($request, $email)) {
+            return new Response('Too many sign-in attempts. Try again later.', 429, ['Retry-After' => '900']);
+        }
+
+        \assert($this->principals !== null); // constructor requires it
+        $user = Auth::login($this->entityTypeManager, $email, $password, $this->auth);
         $permitted = $user !== null && (
             $this->requiredPermission === null
-            || WorkspacePermissions::allows($this->internalFields->maintenanceAuthorization($user), $this->requiredPermission)
+            || $this->principals->fromAccount($user)->hasPermission($this->requiredPermission)
         );
         if (!$permitted) {
+            $this->loginThrottle->recordFailure($request, $email);
             if ($user !== null) {
-                Auth::logout();
+                Auth::logout($this->auth);
             }
 
             return $this->loginPage($next, true);
         }
+
+        $this->loginThrottle->recordSuccess($email);
 
         CsrfMiddleware::regenerate();
 
@@ -90,7 +102,7 @@ final class AdminLoginController extends DashboardGate
 
     public function logout(Request $request): RedirectResponse
     {
-        Auth::logout();
+        Auth::logout($this->auth);
 
         return new RedirectResponse($this->loginPath);
     }
@@ -102,8 +114,10 @@ final class AdminLoginController extends DashboardGate
      */
     private function safeNext(Request $request): string
     {
-        $next = (string) $request->query->get('next', '');
-        if ($next !== '' && str_starts_with($next, $this->pathPrefix) && !str_starts_with($next, $this->loginPath)) {
+        $next = (string) ($request->request->get('next') ?? $request->query->get('next', ''));
+        $underPrefix = $next === $this->pathPrefix || str_starts_with($next, rtrim($this->pathPrefix, '/') . '/');
+        $isLogin = $next === $this->loginPath || str_starts_with($next, rtrim($this->loginPath, '/') . '/');
+        if ($next !== '' && $underPrefix && !$isLogin) {
             return $next;
         }
 
@@ -112,7 +126,7 @@ final class AdminLoginController extends DashboardGate
 
     private function loginPage(string $next, bool $error): Response
     {
-        $e = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
+        $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
         $token = CsrfMiddleware::token();
         $b = $this->brand;
         $err = $error

@@ -151,7 +151,11 @@ final class WorkspaceServiceProvider extends ServiceProvider implements Provides
         $internalFieldReader = $this->resolve(\Waaseyaa\Access\User\UserInternalFieldReaderInterface::class);
         \assert($internalFieldReader instanceof \Waaseyaa\Access\User\UserInternalFieldReaderInterface);
 
-        $shell = new WorkspaceController($entityTypeManager, $internalFieldReader);
+        $auth = $this->resolve(\Waaseyaa\Auth\AuthManager::class);
+        if (!$auth instanceof \Waaseyaa\Auth\AuthManager) {
+            throw new \LogicException('The workspace requires the framework AuthManager binding.');
+        }
+        $shell = new WorkspaceController($entityTypeManager, $internalFieldReader, $auth);
         $login = new WorkspaceLoginController(
             $entityTypeManager,
             new SetupTokenRepository($this->db()),
@@ -160,6 +164,7 @@ final class WorkspaceServiceProvider extends ServiceProvider implements Provides
             'anokii/login.html.twig',
             'anokii/set-password.html.twig',
             $internalFieldReader,
+            $auth,
         );
         $identity = new IdentityController($entityTypeManager, new PillarService($entityTypeManager), $access);
         $documents = new DocumentsController(

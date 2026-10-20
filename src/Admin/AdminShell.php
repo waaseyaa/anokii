@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Anokii\Admin;
 
 use Anokii\Shell\Shell;
+use Waaseyaa\Access\User\UserSessionSnapshot;
 use Waaseyaa\User\User;
 
 /**
@@ -27,7 +28,7 @@ final class AdminShell
     /**
      * Assemble the context for an admin page rendered through anokii/_shell.html.twig.
      *
-     * @param User                                                                                                       $user    Signed-in account.
+     * @param User|UserSessionSnapshot                                                                                                       $user    Signed-in account.
      * @param string                                                                                                     $active  Active module/nav id.
      * @param list<array{id:string,label:string,group:string,live:bool,href:string,desc:string,icon:string,badge:string,tile:bool}> $modules Resolved module set (see AdminModules::resolve()).
      * @param array<string, mixed>                                                                                       $opts    Branding/theme + page extras: brand_title, brand_tag, theme_href, home_path, logout_path, page_title, plus any page-specific context.
@@ -38,7 +39,7 @@ final class AdminShell
      * @api
      */
     public static function context(
-        User $user,
+        User|UserSessionSnapshot $user,
         string $active,
         array $modules,
         array $opts = [],

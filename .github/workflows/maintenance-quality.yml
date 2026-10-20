@@ -1,0 +1,21 @@
+name: Maintenance quality
+on:
+  pull_request:
+  push:
+    branches: [codex/admin-auth-maintenance]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+          extensions: pdo_sqlite, sqlite3, mbstring
+      - run: composer update --with waaseyaa/full:0.1.0-alpha.305 --no-interaction --prefer-dist
+      - run: composer validate --strict
+      - run: composer audit --locked --no-interaction
+      - run: php vendor/bin/phpunit

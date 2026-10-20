@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace Anokii\Support;
 
 use Symfony\Component\HttpFoundation\RedirectResponse;
-use Waaseyaa\Access\User\UserInternalFieldReaderInterface;
+use Waaseyaa\Access\User\UserSessionSnapshot;
+use Waaseyaa\Auth\Authentication\AuthenticationEligibilityException;
 use Waaseyaa\Auth\AuthManager;
 use Waaseyaa\Entity\EntityTypeManager;
 use Waaseyaa\User\User;
@@ -86,22 +87,24 @@ final class Auth
         ?EntityTypeManager $entityTypeManager,
         string $email,
         string $password,
-        UserInternalFieldReaderInterface $internalFields,
+        AuthManager $auth,
     ): ?User {
         $user = self::userByEmail($entityTypeManager, $email);
         if ($user === null) {
             return null;
         }
 
-        // Credential verification goes through the framework's audited
-        // internal-field authority (framework ≥ alpha.269 seals the password
-        // hash as Internal; AuthManager owns the capability-scoped read).
-        $auth = new AuthManager($internalFields);
+        // Use the container-owned manager so the application's configured
+        // eligibility policy and password-upgrade service are preserved.
         if (!$auth->authenticate($user, $password)) {
             return null;
         }
 
-        $auth->login($user);
+        try {
+            $auth->login($user);
+        } catch (AuthenticationEligibilityException) {
+            return null;
+        }
 
         return $user;
     }
@@ -112,12 +115,9 @@ final class Auth
      *
      * @api
      */
-    public static function logout(): void
+    public static function logout(AuthManager $auth): void
     {
-        // Logout only tears the session down — it never reads user internals,
-        // so the AuthManager is constructed with a loud null-object reader
-        // rather than real read authority.
-        (new AuthManager(new UnusedInternalFieldReader()))->logout();
+        $auth->logout();
     }
 
     /**
@@ -169,10 +169,12 @@ final class Auth
      *
      * @api
      */
-    public static function label(User $user): string
+    public static function label(User|UserSessionSnapshot $user, int|string|null $accountId = null): string
     {
-        $name = trim($user->getName());
+        $name = trim($user instanceof UserSessionSnapshot ? $user->name : $user->getName());
 
-        return $name !== '' ? $name : $user->getEmail();
+        $mail = $user instanceof UserSessionSnapshot ? $user->mail : $user->getEmail();
+
+        return $name !== '' ? $name : ($mail !== '' ? $mail : 'Account #' . $accountId);
     }
 }
