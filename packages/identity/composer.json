@@ -5,8 +5,8 @@
     "license": "GPL-2.0-or-later",
     "require": {
         "php": "^8.5",
-        "symfony/http-foundation": "^7.0",
-        "symfony/uid": "^7.0",
+        "symfony/http-foundation": "^7.0 || ^8.0",
+        "symfony/uid": "^7.0 || ^8.0",
         "waaseyaa/access": "^0.1.0-alpha.293",
         "waaseyaa/anokii-core": "dev-main",
         "waaseyaa/entity": "^0.1.0-alpha.293",
@@ -23,6 +23,10 @@
             "dev-main": "0.1.x-dev"
         },
         "waaseyaa": {
+            "permissions": {
+                "edit identity": {"title": "Edit identity", "description": "Edit community identity pillars."},
+                "administer identity": {"title": "Administer identity", "description": "Administer community identity pillars."}
+            },
             "providers": [
                 "Anokii\\Identity\\IdentityServiceProvider"
             ],

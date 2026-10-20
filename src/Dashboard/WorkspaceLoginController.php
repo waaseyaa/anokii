@@ -13,6 +13,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Waaseyaa\Access\User\UserInternalFieldReaderInterface;
+use Waaseyaa\Auth\AuthManager;
 use Waaseyaa\Entity\EntityTypeManager;
 
 /**
@@ -47,6 +48,7 @@ final class WorkspaceLoginController extends DashboardGate
         private readonly string $setPasswordTemplate,
         UserInternalFieldReaderInterface $internalFieldReader,
         private readonly LoginThrottle $loginThrottle,
+        private readonly AuthManager $auth,
         private readonly int $minPasswordLength = 10,
     ) {
         parent::__construct($entityTypeManager, $internalFieldReader);
@@ -81,7 +83,7 @@ final class WorkspaceLoginController extends DashboardGate
         }
 
         \assert($this->internalFields !== null); // constructor requires it
-        $user = Auth::login($this->entityTypeManager, $email, $password, $this->internalFields);
+        $user = Auth::login($this->entityTypeManager, $email, $password, $this->auth);
         if ($user === null) {
             $this->loginThrottle->recordFailure($request, $email);
 
@@ -95,7 +97,7 @@ final class WorkspaceLoginController extends DashboardGate
 
     public function logout(Request $request): Response
     {
-        Auth::logout();
+        Auth::logout($this->auth);
 
         return new RedirectResponse($this->loginPathValue);
     }

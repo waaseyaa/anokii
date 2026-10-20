@@ -6,8 +6,8 @@ namespace Anokii\Support;
 
 use Anokii\Core\Support\Values;
 use Symfony\Component\HttpFoundation\RedirectResponse;
-use Waaseyaa\Access\User\UserInternalFieldReaderInterface;
 use Waaseyaa\Access\User\UserSessionSnapshot;
+use Waaseyaa\Auth\Authentication\AuthenticationEligibilityException;
 use Waaseyaa\Auth\AuthManager;
 use Waaseyaa\Entity\EntityTypeManager;
 use Waaseyaa\User\User;
@@ -88,22 +88,24 @@ final class Auth
         ?EntityTypeManager $entityTypeManager,
         string $email,
         string $password,
-        UserInternalFieldReaderInterface $internalFields,
+        AuthManager $auth,
     ): ?User {
         $user = self::userByEmail($entityTypeManager, $email);
         if ($user === null) {
             return null;
         }
 
-        // Credential verification goes through the framework's audited
-        // internal-field authority (framework ≥ alpha.269 seals the password
-        // hash as Internal; AuthManager owns the capability-scoped read).
-        $auth = new AuthManager($internalFields);
+        // The container-owned manager preserves the configured eligibility and
+        // password-upgrade services as well as the audited credential reader.
         if (!$auth->authenticate($user, $password)) {
             return null;
         }
 
-        $auth->login($user);
+        try {
+            $auth->login($user);
+        } catch (AuthenticationEligibilityException) {
+            return null;
+        }
 
         return $user;
     }
@@ -114,12 +116,9 @@ final class Auth
      *
      * @api
      */
-    public static function logout(): void
+    public static function logout(AuthManager $auth): void
     {
-        // Logout only tears the session down — it never reads user internals,
-        // so the AuthManager is constructed with a loud null-object reader
-        // rather than real read authority.
-        new AuthManager(new UnusedInternalFieldReader())->logout();
+        $auth->logout();
     }
 
     /**

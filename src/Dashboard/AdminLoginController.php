@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace Anokii\Dashboard;
 
-use Anokii\Access\WorkspacePermissions;
 use Anokii\Auth\LoginThrottle;
 use Anokii\Support\Auth;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Waaseyaa\Access\AccountPrincipalFactoryInterface;
 use Waaseyaa\Access\User\UserInternalFieldReaderInterface;
+use Waaseyaa\Auth\AuthManager;
 use Waaseyaa\Entity\EntityTypeManager;
 use Waaseyaa\User\Middleware\CsrfMiddleware;
 
@@ -45,9 +46,11 @@ final class AdminLoginController extends DashboardGate
         private readonly LoginBrand $brand,
         UserInternalFieldReaderInterface $internalFieldReader,
         private readonly LoginThrottle $loginThrottle,
+        private readonly AuthManager $auth,
+        AccountPrincipalFactoryInterface $principals,
         private readonly string $pathPrefix = '/admin',
     ) {
-        parent::__construct($entityTypeManager, $internalFieldReader);
+        parent::__construct($entityTypeManager, $internalFieldReader, $principals);
     }
 
     protected function loginPath(): string
@@ -75,16 +78,16 @@ final class AdminLoginController extends DashboardGate
             return new Response('Too many sign-in attempts. Try again later.', 429, ['Retry-After' => '900']);
         }
 
-        \assert($this->internalFields !== null); // constructor requires it
-        $user = Auth::login($this->entityTypeManager, $email, $password, $this->internalFields);
+        \assert($this->principals !== null); // constructor requires it
+        $user = Auth::login($this->entityTypeManager, $email, $password, $this->auth);
         $permitted = $user !== null && (
             $this->requiredPermission === null
-            || WorkspacePermissions::allows($this->internalFields->maintenanceAuthorization($user), $this->requiredPermission)
+            || $this->principals->fromAccount($user)->hasPermission($this->requiredPermission)
         );
         if (!$permitted) {
             $this->loginThrottle->recordFailure($request, $email);
             if ($user !== null) {
-                Auth::logout();
+                Auth::logout($this->auth);
             }
 
             return $this->loginPage($next, true);
@@ -99,7 +102,7 @@ final class AdminLoginController extends DashboardGate
 
     public function logout(Request $request): RedirectResponse
     {
-        Auth::logout();
+        Auth::logout($this->auth);
 
         return new RedirectResponse($this->loginPath);
     }

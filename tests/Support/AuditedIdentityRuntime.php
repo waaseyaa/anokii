@@ -94,9 +94,10 @@ final class AuditedIdentityRuntime
             bindCommunityFromContext: true,
         ));
         foreach ([
-            ['user.credentials', CapabilityReason::CredentialVerification, ['status', 'pass']],
+            ['user.credentials', CapabilityReason::CredentialVerification, ['status', 'pass', 'legacy_pass']],
+            ['user.verification', CapabilityReason::CredentialVerification, ['mail', 'email_verified', 'status']],
             ['user.mail-delivery', CapabilityReason::MailDelivery, ['name', 'mail']],
-            ['user.session-identity', CapabilityReason::SessionBootstrap, ['name', 'mail', 'roles']],
+            ['user.session-identity', CapabilityReason::SessionBootstrap, ['name', 'mail', 'roles', 'session_generation']],
             ['user.maintenance-authorization', CapabilityReason::MaintenanceCli, ['roles', 'permissions']],
         ] as [$issuer, $reason, $fields]) {
             $registry->register(new CapabilityDeclaration(
