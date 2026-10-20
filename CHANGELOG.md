@@ -6,6 +6,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.1.0-alpha.14] - 2026-10-20
+
+Focused maintenance release for alpha.13 consumers on Framework alpha.305.
+The maintainer explicitly authorized this release from the reviewed maintenance
+branch on October 20, rather than adopting the unreleased distribution split.
+The shared fix is also merged on main through PR #48; maintenance review is #49.
+
+- Login, logout and workspace password verification use the framework-owned
+  AuthManager, preserving configured eligibility and credential upgrades.
+- Admin permission checks use immutable HTTP principals.
+- Backport AccountBoundary and database login throttling. AdminShell accepts an
+  audited UserSessionSnapshot while preserving its existing argument order.
+- Preserve posted return links within the configured admin path boundary.
+- Require Framework alpha.305 or later. Hosts must inject AuthManager,
+  AccountPrincipalFactoryInterface and LoginThrottle into AdminLoginController,
+  and provide the principal factory to DashboardGate when checking permissions.
+- Test valid/rejected login, permissions, rate limits, audited identity, session
+  generation, revocation, native session rotation and logout.
+
 ## [0.1.0-alpha.13] - 2026-07-27
 
 Framework ≥ alpha.269 sealed User `roles`/`permissions`/`pass`/`mail` as Internal
