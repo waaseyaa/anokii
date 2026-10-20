@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Anokii\Dashboard;
 
-use Anokii\Access\WorkspacePermissions;
 use Anokii\Support\Auth;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Waaseyaa\Access\AccountPrincipalFactoryInterface;
 use Waaseyaa\Access\User\UserInternalFieldReaderInterface;
 use Waaseyaa\Entity\EntityTypeManager;
 use Waaseyaa\SSR\SsrServiceProvider;
@@ -42,16 +42,15 @@ use Waaseyaa\User\User;
 abstract class DashboardGate
 {
     /**
-     * @param ?UserInternalFieldReaderInterface $internalFields Audited authority for
-     *        reading User internals (roles/permissions/credentials). Required for
-     *        {@see requirePermission()} on framework ≥ alpha.269 — the sealed
-     *        entity can no longer answer `hasPermission()` itself. Resolve
-     *        `UserInternalFieldReaderInterface::class` from the container when
-     *        mounting the gate.
+     * @param ?UserInternalFieldReaderInterface $internalFields Audited reader for
+     *        credential and account-maintenance operations in subclasses.
+     * @param ?AccountPrincipalFactoryInterface $principals Framework identity
+     *        boundary for HTTP permission decisions. Required by requirePermission().
      */
     public function __construct(
         protected readonly ?EntityTypeManager $entityTypeManager = null,
         protected readonly ?UserInternalFieldReaderInterface $internalFields = null,
+        protected readonly ?AccountPrincipalFactoryInterface $principals = null,
     ) {}
 
     /**
@@ -120,17 +119,17 @@ abstract class DashboardGate
             return $this->forbiddenResponse();
         }
 
-        if ($this->internalFields === null) {
+        if ($this->principals === null) {
             // Misconfiguration must fail loudly, not as a silent 403: the gate
             // cannot decide permissions without the audited reader.
             throw new \LogicException(sprintf(
-                '%s was mounted without a UserInternalFieldReaderInterface; requirePermission() cannot decide. '
-                . 'Pass the resolved reader to the gate constructor.',
+                '%s was mounted without an AccountPrincipalFactoryInterface; requirePermission() cannot decide. '
+                . 'Pass the framework principal factory to the gate constructor.',
                 static::class,
             ));
         }
 
-        if (!WorkspacePermissions::allows($this->internalFields->maintenanceAuthorization($user), $permission)) {
+        if (!$this->principals->fromAccount($user)->hasPermission($permission)) {
             return $this->forbiddenResponse();
         }
 
